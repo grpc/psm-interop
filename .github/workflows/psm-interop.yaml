@@ -21,6 +21,7 @@ jobs:
       fail-fast: false
     permissions:
       pull-requests: read  # Used by paths-filter to read the diff.
+      contents: read
     defaults:
       run:
         working-directory: './'
