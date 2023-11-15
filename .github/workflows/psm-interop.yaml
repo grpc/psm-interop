@@ -26,7 +26,7 @@ jobs:
         working-directory: './'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # To add this job to required GitHub checks, it's not enough to use
       # the on.pull_request.paths filter. For required checks, the job needs to
