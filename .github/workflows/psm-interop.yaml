@@ -40,9 +40,9 @@ jobs:
           filters:  |
             psm_interop_src:
               - './**'
-              - './proto/empty.proto'
-              - './proto/messages.proto'
-              - './proto/test.proto'
+              - './protos/empty.proto'
+              - './protos/messages.proto'
+              - './protos/test.proto'
 
       - uses: actions/setup-python@v4
         if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
@@ -65,9 +65,9 @@ jobs:
         run: >
           python -m grpc_tools.protoc --proto_path=.
           --python_out=. --grpc_python_out=.
-          proto/empty.proto
-          proto/messages.proto
-          proto/test.proto
+          protos/empty.proto
+          protos/messages.proto
+          protos/test.proto
 
       - name: "Run unit tests"
         if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
