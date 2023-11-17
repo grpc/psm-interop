@@ -1,6 +1,14 @@
 name: PSM Interop
 
-on: [pull_request, push]
+env:
+  # Force the stdout and stderr streams to be unbuffered
+  PYTHONUNBUFFERED: 1
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
