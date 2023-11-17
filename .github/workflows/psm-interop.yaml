@@ -85,3 +85,12 @@ jobs:
           with:
              options: "--check --config black.toml"
              version: "23.3.0"
+
+  isort-check:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - uses: isort/isort-action@v1
+          with:
+            configuration: "--diff --dont-follow-links --settings-path=black.toml"
+            isort-version: "5.9.2"
