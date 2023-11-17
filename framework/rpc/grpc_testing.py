@@ -16,6 +16,7 @@ This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 import logging
+import sys
 from typing import Iterable, Optional, Tuple
 
 import grpc
@@ -23,8 +24,6 @@ from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
 import framework.rpc
-import sys
-
 from protos import empty_pb2
 from protos import messages_pb2
 from protos import test_pb2_grpc
