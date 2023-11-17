@@ -21,7 +21,7 @@ changes to this codebase at the moment.
 - [ ] Address inline TODOs in code
 - [x] Improve README.md documentation, explain helpers in bin/ folder
 
-## Installation
+## Installation Steps
 
 #### Requirements
 1. Python v3.9+
