@@ -1,5 +1,9 @@
 name: PSM Interop
 
+env:
+  # Force the stdout and stderr streams to be unbuffered
+  PYTHONUNBUFFERED: 1
+
 on:
   pull_request:
   push:
@@ -72,3 +76,12 @@ jobs:
       - name: "Run unit tests"
         if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
         run: python -m tests.unit
+
+  black-check:
+     runs-on: ubuntu-latest
+     steps:
+        - uses: actions/checkout@v4
+        - uses: psf/black@stable
+          with:
+             options: "--check --config black.toml"
+             version: "23.3.0"
