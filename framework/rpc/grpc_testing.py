@@ -24,6 +24,7 @@ from grpc_health.v1 import health_pb2_grpc
 
 import framework.rpc
 import sys
+
 print(f">>>>path: {sys.path}")
 from protos import empty_pb2
 from protos import messages_pb2
