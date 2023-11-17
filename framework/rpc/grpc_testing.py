@@ -16,7 +16,6 @@ This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 import logging
-import sys
 from typing import Iterable, Optional, Tuple
 
 import grpc
