@@ -94,3 +94,25 @@ jobs:
           with:
             configuration: "--diff --check-only --dont-follow-links --settings-path=black.toml"
             isort-version: "5.9.2"
+
+  pylint-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          pip list
+          python -m pip install --upgrade pip
+          pip install pylint==2.2.2 astroid==2.3.3 toml==0.10.2 "isort>=4.3.0,<5.0.0"
+      - name: Analysing the code with pylint
+        run: |
+         python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
+         python -m pylint 'tests' 'framework' --rcfile=.pylintrc.tests -rn
