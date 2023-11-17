@@ -57,4 +57,4 @@ else
 fi
 
 # shellcheck disable=SC2086
-exec python -m black --config=black.toml ${MODE} .
+exec python -m black --config=../../../black.toml ${MODE} .
