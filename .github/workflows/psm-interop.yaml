@@ -78,7 +78,6 @@ jobs:
         run: python -m tests.unit
 
   black-check:
-     name: "black check (black==23.3.0)"
      runs-on: ubuntu-latest
      steps:
         - uses: actions/checkout@v4
@@ -88,7 +87,6 @@ jobs:
              version: "23.3.0"
 
   isort-check:
-    name: "isort check (isort==5.9.2)"
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4
@@ -98,7 +96,6 @@ jobs:
             isort-version: "5.9.2"
 
   pylint-check:
-    name: "pylint check (pylint==2.2.2)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,4 +107,4 @@ jobs:
       - name: Analysing the code with pylint
         run: |
          python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
-         python -m pylint 'tests' 'framework' --rcfile=.pylintrc-tests -rn
+         python -m pylint 'tests' --rcfile=.pylintrc-tests -rn
