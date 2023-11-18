@@ -100,9 +100,6 @@ jobs:
   pylint-check:
     name: "pylint check (pylint==2.2.2)"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9"]
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
