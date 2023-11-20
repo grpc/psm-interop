@@ -93,4 +93,4 @@ jobs:
       - name: Analysing the code with pylint
         run: |
          python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
-         python -m pylint 'tests' --rcfile=./tests/pylintrc-tests -rn
+         python -m pylint 'tests' --rcfile=tests/pylintrc-tests -rn
