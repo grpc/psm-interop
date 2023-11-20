@@ -32,31 +32,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # To add this job to required GitHub checks, it's not enough to use
-      # the on.pull_request.paths filter. For required checks, the job needs to
-      # return the success status, and not be skipped.
-      # Using paths-filter action, we skip the setup/test steps when psm interop
-      # files are unchanged, and the job returns success.
-      - uses: dorny/paths-filter@v2
-        id: paths_filter
-        with:
-          filters:  |
-            psm_interop_src:
-              - '.'
-              - './protos/empty.proto'
-              - './protos/messages.proto'
-              - './protos/test.proto'
-
       - uses: actions/setup-python@v4
-        if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
         with:
           python-version: "${{ matrix.python_version }}"
           cache: 'pip'
           cache-dependency-path: './requirements.lock'
 
       - name: "Install requirements"
-        if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
         run: |
           pip list
           pip install --upgrade pip setuptools
@@ -65,7 +47,6 @@ jobs:
           pip list
 
       - name: "Generate protos"
-        if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
         run: >
           python -m grpc_tools.protoc --proto_path=.
           --python_out=. --grpc_python_out=.
@@ -74,7 +55,6 @@ jobs:
           protos/test.proto
 
       - name: "Run unit tests"
-        if: ${{ steps.paths_filter.outputs.psm_interop_src == 'true' }}
         run: python -m tests.unit
 
   black-check:
@@ -99,12 +79,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          cache: 'pip'
+
       - name: Install dependencies
         run: |
           pip list
           python -m pip install --upgrade pip
           pip install pylint==2.2.2 astroid==2.3.3 toml==0.10.2 "isort>=4.3.0,<5.0.0"
+          pip list
       - name: Analysing the code with pylint
         run: |
          python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
-         python -m pylint 'tests' --rcfile=.pylintrc-tests -rn
+         python -m pylint 'tests' --rcfile=./tests/pylintrc-tests -rn
