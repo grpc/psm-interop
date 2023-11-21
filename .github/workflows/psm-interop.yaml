@@ -95,4 +95,4 @@ jobs:
          python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
       - name: Analysing tests code with pylint
         run: |
-         python -m pylint 'tests' --rcfile=.pylintrc-tests -rn
+         python -m pylint 'tests' --rcfile=./tests/.pylintrc -rn
