@@ -23,9 +23,9 @@ from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
 import framework.rpc
-from protos import empty_pb2
-from protos import messages_pb2
-from protos import test_pb2_grpc
+from protos.grpc.testing import empty_pb2
+from protos.grpc.testing import messages_pb2
+from protos.grpc.testing import test_pb2_grpc
 
 # Type aliases
 _LoadBalancerStatsRequest = messages_pb2.LoadBalancerStatsRequest
