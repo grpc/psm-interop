@@ -50,9 +50,9 @@ jobs:
         run: >
           python -m grpc_tools.protoc --proto_path=.
           --python_out=. --grpc_python_out=.
-          protos/empty.proto
-          protos/messages.proto
-          protos/test.proto
+          protos/grpc/testing/empty.proto
+          protos/grpc/testing/messages.proto
+          protos/grpc/testing/test.proto
 
       - name: "Run unit tests"
         run: python -m tests.unit
