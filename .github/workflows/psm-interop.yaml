@@ -1,0 +1,97 @@
+name: PSM Interop
+
+env:
+  # Force the stdout and stderr streams to be unbuffered
+  PYTHONUNBUFFERED: 1
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    # By default, only version is printed out in parens, e.g. "unittest (3.10)"
+    # This changes it to "unittest (python3.10)"
+    name: "unittest (python${{ matrix.python_version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: ["3.9", "3.10", "3.11"]
+      fail-fast: false
+    permissions:
+      pull-requests: read  # Used by paths-filter to read the diff.
+      contents: read
+    defaults:
+      run:
+        working-directory: './'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "${{ matrix.python_version }}"
+          cache: 'pip'
+          cache-dependency-path: './requirements.lock'
+
+      - name: "Install requirements"
+        run: |
+          pip list
+          pip install --upgrade pip setuptools
+          pip list
+          pip install -r requirements.lock
+          pip list
+
+      - name: "Generate protos"
+        run: >
+          python -m grpc_tools.protoc --proto_path=.
+          --python_out=. --grpc_python_out=.
+          protos/grpc/testing/empty.proto
+          protos/grpc/testing/messages.proto
+          protos/grpc/testing/test.proto
+
+      - name: "Run unit tests"
+        run: python -m tests.unit
+
+  black-check:
+     runs-on: ubuntu-latest
+     steps:
+        - uses: actions/checkout@v4
+        - uses: psf/black@stable
+          with:
+             options: "--check --verbose"
+             version: "23.3.0"
+
+  isort-check:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - uses: isort/isort-action@v1
+          with:
+            isort-version: "5.9.2"
+
+  pylint-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip list
+          python -m pip install --upgrade pip
+          pip install pylint==2.2.2 astroid==2.3.3 toml==0.10.2 "isort>=4.3.0,<5.0.0"
+          pip list
+      - name: Analysing source code with pylint
+        run: |
+         python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
+      - name: Analysing tests code with pylint
+        run: |
+         python -m pylint 'tests' --rcfile=./tests/.pylintrc -rn
