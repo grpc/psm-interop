@@ -316,18 +316,18 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             )
 
             try:
-                channel_updated = self.check_channel_in_flight_calls(
+                updated_channel = self.check_channel_in_flight_calls(
                     channel, **rpc_params
                 )
-                if channel_updated:
+                if updated_channel:
                     logger.info(
                         "[%s] Detected active calls to xDS control plane %s,"
                         " channel: %s",
                         self.hostname,
                         xds_server_uri,
-                        _ChannelzServiceClient.channel_repr(channel_updated),
+                        _ChannelzServiceClient.channel_repr(updated_channel),
                     )
-                    return channel_updated
+                    return updated_channel
             except self.NotFound:
                 # Continue checking other channels to the same target on
                 # not found.
