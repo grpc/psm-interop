@@ -192,11 +192,9 @@ python3 -m venv venv
 pip install -r requirements.lock
 
 # Generate protos
-python -m grpc_tools.protoc --proto_path=../../../ \
-    --python_out=. --grpc_python_out=. \
-    src/proto/grpc/testing/empty.proto \
-    src/proto/grpc/testing/messages.proto \
-    src/proto/grpc/testing/test.proto
+python -m grpc_tools.protoc --proto_path=. \
+  --python_out=. --grpc_python_out=. --pyi_out=. \
+  protos/grpc/testing/*.proto
 ```
 
 # Basic usage
