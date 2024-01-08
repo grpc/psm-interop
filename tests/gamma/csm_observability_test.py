@@ -27,7 +27,7 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
-    def test_ping_pong(self):
+    def test_csm_observability(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
         with self.subTest("1_run_test_server"):

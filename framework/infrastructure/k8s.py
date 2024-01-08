@@ -59,6 +59,7 @@ GammaHttpRoute = DynResourceInstance
 GcpSessionAffinityPolicy = DynResourceInstance
 GcpSessionAffinityFilter = DynResourceInstance
 GcpBackendPolicy = DynResourceInstance
+PodMonitoring = DynResourceInstance
 
 _timedelta = datetime.timedelta
 _datetime = datetime.datetime
