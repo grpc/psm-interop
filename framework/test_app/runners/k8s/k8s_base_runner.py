@@ -324,11 +324,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 f"Expected ResourceInstance[PodMonitoring] to be created from"
                 f" manifest {template}"
             )
-        if pod_monitoring.metadata.namespace != namespace_name:
-            raise _RunnerError(
-                "PodMonitoring resource created with unexpected namespace: "
-                f"{pod_monitoring.metadata.namespace}"
-            )
         logger.debug(
             "PodMonitoring %s created at %s",
             pod_monitoring.metadata.name,
