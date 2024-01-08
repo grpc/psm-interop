@@ -307,7 +307,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         deployment_id: str,
         pod_monitoring_name: str,
         **kwargs,
-    ) -> None:
+    ) -> k8s.PodMonitoring:
         pod_monitoring = self._create_from_template(
             template,
             custom_object=True,
@@ -677,6 +677,20 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 name
             )
         logger.info("GCPSessionAffinityFilter %s deleted", name)
+
+    def _delete_pod_monitoring(self, name):
+        logger.info("Deleting PodMonitoring %s", name)
+        try:
+            self.k8s_namespace.delete_pod_monitoring(name)
+        except k8s.NotFound:
+            logger.debug(
+                "PodMonitoring %s not deleted since it doesn't exist", name
+            )
+            return
+        except retryers.RetryError as e:
+            logger.warning("PodMonitoring %s deletion failed: %s", name, e)
+            return
+        logger.info("PodMonitoring %s deleted", name)
 
     def _delete_backend_policy(self, name, wait_for_deletion=True):
         logger.info("Deleting GCPBackendPolicy %s", name)

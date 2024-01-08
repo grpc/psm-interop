@@ -39,6 +39,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     service_account_name: Optional[str] = None
     service_account_template: Optional[str] = None
     gcp_iam: Optional[gcp.iam.IamV1] = None
+    pod_monitoring: Optional[k8s.PodMonitoring] = None
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -165,7 +166,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         # Create a PodMonitoring resource if CSM Observability is enabled
         # This is GMP (Google Managed Prometheus)
         if enable_csm_observability:
-            self._create_pod_monitoring(
+            self.pod_monitoring = self._create_pod_monitoring(
                 "csm/pod-monitoring.yaml",
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
@@ -218,6 +219,11 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
                 )
                 self._delete_service_account(self.service_account_name)
                 self.service_account = None
+            if self.pod_monitoring:
+                self._delete_pod_monitoring(
+                    self.pod_monitoring.metadata.name
+                )
+                self.pod_monitoring = None
             self._cleanup_namespace(force=force_namespace and force)
         finally:
             self._stop()
