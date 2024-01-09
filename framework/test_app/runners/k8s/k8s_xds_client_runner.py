@@ -221,9 +221,11 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
                 )
                 self._delete_service_account(self.service_account_name)
                 self.service_account = None
-            if self.pod_monitoring or force:
+            # Pod monitoring name is only set when CSM observability is enabled.
+            if self.pod_monitoring_name and (self.pod_monitoring or force):
                 self._delete_pod_monitoring(self.pod_monitoring_name)
                 self.pod_monitoring = None
+                self.pod_monitoring_name = None
             self._cleanup_namespace(force=force_namespace and force)
         finally:
             self._stop()
