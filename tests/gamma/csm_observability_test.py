@@ -29,6 +29,7 @@ _Lang = skips.Lang
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
             # CSM Observability Test is only supported for CPP for now.
