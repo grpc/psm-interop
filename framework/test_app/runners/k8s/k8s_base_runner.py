@@ -299,6 +299,38 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("Reusing namespace: %s", self.k8s_namespace.name)
         return self.k8s_namespace.get()
 
+    def _create_pod_monitoring(
+        self,
+        template,
+        *,
+        namespace_name: str,
+        deployment_id: str,
+        pod_monitoring_name: str,
+        **kwargs,
+    ) -> k8s.PodMonitoring:
+        pod_monitoring = self._create_from_template(
+            template,
+            custom_object=True,
+            namespace_name=namespace_name,
+            deployment_id=deployment_id,
+            pod_monitoring_name=pod_monitoring_name,
+            **kwargs,
+        )
+        if not (
+            isinstance(pod_monitoring, k8s.PodMonitoring)
+            and pod_monitoring.kind == "PodMonitoring"
+        ):
+            raise _RunnerError(
+                f"Expected ResourceInstance[PodMonitoring] to be created from"
+                f" manifest {template}"
+            )
+        logger.debug(
+            "PodMonitoring %s created at %s",
+            pod_monitoring.metadata.name,
+            pod_monitoring.metadata.creation_timestamp,
+        )
+        return pod_monitoring
+
     def _create_namespace(self, template, **kwargs) -> k8s.V1Namespace:
         namespace = self._create_from_template(template, **kwargs)
         if not isinstance(namespace, k8s.V1Namespace):
@@ -640,6 +672,20 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 name
             )
         logger.info("GCPSessionAffinityFilter %s deleted", name)
+
+    def _delete_pod_monitoring(self, name):
+        logger.info("Deleting PodMonitoring %s", name)
+        try:
+            self.k8s_namespace.delete_pod_monitoring(name)
+        except k8s.NotFound:
+            logger.debug(
+                "PodMonitoring %s not deleted since it doesn't exist", name
+            )
+            return
+        except retryers.RetryError as e:
+            logger.warning("PodMonitoring %s deletion failed: %s", name, e)
+            return
+        logger.info("PodMonitoring %s deleted", name)
 
     def _delete_backend_policy(self, name, wait_for_deletion=True):
         logger.info("Deleting GCPBackendPolicy %s", name)
