@@ -18,15 +18,23 @@ from absl.testing import absltest
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
+from framework.helpers import skips
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
+_Lang = skips.Lang
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    def is_supported(config: skips.TestConfig) -> bool:
+        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
+            # CSM Observability Test is only supported for CPP for now.
+            return True
+        return False
+
     def test_csm_observability(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
