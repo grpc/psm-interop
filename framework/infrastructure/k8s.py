@@ -59,6 +59,7 @@ GammaHttpRoute = DynResourceInstance
 GcpSessionAffinityPolicy = DynResourceInstance
 GcpSessionAffinityFilter = DynResourceInstance
 GcpBackendPolicy = DynResourceInstance
+PodMonitoring = DynResourceInstance
 
 _timedelta = datetime.timedelta
 _datetime = datetime.datetime
@@ -324,6 +325,13 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         return self._get_dynamic_api(
             "networking.gke.io/v1",
             "GCPSessionAffinityPolicy",
+        )
+
+    @functools.cached_property  # pylint: disable=no-member
+    def pod_monitoring(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "monitoring.googleapis.com/v1",
+            "PodMonitoring",
         )
 
     @functools.cached_property  # pylint: disable=no-member
@@ -642,6 +650,19 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     ) -> None:
         self._execute(
             self.api_session_affinity_filter.delete,  # pylint: disable=no-member
+            name=name,
+            namespace=self.name,
+            propagation_policy="Foreground",
+            grace_period_seconds=grace_period_seconds,
+        )
+
+    def delete_pod_monitoring(
+        self,
+        name: str,
+        grace_period_seconds=DELETE_GRACE_PERIOD_SEC,
+    ) -> None:
+        self._execute(
+            self.pod_monitoring.delete,  # pylint: disable=no-member
             name=name,
             namespace=self.name,
             propagation_policy="Foreground",
