@@ -41,6 +41,8 @@ spec:
           - "--qps=${qps}"
           - "--rpc=${rpc}"
           - "--metadata=${metadata}"
+          - "--request_payload_size=${request_payload_size}"
+          - "--response_payload_size=${response_payload_size}"
           - "--print_response=${print_response}"
           % if enable_csm_observability:
           - "--enable_csm_observability"

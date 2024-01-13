@@ -156,6 +156,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             server_target=server_target,
             rpc=rpc,
             qps=qps,
+            request_payload_size=271828,
+            response_payload_size=314159,
             metadata=metadata,
             secure_mode=secure_mode,
             config_mesh=config_mesh,
