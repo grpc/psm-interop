@@ -58,7 +58,8 @@ class BaseTestCase(absltest.TestCase):
         # the TestCase.assert*() methods.
         for err in errors:
             logging.error(
-                "%s Traceback in %s:\n%s",
+                "%s PSM Interop test failed: %s. PSM Traceback BEGIN \n%s"
+                "\nPSM Traceback END",
                 "ERROR" if is_unexpected_error else "FAILURE",
                 self.id(),
                 err,
