@@ -36,13 +36,13 @@ class BaseTestCase(absltest.TestCase):
         )
         # Assume one test case will only have one status.
         if test_errors or test_failures:
-            logging.info("----- TestCase %s FAILED -----", self.test_name)
+            logging.error("----- TestCase %s FAILED -----", self.test_name)
             if test_errors:
                 self._print_error_list(test_errors, is_unexpected_error=True)
             if test_failures:
                 self._print_error_list(test_failures)
         elif test_unexpected_successes:
-            logging.info(
+            logging.error(
                 "----- TestCase %s UNEXPECTEDLY SUCCEEDED -----\n",
                 self.test_name,
             )
