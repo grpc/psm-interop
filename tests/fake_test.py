@@ -46,7 +46,7 @@ class FakeTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
         self.assertTrue(True, "I'm a passing test at the end")
 
 
-class FakeTestParametrized(
+class FakeParametrizedTest(
     xds_k8s_testcase.XdsKubernetesBaseTestCase,
     parameterized.TestCase,
 ):
@@ -60,6 +60,15 @@ class FakeTestParametrized(
     )
     def test_true_named(self, is_true):
         self.assertTrue(is_true)
+
+
+class FakeSubtestTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
+    # TODO(sergiitk): add subtest examples
+    def test_even(self):
+        for num in range(0, 6):
+            with self.subTest(i=num, msg=f"num_{num}"):
+                if num & 1:
+                    self.fail(f"Integer {num} is odd")
 
 
 if __name__ == "__main__":

@@ -252,6 +252,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     def handle_sigint(
         self, signalnum: _SignalNum, frame: Optional[FrameType]
     ) -> None:
+        # TODO(sergiitk): move to base_testcase.BaseTestCase
         logger.info("Caught Ctrl+C, cleaning up...")
         self._handling_sigint = True
         # Force resource cleanup by their name. Addresses the case where ctrl-c
@@ -266,12 +267,18 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
     @contextlib.contextmanager
     def subTest(self, msg, **params):  # noqa pylint: disable=signature-differs
-        logger.info("--- Starting subTest %s.%s ---", self.id(), msg)
+        # TODO(sergiitk): move to base_testcase.BaseTestCase
+        # Important side-effect: this halts test execution on first subtest
+        # failure, even if failfast is enabled.
+        # TODO(sergiitk): This is desired, but not understood. Figure out why.
+        logger.info("--- Starting subTest %s.%s ---", self.test_name, msg)
         try:
             yield super().subTest(msg, **params)
         finally:
             if not self._handling_sigint:
-                logger.info("--- Finished subTest %s.%s ---", self.id(), msg)
+                logger.info(
+                    "--- Finished subTest %s.%s ---", self.test_name, msg
+                )
 
     def setupTrafficDirectorGrpc(self):
         self.td.setup_for_grpc(
@@ -684,7 +691,7 @@ class IsolatedXdsKubernetesTestCase(
         raise NotImplementedError
 
     def tearDown(self):
-        logger.info("----- TestMethod %s teardown -----", self.id())
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
         logger.debug("Getting pods restart times")
         client_restarts: int = 0
         server_restarts: int = 0

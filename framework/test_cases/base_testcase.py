@@ -22,7 +22,8 @@ from absl.testing import absltest
 
 class BaseTestCase(absltest.TestCase):
     def run(self, result: Optional[unittest.TestResult] = None) -> None:
-        super().run(result)
+        # TODO(sergiitk): should this method be returning result? See
+        #   super().run and xds_k8s_testcase.XdsKubernetesBaseTestCase.subTest
         test_errors = [error for test, error in result.errors if test is self]
         test_failures = [
             failure for test, failure in result.failures if test is self
@@ -36,8 +37,11 @@ class BaseTestCase(absltest.TestCase):
         )
         # Assume one test case will only have one status.
         if test_errors or test_failures:
+            total_errors = len(test_errors) + len(test_failures)
             logging.error(
-                "----- PSM Test Case FAILED: %s -----", self.test_name
+                "----- PSM Test Case FAILED: %s%s -----",
+                self.test_name,
+                f" | Errors count: {total_errors}" if total_errors > 1 else "",
             )
             if test_errors:
                 self._print_error_list(test_errors, is_unexpected_error=True)
