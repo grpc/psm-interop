@@ -36,21 +36,30 @@ class BaseTestCase(absltest.TestCase):
         )
         # Assume one test case will only have one status.
         if test_errors or test_failures:
-            logging.error("----- TestCase %s FAILED -----", self.test_name)
+            logging.error(
+                "----- PSM Test Case FAILED: %s -----", self.test_name
+            )
             if test_errors:
                 self._print_error_list(test_errors, is_unexpected_error=True)
             if test_failures:
                 self._print_error_list(test_failures)
         elif test_unexpected_successes:
             logging.error(
-                "----- TestCase %s UNEXPECTEDLY SUCCEEDED -----\n",
+                "----- PSM Test Case UNEXPECTEDLY SUCCEEDED: %s -----\n",
                 self.test_name,
             )
         elif test_skipped:
-            logging.info("----- TestCase %s SKIPPED -----\n", self.test_name)
-            logging.info("Reason for skipping: %s", test_skipped)
+            logging.info(
+                "----- PSM Test Case SKIPPED: %s -----"
+                "\nReason for skipping: %s",
+                self.test_name,
+                test_skipped,
+            )
         else:
-            logging.info("----- TestCase %s PASSED -----\n", self.test_name)
+            logging.info(
+                "----- PSM Test Case PASSED: %s -----\n",
+                self.test_name,
+            )
 
     @property
     def test_name(self) -> str:
