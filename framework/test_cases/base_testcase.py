@@ -77,9 +77,10 @@ class BaseTestCase(absltest.TestCase):
         for err in errors:
             logging.error(
                 "(%(fail_type)s) PSM Interop Test Failed: %(test_id)s"
-                "\n%(test_id)s | PSM Failed Test Traceback BEGIN"
-                "\n\n%(error)s"
-                "\n%(test_id)s | PSM Failed Test Traceback END\n",
+                "\n^^^^^"
+                "\n[%(test_id)s] PSM Failed Test Traceback BEGIN"
+                "\n%(error)s"
+                "[%(test_id)s] PSM Failed Test Traceback END\n",
                 {
                     "test_id": self.test_name,
                     "fail_type": fail_type,
