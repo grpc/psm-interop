@@ -36,31 +36,53 @@ class BaseTestCase(absltest.TestCase):
         )
         # Assume one test case will only have one status.
         if test_errors or test_failures:
-            logging.info("----- TestCase %s FAILED -----", self.id())
+            logging.info("----- TestCase %s FAILED -----", self.test_name)
             if test_errors:
                 self._print_error_list(test_errors, is_unexpected_error=True)
             if test_failures:
                 self._print_error_list(test_failures)
         elif test_unexpected_successes:
             logging.info(
-                "----- TestCase %s UNEXPECTEDLY SUCCEEDED -----", self.id()
+                "----- TestCase %s UNEXPECTEDLY SUCCEEDED -----\n",
+                self.test_name,
             )
         elif test_skipped:
-            logging.info("----- TestCase %s SKIPPED -----", self.id())
+            logging.info("----- TestCase %s SKIPPED -----\n", self.test_name)
             logging.info("Reason for skipping: %s", test_skipped)
         else:
-            logging.info("----- TestCase %s PASSED -----", self.id())
+            logging.info("----- TestCase %s PASSED -----\n", self.test_name)
+
+    @property
+    def test_name(self) -> str:
+        # Test id returned from self.id() can have two forms:
+        # 1. Regular:       __main__.MyClassTest.test_method
+        # 2. Parametrized:  __main__.MyClassTest.test_method{case} ('param'),
+        #    where {case} is
+        #    a) An integer for @parameterized.parameters: test_method0,
+        #       test_method1, ...
+        #    b) {testcase_name} for @parameterized.named_parameters:
+        #       test_method_pass, test_method_fail, ...
+        #
+        # This method:
+        # 1. Removes "__main__." if it's present
+        # 2. Removes the " ('param')" if present
+        return self.id().removeprefix("__main__.").split(" ", 1)[0]
 
     def _print_error_list(
         self, errors: list[str], is_unexpected_error: bool = False
     ) -> None:
-        # FAILUREs are those errors explicitly signalled using
-        # the TestCase.assert*() methods.
+        # FAILURE is an errors explicitly signalled using one of the
+        # TestCase.assert*() methods, while ERROR means an unexpected exception.
+        fail_type: str = "ERROR" if is_unexpected_error else "FAILURE"
         for err in errors:
             logging.error(
-                "%s PSM Interop test failed: %s. PSM Traceback BEGIN \n%s"
-                "\nPSM Traceback END",
-                "ERROR" if is_unexpected_error else "FAILURE",
-                self.id(),
-                err,
+                "(%(fail_type)s) PSM Interop Test Failed: %(test_id)s"
+                "\n%(test_id)s | PSM Failed Test Traceback BEGIN"
+                "\n\n%(error)s"
+                "\n%(test_id)s | PSM Failed Test Traceback END\n",
+                {
+                    "test_id": self.test_name,
+                    "fail_type": fail_type,
+                    "error": err,
+                },
             )
