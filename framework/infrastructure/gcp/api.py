@@ -187,7 +187,7 @@ class GcpApiManager:
         """
         client = None
         if version == "v3":
-            # TODO(sergiitk): set client_options arg is staging api is needed.
+            # TODO(sergiitk): set client_options arg if staging api is needed.
             client = google.cloud.monitoring_v3.MetricServiceClient()
 
         if not client:
