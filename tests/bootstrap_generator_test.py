@@ -130,7 +130,7 @@ class BootstrapGeneratorClientTest(
         super().tearDownClass()
 
     def tearDown(self):
-        logger.info("----- TestMethod %s teardown -----", self.id())
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=10),
             attempts=3,
@@ -175,7 +175,7 @@ class BootstrapGeneratorServerTest(
     test_server: XdsTestServer
 
     def tearDown(self):
-        logger.info("----- TestMethod %s teardown -----", self.id())
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=10),
             attempts=3,
