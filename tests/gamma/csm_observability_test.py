@@ -15,6 +15,8 @@ import logging
 
 from absl import flags
 from absl.testing import absltest
+from google.api_core import exceptions as gapi_errors
+from google.cloud import monitoring_v3
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
@@ -29,12 +31,19 @@ _Lang = skips.Lang
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    metric_client: monitoring_v3.MetricServiceClient
+
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
             # CSM Observability Test is only supported for CPP for now.
             return config.version_gte("v1.61.x")
         return False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.metric_client = cls.gcp_api_manager.monitoring_metric_service("v3")
 
     def test_csm_observability(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
@@ -51,6 +60,21 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
+
+        # For now, this just makes a bogus call to ensure metrics client
+        # connected to the remote API service.
+        with self.subTest("4_check_monitoring_metric_client"):
+            with self.assertRaises(gapi_errors.GoogleAPICallError) as cm:
+                self.metric_client.list_metric_descriptors(
+                    request=monitoring_v3.ListMetricDescriptorsRequest(
+                        name="whatever",
+                    )
+                )
+            err = cm.exception
+            self.assertIsInstance(err, gapi_errors.InvalidArgument)
+            self.assertIsNotNone(err.grpc_status_code)
+            self.assertStartsWith(err.message, "Name must begin with")
+            self.assertEndsWith(err.message, " got: whatever")
 
 
 if __name__ == "__main__":

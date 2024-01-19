@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from absl import flags
 from google.cloud import secretmanager_v1
+import google.cloud.monitoring_v3
 from google.longrunning import operations_pb2
 from google.protobuf import json_format
 from google.rpc import code_pb2
@@ -174,6 +175,26 @@ class GcpApiManager:
             return secretmanager_v1.SecretManagerServiceClient()
 
         raise NotImplementedError(f"Secret Manager {version} not supported")
+
+    @functools.lru_cache(None)
+    def monitoring_metric_service(self, version: str):
+        """Monitoring API Metric Service.
+
+        Manages metric descriptors, monitored resource descriptors,
+        and time series data.
+
+        https://cloud.google.com/python/docs/reference/monitoring/latest/google.cloud.monitoring_v3.services.metric_service.MetricServiceClient
+        """
+        client = None
+        if version == "v3":
+            # TODO(sergiitk): set client_options arg is staging api is needed.
+            client = google.cloud.monitoring_v3.MetricServiceClient()
+
+        if not client:
+            raise NotImplementedError(f"Metric Service {version} not supported")
+
+        self._exit_stack.enter_context(client)
+        return client
 
     @functools.lru_cache(None)
     def iam(self, version: str) -> discovery.Resource:
