@@ -3,6 +3,7 @@ PyYAML~=6.0
 absl-py~=0.11
 google-api-python-client~=1.12
 google-cloud-secret-manager~=2.1
+google-cloud-monitoring~=2.18
 grpcio~=1.57
 grpcio-health-checking~=1.57
 grpcio-tools~=1.57
