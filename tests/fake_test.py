@@ -24,7 +24,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 
 
 class FakeTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
-    """A fake test with known failures to debug BaseTestCase logs.
+    """A fake test class with known failures to debug BaseTestCase logs.
 
     This test case won't do any infra provisioning, just parses the flags and
     reads k8s contexts file.
@@ -50,6 +50,11 @@ class FakeParametrizedTest(
     xds_k8s_testcase.XdsKubernetesBaseTestCase,
     parameterized.TestCase,
 ):
+    """A fake class to debug BaseTestCase logs produced by parametrized tests.
+
+    See FakeTest for notes on provisioning.
+    """
+
     @parameterized.parameters(True, False)
     def test_true(self, is_true):
         self.assertTrue(is_true)
@@ -63,7 +68,11 @@ class FakeParametrizedTest(
 
 
 class FakeSubtestTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
-    # TODO(sergiitk): add subtest examples
+    """A fake class to debug BaseTestCase logs produced by tests with subtests.
+
+    See FakeTest for notes on provisioning.
+    """
+
     def test_even(self):
         for num in range(0, 6):
             with self.subTest(i=num, msg=f"num_{num}"):

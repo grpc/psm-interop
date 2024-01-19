@@ -68,18 +68,21 @@ class BaseTestCase(absltest.TestCase):
 
     @property
     def test_name(self) -> str:
-        # Test id returned from self.id() can have two forms:
-        # 1. Regular:       __main__.MyClassTest.test_method
-        # 2. Parametrized:  __main__.MyClassTest.test_method{case} ('param'),
-        #    where {case} is
-        #    a) An integer for @parameterized.parameters: test_method0,
-        #       test_method1, ...
-        #    b) {testcase_name} for @parameterized.named_parameters:
-        #       test_method_pass, test_method_fail, ...
-        #
-        # This method:
-        # 1. Removes "__main__." if it's present
-        # 2. Removes the " ('param')" if present
+        """Pretty test name (details in the description).
+
+        Test id returned from self.id() can have two forms:
+        1. Regular:       __main__.MyClassTest.test_method
+        2. Parametrized:  __main__.MyClassTest.test_method{case} ('param'),
+           where {case} is
+           a) An integer for @parameterized.parameters: test_method0,
+              test_method1, ...
+           b) {testcase_name} for @parameterized.named_parameters:
+              test_method_pass, test_method_fail, ...
+
+        This method:
+        1. Removes "__main__." if it's present
+        2. Removes the " ('param')" if present
+        """
         return self.id().removeprefix("__main__.").split(" ", 1)[0]
 
     def _print_error_list(
