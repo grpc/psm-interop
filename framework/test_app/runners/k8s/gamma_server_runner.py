@@ -116,6 +116,7 @@ class GammaServerRunner(KubernetesServerRunner):
         bootstrap_version: Optional[str] = None,
         route_template: str = "gamma/route_http.yaml",
         enable_csm_observability: bool = False,
+        generate_mesh_id: bool = False,
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -208,6 +209,7 @@ class GammaServerRunner(KubernetesServerRunner):
             termination_grace_period_seconds=self.termination_grace_period_seconds,
             pre_stop_hook=self.pre_stop_hook,
             enable_csm_observability=enable_csm_observability,
+            generate_mesh_id=generate_mesh_id,
         )
 
         servers = self._make_servers_for_deployment(

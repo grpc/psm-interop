@@ -50,7 +50,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #   resource creation out of self.startTestServers()
         with self.subTest("1_run_test_server"):
             test_server: _XdsTestServer = self.startTestServers(
-                enable_csm_observability=True
+                enable_csm_observability=True,
+                generate_mesh_id=True,
             )[0]
 
         with self.subTest("2_start_test_client"):
