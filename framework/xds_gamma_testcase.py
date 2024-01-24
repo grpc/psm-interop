@@ -127,11 +127,15 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         # test suites because they only start waiting after already waited for
         # the TD backends to be created and report healthy.
         # In GAMMA, these resources are created asynchronously by Kubernetes.
-        # To compensate for this, we double the timeout for GAMMA tests.
+        # To compensate for this, we double the timeout for the active ADS
+        # stream detection in GAMMA tests. Until the mesh is created,
+        # ADS calls are rejected with "NOT_FOUND: Requested entity was
+        # not found."
         return self._start_test_client(
             server_target,
-            wait_for_server_channel_ready_timeout=datetime.timedelta(
-                minutes=10
-            ),
+            wait_for_active_ads_timeout=datetime.timedelta(minutes=10),
+            # TODO(sergiitk): consider decreasing to 2-3 minutes, since
+            #    the majority of the wait time spent on waiting ADS.
+            wait_for_server_channel_ready_timeout=datetime.timedelta(minutes=5),
             **kwargs,
         )
