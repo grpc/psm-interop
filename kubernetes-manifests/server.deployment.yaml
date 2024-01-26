@@ -84,6 +84,9 @@ spec:
             % else:
             - "--node-metadata=app=${namespace_name}-${deployment_name}"
             % endif
+            % if generate_mesh_id:
+            - "--generate-mesh-id-experimental"
+            % endif
           resources:
             limits:
               cpu: 100m
