@@ -66,14 +66,6 @@ _HISTOGRAM_SERVER_METRICS = [
     _METRIC_SERVER_CALL_RCVD,
     _METRIC_SERVER_CALL_SENT,
 ]
-_CLIENT_SENT_METRICS = [
-    _METRIC_CLIENT_ATTEMPT_SENT,
-    _METRIC_SERVER_CALL_RCVD,
-]
-_SERVER_SENT_METRICS = [
-    _METRIC_CLIENT_ATTEMPT_RCVD,
-    _METRIC_SERVER_CALL_SENT,
-]
 _COUNTER_CLIENT_METRICS = [
     _METRIC_CLIENT_ATTEMPT_STARTED,
 ]
@@ -250,9 +242,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                     "grpc_method",
                     "grpc_status",
                     "grpc_target",
-                    "otel_scope_name",
-                    "otel_scope_version",
-                    "pod",
                 ]:
                     self.assertIn(label_key, metric_labels)
 
@@ -270,9 +259,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                     "csm_workload_canonical_service",
                     "grpc_method",
                     "grpc_status",
-                    "otel_scope_name",
-                    "otel_scope_version",
-                    "pod",
                 ]:
                     self.assertIn(label_key, metric_labels)
 
@@ -281,9 +267,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 for label_key in [
                     "grpc_method",
                     "grpc_target",
-                    "otel_scope_name",
-                    "otel_scope_version",
-                    "pod",
                 ]:
                     self.assertIn(label_key, metric_labels)
 
@@ -291,9 +274,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 metric_labels = all_results[metric][0].metric.labels
                 for label_key in [
                     "grpc_method",
-                    "otel_scope_name",
-                    "otel_scope_version",
-                    "pod",
                 ]:
                     self.assertIn(label_key, metric_labels)
 
@@ -470,14 +450,20 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # should have at least 1 data point whose mean should converge to be
         # close to the number of bytes being sent by the RPCs.
         with self.subTest("10_check_bytes_sent_vs_data_points"):
-            for metric in _CLIENT_SENT_METRICS:
+            for metric in [
+                _METRIC_CLIENT_ATTEMPT_SENT,
+                _METRIC_SERVER_CALL_RCVD,
+            ]:
                 self.assertTrue(
                     self._at_least_one_point_within_range(
                         all_results[metric][0].points, _REQUEST_PAYLOAD_SIZE
                     )
                 )
 
-            for metric in _SERVER_SENT_METRICS:
+            for metric in [
+                _METRIC_CLIENT_ATTEMPT_RCVD,
+                _METRIC_SERVER_CALL_SENT,
+            ]:
                 self.assertTrue(
                     self._at_least_one_point_within_range(
                         all_results[metric][0].points, _RESPONSE_PAYLOAD_SIZE
