@@ -52,6 +52,22 @@ spec:
             value: "true"
           - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
             value: "true"
+          % if enable_csm_observability:
+          - name: CSM_WORKLOAD_NAME
+            value: ${csm_workload_name}
+          - name: CSM_CANONICAL_SERVICE_NAME
+            value: ${csm_canonical_service_name}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: NAMESPACE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+          % endif
         volumeMounts:
           - mountPath: /tmp/grpc-xds/
             name: grpc-td-conf

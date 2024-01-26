@@ -94,7 +94,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             # permission to use GCP service account identity.
             self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
 
-    def run(  # pylint: disable=arguments-differ
+    def run(  # pylint: disable=arguments-differ,too-many-locals
         self,
         *,
         server_target,
@@ -109,6 +109,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         enable_csm_observability: bool = False,
         request_payload_size: int = 0,
         response_payload_size: int = 0,
+        csm_workload_name: str = "",
+        csm_canonical_service_name: str = "",
     ) -> XdsTestClient:
         logger.info(
             (
@@ -166,6 +168,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             generate_mesh_id=generate_mesh_id,
             print_response=print_response,
             enable_csm_observability=enable_csm_observability,
+            csm_workload_name=csm_workload_name,
+            csm_canonical_service_name=csm_canonical_service_name,
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled

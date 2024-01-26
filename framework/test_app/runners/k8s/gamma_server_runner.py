@@ -39,6 +39,8 @@ class GammaServerRunner(KubernetesServerRunner):
     be_policy: Optional[k8s.GcpBackendPolicy] = None
     termination_grace_period_seconds: Optional[int] = None
     pre_stop_hook: bool = False
+    pod_monitoring: Optional[k8s.PodMonitoring] = None
+    pod_monitoring_name: Optional[str] = None
 
     route_name: str
     frontend_service_name: str
@@ -118,6 +120,8 @@ class GammaServerRunner(KubernetesServerRunner):
         route_template: str = "gamma/route_http.yaml",
         enable_csm_observability: bool = False,
         generate_mesh_id: bool = False,
+        csm_workload_name: str = "",
+        csm_canonical_service_name: str = "",
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -204,7 +208,20 @@ class GammaServerRunner(KubernetesServerRunner):
             pre_stop_hook=self.pre_stop_hook,
             enable_csm_observability=enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
+            csm_workload_name=csm_workload_name,
+            csm_canonical_service_name=csm_canonical_service_name,
         )
+
+        # Create a PodMonitoring resource if CSM Observability is enabled
+        # This is GMP (Google Managed Prometheus)
+        if enable_csm_observability:
+            self.pod_monitoring_name = f"{self.deployment_id}-gmp"
+            self.pod_monitoring = self._create_pod_monitoring(
+                "csm/pod-monitoring.yaml",
+                namespace_name=self.k8s_namespace.name,
+                deployment_id=self.deployment_id,
+                pod_monitoring_name=self.pod_monitoring_name,
+            )
 
         servers = self._make_servers_for_deployment(
             replica_count,
@@ -291,6 +308,12 @@ class GammaServerRunner(KubernetesServerRunner):
                 )
                 self._delete_service_account(self.service_account_name)
                 self.service_account = None
+
+            # Pod monitoring name is only set when CSM observability is enabled.
+            if self.pod_monitoring_name and (self.pod_monitoring or force):
+                self._delete_pod_monitoring(self.pod_monitoring_name)
+                self.pod_monitoring = None
+                self.pod_monitoring_name = None
 
             self._cleanup_namespace(force=(force_namespace and force))
         finally:
