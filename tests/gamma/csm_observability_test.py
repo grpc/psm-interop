@@ -55,7 +55,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         with self.subTest("2_start_test_client"):
             test_client: _XdsTestClient = self.startTestClient(
-                test_server, enable_csm_observability=True
+                test_server,
+                enable_csm_observability=True,
+                request_payload_size=271828,
+                response_payload_size=314159,
             )
 
         with self.subTest("3_test_server_received_rpcs_from_test_client"):

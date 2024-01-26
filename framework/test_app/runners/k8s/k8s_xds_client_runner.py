@@ -107,6 +107,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         print_response=False,
         log_to_stdout: bool = False,
         enable_csm_observability: bool = False,
+        request_payload_size: int = 0,
+        response_payload_size: int = 0,
     ) -> XdsTestClient:
         logger.info(
             (
@@ -156,6 +158,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             server_target=server_target,
             rpc=rpc,
             qps=qps,
+            request_payload_size=request_payload_size,
+            response_payload_size=response_payload_size,
             metadata=metadata,
             secure_mode=secure_mode,
             config_mesh=config_mesh,
