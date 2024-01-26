@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from framework.infrastructure import k8s
 import framework.infrastructure.traffic_director_gamma as td_gamma
@@ -138,4 +138,12 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             #     of the wait time spent on waiting ADS.
             wait_for_server_channel_ready_timeout=datetime.timedelta(minutes=9),
             **kwargs,
+        )
+
+    def startTestServers(
+        self, replica_count=1, server_runner=None, **kwargs,
+    ) -> List[XdsTestServer]:
+        kwargs.setdefault("generate_mesh_id", True)
+        return super().startTestServers(
+            replica_count=replica_count, server_runner=server_runner, **kwargs
         )
