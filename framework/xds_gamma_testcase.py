@@ -141,7 +141,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         )
 
     def startTestServers(
-        self, replica_count=1, server_runner=None, **kwargs,
+        self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
         kwargs.setdefault("generate_mesh_id", True)
         return super().startTestServers(
