@@ -20,6 +20,7 @@ from typing import List, Optional
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_app.server_app import XdsTestServer
 
@@ -134,14 +135,7 @@ class GammaServerRunner(KubernetesServerRunner):
             False,
             replica_count,
         )
-        # super(k8s_base_runner.KubernetesBaseRunner, self).run()
-
-        if self.reuse_namespace:
-            self.namespace = self._reuse_namespace()
-        if not self.namespace:
-            self.namespace = self._create_namespace(
-                self.namespace_template, namespace_name=self.k8s_namespace.name
-            )
+        k8s_base_runner.KubernetesBaseRunner.run(self)
 
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
