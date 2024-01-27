@@ -118,16 +118,12 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # created by this test run.
     def query_metrics(self, metric_names, filter_str_template, interval):
         results = {}
-        metric_log_lines = []
+        metric_log_lines = [""]
         for metric in metric_names:
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
                 filter=self.build_filter_str(
-                    filter_str_template,
-                    {
-                        "metric": metric,
-                        "grpc_method": GRPC_METHOD_NAME,
-                    },
+                    filter_str_template, {"metric": metric}
                 ),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
@@ -233,7 +229,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             filter_str_template = (
                 'metric.type = "%(metric)s" AND '
                 'metric.labels.grpc_status = "OK" AND '
-                'metric.labels.grpc_method = "%(grpc_method)s"'
+                f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
             )
             histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS, filter_str_template, interval
@@ -243,7 +239,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             # 'grpc_status' label
             filter_str_template = (
                 'metric.type = "%(metric)s" AND '
-                'metric.labels.grpc_method = "%(grpc_method)s"'
+                f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
             )
             counter_results = self.query_metrics(
                 COUNTER_METRICS, filter_str_template, interval
@@ -280,7 +276,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                         "csm_service_namespace_name": self.server_namespace,
                         "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                         "grpc_method": GRPC_METHOD_NAME,
-                        "grpc_status": VALUE_NOT_CHECKED,
+                        "grpc_status": "OK",
                         "grpc_target": VALUE_NOT_CHECKED,
                         "pod": self.test_client.hostname,
                     }
@@ -296,7 +292,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                         "csm_remote_workload_type": "gcp_kubernetes_engine",
                         "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
                         "grpc_method": GRPC_METHOD_NAME,
-                        "grpc_status": VALUE_NOT_CHECKED,
+                        "grpc_status": "OK",
                         "pod": self.test_server.hostname,
                     }
                 elif metric in COUNTER_CLIENT_METRICS:
