@@ -13,10 +13,10 @@
 # limitations under the License.
 import logging
 import time
+import unittest
 
 from absl import flags
 from absl.testing import absltest
-from google.api_core import exceptions as gapi_errors
 from google.cloud import monitoring_v3
 
 from framework import xds_gamma_testcase
@@ -35,7 +35,6 @@ _Lang = skips.Lang
 TEST_RUN_SECS = 90
 REQUEST_PAYLOAD_SIZE = 271828
 RESPONSE_PAYLOAD_SIZE = 314159
-VALUE_NOT_CHECKED = object()  # Sentinel value
 GRPC_METHOD_NAME = "grpc.testing.TestService/UnaryCall"
 CSM_WORKLOAD_NAME_SERVER = "csm_workload_name_from_server"
 CSM_WORKLOAD_NAME_CLIENT = "csm_workload_name_from_client"
@@ -70,22 +69,18 @@ METRIC_SERVER_CALL_DURATION = (
 METRIC_SERVER_CALL_STARTED = (
     f"{PROMETHEUS_HOST}/grpc_server_call_started_total/counter"
 )
-HISTOGRAM_CLIENT_METRICS = [
+HISTOGRAM_CLIENT_METRICS = (
     METRIC_CLIENT_ATTEMPT_SENT,
     METRIC_CLIENT_ATTEMPT_RCVD,
     METRIC_CLIENT_ATTEMPT_DURATION,
-]
-HISTOGRAM_SERVER_METRICS = [
+)
+HISTOGRAM_SERVER_METRICS = (
     METRIC_SERVER_CALL_DURATION,
     METRIC_SERVER_CALL_RCVD,
     METRIC_SERVER_CALL_SENT,
-]
-COUNTER_CLIENT_METRICS = [
-    METRIC_CLIENT_ATTEMPT_STARTED,
-]
-COUNTER_SERVER_METRICS = [
-    METRIC_SERVER_CALL_STARTED,
-]
+)
+COUNTER_CLIENT_METRICS = (METRIC_CLIENT_ATTEMPT_STARTED,)
+COUNTER_SERVER_METRICS = (METRIC_SERVER_CALL_STARTED,)
 HISTOGRAM_METRICS = HISTOGRAM_CLIENT_METRICS + HISTOGRAM_SERVER_METRICS
 COUNTER_METRICS = COUNTER_CLIENT_METRICS + COUNTER_SERVER_METRICS
 CLIENT_METRICS = HISTOGRAM_CLIENT_METRICS + COUNTER_CLIENT_METRICS
@@ -95,8 +90,6 @@ ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     metric_client: monitoring_v3.MetricServiceClient
-    test_server: _XdsTestServer
-    test_client: _XdsTestClient
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
@@ -144,40 +137,18 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
     # A helper function to check whether at least one of the "points" whose
     # mean should be within 5% of ref_bytes.
-    def assertAtLeastOnePointWithinRange(self, points, ref_bytes):
+    def assertAtLeastOnePointWithinRange(
+        self, points, ref_bytes, tolerance: float = 0.05
+    ):
         for point in points:
-            if point.value.distribution_value.mean > (
-                ref_bytes * 0.95
-            ) and point.value.distribution_value.mean < (ref_bytes * 1.05):
+            if (
+                ref_bytes * (1 - tolerance)
+                < point.value.distribution_value.mean
+                < ref_bytes * (1 + tolerance)
+            ):
                 return
-        self.fail(f"No data point with ~{ref_bytes} bytes found")
-
-    # 1. actual_labels must have all the keys in expected_labels
-    #
-    # 2. actual_labels must have all the correct key: value pairs
-    #    in expected_labels unless the expected value is
-    #    VALUE_NOT_CHECKED
-    #
-    # 3. actual_labels may have extra keys that we don't care about
-    def assertExpectedLabels(self, expected_labels, actual_labels):
-        # Test whether actual_labels contains all the keys that we are
-        # expected
-        for label_key in expected_labels.keys():
-            self.assertIn(label_key, actual_labels)
-
-        # Test the label values against the expected dict
-        # Ignore those keys that were marked VALUE_NOT_CHECKED
-        self.assertDictEqual(
-            {
-                key: value
-                for key, value in expected_labels.items()
-                if value != VALUE_NOT_CHECKED
-            },
-            {
-                key: actual_labels[key]
-                for key, value in expected_labels.items()
-                if value != VALUE_NOT_CHECKED
-            },
+        self.fail(
+            f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
         )
 
     def test_csm_observability(self):
@@ -185,15 +156,15 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #   resource creation out of self.startTestServers()
         with self.subTest("1_run_test_server"):
             start_secs = int(time.time())
-            self.test_server = self.startTestServers(
+            test_server = self.startTestServers(
                 enable_csm_observability=True,
                 csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
             )[0]
 
         with self.subTest("2_start_test_client"):
-            self.test_client = self.startTestClient(
-                self.test_server,
+            test_client = self.startTestClient(
+                test_server,
                 enable_csm_observability=True,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
@@ -204,7 +175,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             time.sleep(TEST_RUN_SECS)
 
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
-            self.assertSuccessfulRpcs(self.test_client)
+            self.assertSuccessfulRpcs(test_client)
 
         with self.subTest("4_query_monitoring_metric_client"):
             end_secs = int(time.time())
@@ -261,98 +232,141 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # Testing whether each metric has the correct set of metric keys and
         # values
         with self.subTest("6_check_metrics_labels"):
-            for metric in ALL_METRICS:
-                if metric in HISTOGRAM_CLIENT_METRICS:
-                    expected_metric_labels = {
-                        "csm_mesh_id": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
-                        "csm_remote_workload_cluster_name": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_location": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_name": CSM_WORKLOAD_NAME_SERVER,
-                        "csm_remote_workload_namespace_name": self.server_namespace,
-                        "csm_remote_workload_project_id": self.project,
-                        "csm_remote_workload_type": "gcp_kubernetes_engine",
-                        "csm_service_name": self.server_runner.service_name,
-                        "csm_service_namespace_name": self.server_namespace,
-                        "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
-                        "grpc_method": GRPC_METHOD_NAME,
-                        "grpc_status": "OK",
-                        "grpc_target": VALUE_NOT_CHECKED,
-                        "pod": self.test_client.hostname,
-                    }
-                elif metric in HISTOGRAM_SERVER_METRICS:
-                    expected_metric_labels = {
-                        "csm_mesh_id": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
-                        "csm_remote_workload_cluster_name": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_location": VALUE_NOT_CHECKED,
-                        "csm_remote_workload_name": CSM_WORKLOAD_NAME_CLIENT,
-                        "csm_remote_workload_namespace_name": self.client_namespace,
-                        "csm_remote_workload_project_id": self.project,
-                        "csm_remote_workload_type": "gcp_kubernetes_engine",
-                        "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
-                        "grpc_method": GRPC_METHOD_NAME,
-                        "grpc_status": "OK",
-                        "pod": self.test_server.hostname,
-                    }
-                elif metric in COUNTER_CLIENT_METRICS:
-                    expected_metric_labels = {
-                        "grpc_method": GRPC_METHOD_NAME,
-                        "grpc_target": VALUE_NOT_CHECKED,
-                        "pod": self.test_client.hostname,
-                    }
-                elif metric in COUNTER_SERVER_METRICS:
-                    expected_metric_labels = {
-                        "grpc_method": GRPC_METHOD_NAME,
-                        "pod": self.test_server.hostname,
-                    }
-                else:
-                    self.fail(f"Unknown metric: {metric}")
+            for metric in HISTOGRAM_CLIENT_METRICS:
+                expected_metric_labels = {
+                    "csm_mesh_id": unittest.mock.ANY,
+                    "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
+                    "csm_remote_workload_cluster_name": unittest.mock.ANY,
+                    "csm_remote_workload_location": unittest.mock.ANY,
+                    "csm_remote_workload_name": CSM_WORKLOAD_NAME_SERVER,
+                    "csm_remote_workload_namespace_name": self.server_namespace,
+                    "csm_remote_workload_project_id": self.project,
+                    "csm_remote_workload_type": "gcp_kubernetes_engine",
+                    "csm_service_name": self.server_runner.service_name,
+                    "csm_service_namespace_name": self.server_namespace,
+                    "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
+                    "grpc_method": GRPC_METHOD_NAME,
+                    "grpc_status": "OK",
+                    "grpc_target": unittest.mock.ANY,
+                    "otel_scope_name": unittest.mock.ANY,
+                    "otel_scope_version": unittest.mock.ANY,
+                    "pod": test_client.hostname,
+                }
 
                 actual_metric_labels = all_results[metric][0].metric.labels
-                self.assertExpectedLabels(
-                    expected_metric_labels, actual_metric_labels
+                self.assertDictEqual(
+                    expected_metric_labels, dict(actual_metric_labels)
+                )
+
+        # Testing whether each metric has the correct set of metric keys and
+        # values
+        with self.subTest("7_check_metrics_labels"):
+            for metric in HISTOGRAM_SERVER_METRICS:
+                expected_metric_labels = {
+                    "csm_mesh_id": unittest.mock.ANY,
+                    "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
+                    "csm_remote_workload_cluster_name": unittest.mock.ANY,
+                    "csm_remote_workload_location": unittest.mock.ANY,
+                    "csm_remote_workload_name": CSM_WORKLOAD_NAME_CLIENT,
+                    "csm_remote_workload_namespace_name": self.client_namespace,
+                    "csm_remote_workload_project_id": self.project,
+                    "csm_remote_workload_type": "gcp_kubernetes_engine",
+                    "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
+                    "grpc_method": GRPC_METHOD_NAME,
+                    "grpc_status": "OK",
+                    "otel_scope_name": unittest.mock.ANY,
+                    "otel_scope_version": unittest.mock.ANY,
+                    "pod": test_server.hostname,
+                }
+
+                actual_metric_labels = all_results[metric][0].metric.labels
+                self.assertDictEqual(
+                    expected_metric_labels, dict(actual_metric_labels)
+                )
+
+        # Testing whether each metric has the correct set of metric keys and
+        # values
+        with self.subTest("8_check_metrics_labels"):
+            for metric in COUNTER_CLIENT_METRICS:
+                expected_metric_labels = {
+                    "grpc_method": GRPC_METHOD_NAME,
+                    "grpc_target": unittest.mock.ANY,
+                    "otel_scope_name": unittest.mock.ANY,
+                    "otel_scope_version": unittest.mock.ANY,
+                    "pod": test_client.hostname,
+                }
+
+                actual_metric_labels = all_results[metric][0].metric.labels
+                self.assertDictEqual(
+                    expected_metric_labels, dict(actual_metric_labels)
+                )
+
+        # Testing whether each metric has the correct set of metric keys and
+        # values
+        with self.subTest("9_check_metrics_labels"):
+            for metric in COUNTER_SERVER_METRICS:
+                expected_metric_labels = {
+                    "grpc_method": GRPC_METHOD_NAME,
+                    "otel_scope_name": unittest.mock.ANY,
+                    "otel_scope_version": unittest.mock.ANY,
+                    "pod": test_server.hostname,
+                }
+
+                actual_metric_labels = all_results[metric][0].metric.labels
+                self.assertDictEqual(
+                    expected_metric_labels, dict(actual_metric_labels)
                 )
 
         # Testing whether each metric has the right set of monitored resource
         # label keys and values
-        with self.subTest("7_check_resource_labels"):
-            for metric in ALL_METRICS:
+        with self.subTest("10_check_client_resource_labels"):
+            for metric in CLIENT_METRICS:
                 time_series = all_results[metric][0]
                 self.assertEqual("prometheus_target", time_series.resource.type)
 
                 # all metrics should have the same set of monitored resource labels
                 # keys, which come from the GMP job
-                if metric in CLIENT_METRICS:
-                    expected_resource_labels = {
-                        "cluster": VALUE_NOT_CHECKED,
-                        "instance": VALUE_NOT_CHECKED,
-                        "job": self.client_runner.pod_monitoring_name,
-                        "location": VALUE_NOT_CHECKED,
-                        "namespace": self.client_namespace,
-                        "project_id": self.project,
-                    }
-                elif metric in SERVER_METRICS:
-                    expected_resource_labels = {
-                        "cluster": VALUE_NOT_CHECKED,
-                        "instance": VALUE_NOT_CHECKED,
-                        "job": self.server_runner.pod_monitoring_name,
-                        "location": VALUE_NOT_CHECKED,
-                        "namespace": self.server_namespace,
-                        "project_id": self.project,
-                    }
-                else:
-                    self.fail(f"Unexpected metric: {metric}")
+                expected_resource_labels = {
+                    "cluster": unittest.mock.ANY,
+                    "instance": unittest.mock.ANY,
+                    "job": self.client_runner.pod_monitoring_name,
+                    "location": unittest.mock.ANY,
+                    "namespace": self.client_namespace,
+                    "project_id": self.project,
+                }
 
                 actual_resource_labels = time_series.resource.labels
-                self.assertExpectedLabels(
-                    expected_resource_labels, actual_resource_labels
+                self.assertDictEqual(
+                    expected_resource_labels, dict(actual_resource_labels)
+                )
+
+        # Testing whether each metric has the right set of monitored resource
+        # label keys and values
+        with self.subTest("11_check_server_resource_labels"):
+            for metric in SERVER_METRICS:
+                time_series = all_results[metric][0]
+                self.assertEqual("prometheus_target", time_series.resource.type)
+
+                # all metrics should have the same set of monitored resource labels
+                # keys, which come from the GMP job
+                expected_resource_labels = {
+                    "cluster": unittest.mock.ANY,
+                    "instance": unittest.mock.ANY,
+                    "job": self.server_runner.pod_monitoring_name,
+                    "location": unittest.mock.ANY,
+                    "namespace": self.server_namespace,
+                    "project_id": self.project,
+                }
+
+                actual_resource_labels = time_series.resource.labels
+                self.assertDictEqual(
+                    expected_resource_labels, dict(actual_resource_labels)
                 )
 
         # This tests whether each of the "byes sent" histogram type metric
         # should have at least 1 data point whose mean should converge to be
         # close to the number of bytes being sent by the RPCs.
-        with self.subTest("8_check_bytes_sent_vs_data_points"):
+        with self.subTest("12_check_bytes_sent_vs_data_points"):
             for metric in [
                 METRIC_CLIENT_ATTEMPT_SENT,
                 METRIC_SERVER_CALL_RCVD,
