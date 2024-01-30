@@ -156,14 +156,14 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #   resource creation out of self.startTestServers()
         with self.subTest("1_run_test_server"):
             start_secs = int(time.time())
-            test_server = self.startTestServers(
+            test_server: _XdsTestServer = self.startTestServers(
                 enable_csm_observability=True,
                 csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
             )[0]
 
         with self.subTest("2_start_test_client"):
-            test_client = self.startTestClient(
+            test_client: _XdsTestClient = self.startTestClient(
                 test_server,
                 enable_csm_observability=True,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
