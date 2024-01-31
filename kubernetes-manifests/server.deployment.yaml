@@ -60,6 +60,7 @@ spec:
           - name: CSM_CANONICAL_SERVICE_NAME
             value: ${csm_canonical_service_name}
           % endif
+          % if enable_csm_observability:
           - name: POD_NAME
             valueFrom:
               fieldRef:
@@ -70,6 +71,7 @@ spec:
                 fieldPath: metadata.namespace
           - name: OTEL_RESOURCE_ATTRIBUTES
             value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+          % endif
         volumeMounts:
           - mountPath: /tmp/grpc-xds/
             name: grpc-td-conf
