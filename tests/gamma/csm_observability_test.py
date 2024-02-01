@@ -96,12 +96,19 @@ GammaServerRunner = gamma_server_runner.GammaServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 
 
+# This class should represent one TimeSeries object from
+# monitoring_v3.ListTimeSeriesResponse.
 @dataclasses.dataclass(eq=False)
 class MetricTimeSeries:
+    # the metric name
     name: str
+    # each time series has a set of metric labels
     metric_labels: dict[str, str]
-    resource_labels: dict[str, str]
+    # each time series has a monitored resource
     resource_type: str
+    # each time series has a set of monitored resource labels
+    resource_labels: dict[str, str]
+    # each time series has a set of data points
     points: list[monitoring_v3.types.Point]
 
     @classmethod
@@ -113,8 +120,8 @@ class MetricTimeSeries:
         return cls(
             name=name,
             metric_labels=dict(response.metric.labels),
-            resource_labels=dict(response.resource.labels),
             resource_type=response.resource.type,
+            resource_labels=dict(response.resource.labels),
             points=list(response.points),
         )
 
@@ -139,12 +146,16 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         super().setUpClass()
         cls.metric_client = cls.gcp_api_manager.monitoring_metric_service("v3")
 
+    # These parameters are more pertaining to the test itself, not to
+    # each run().
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super().initKubernetesClientRunner(
             csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
         )
 
+    # These parameters are more pertaining to the test itself, not to
+    # each run().
     def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
         return super().initKubernetesServerRunner(
             csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
@@ -249,7 +260,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("4_query_monitoring_metric_client"):
+        with self.subTest("4_query_cloud_monitoring_metrics"):
             end_secs = int(time.time())
             interval = monitoring_v3.TimeInterval(
                 {
@@ -273,7 +284,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("6_check_metrics_labels"):
+        with self.subTest("6_check_metrics_labels_histogram_client"):
             expected_metric_labels = {
                 "csm_mesh_id": unittest.mock.ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
@@ -301,7 +312,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("7_check_metrics_labels"):
+        with self.subTest("7_check_metrics_labels_histogram_server"):
             expected_metric_labels = {
                 "csm_mesh_id": unittest.mock.ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
@@ -326,7 +337,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("8_check_metrics_labels"):
+        with self.subTest("8_check_metrics_labels_counter_client"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_target": unittest.mock.ANY,
@@ -342,7 +353,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("9_check_metrics_labels"):
+        with self.subTest("9_check_metrics_labels_counter_server"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
                 "otel_scope_name": unittest.mock.ANY,
@@ -357,7 +368,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the right set of monitored resource
         # label keys and values
-        with self.subTest("10_check_client_resource_labels"):
+        with self.subTest("10_check_client_resource_labels_client"):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
@@ -381,7 +392,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the right set of monitored resource
         # label keys and values
-        with self.subTest("11_check_server_resource_labels"):
+        with self.subTest("11_check_server_resource_labels_server"):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
