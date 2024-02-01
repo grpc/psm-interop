@@ -125,10 +125,11 @@ class MetricTimeSeries:
             points=list(response.points),
         )
 
-    def pretty_print(self):
+    def pretty_print(self) -> str:
         metric = dataclasses.asdict(self)
+        # too much noise to print all data points from a time series
         metric.pop("points")
-        logger.info(yaml.dump(metric, sort_keys=True))
+        return yaml.dump(metric, sort_keys=True)
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
@@ -218,7 +219,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             metric_time_series = MetricTimeSeries.from_response(
                 metric, time_series[0]
             )
-            metric_time_series.pretty_print()
+            logger.info(metric_time_series.pretty_print())
             results[metric] = metric_time_series
         return results
 
