@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dataclasses
 import logging
 import time
 from typing import Callable, Iterable
@@ -19,6 +20,7 @@ import unittest.mock
 from absl import flags
 from absl.testing import absltest
 from google.cloud import monitoring_v3
+import yaml
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
@@ -89,6 +91,34 @@ SERVER_METRICS = HISTOGRAM_SERVER_METRICS + COUNTER_SERVER_METRICS
 ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 
+@dataclasses.dataclass(eq=False)
+class MetricTimeSeries:
+    name: str
+    metric_labels: dict[str, str]
+    resource_labels: dict[str, str]
+    resource_type: str
+    points: list[monitoring_v3.types.Point]
+
+    @classmethod
+    def from_response(
+        cls,
+        name: str,
+        response: monitoring_v3.types.TimeSeries,
+    ) -> "MetricTimeSeries":
+        return cls(
+            name=name,
+            metric_labels=dict(response.metric.labels),
+            resource_labels=dict(response.resource.labels),
+            resource_type=response.resource.type,
+            points=list(response.points),
+        )
+
+    def pretty_print(self):
+        metric = dataclasses.asdict(self)
+        metric.pop("points")
+        logger.info(yaml.dump(metric, sort_keys=True))
+
+
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     metric_client: monitoring_v3.MetricServiceClient
 
@@ -107,7 +137,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     BuildQueryFn = Callable[[str], str]
 
     @classmethod
-    def _build_histogram_query(cls, metric_type: str) -> str:
+    def build_histogram_query(cls, metric_type: str) -> str:
         #
         # The list_time_series API requires us to query one metric
         # at a time.
@@ -127,7 +157,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         )
 
     @classmethod
-    def _build_counter_query(cls, metric_type: str) -> str:
+    def build_counter_query(cls, metric_type: str) -> str:
         # For these num rpcs started counter metrics, they do not have the
         # 'grpc_status' label
         return (
@@ -142,9 +172,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
         interval: monitoring_v3.TimeInterval,
-    ):
+    ) -> dict[str, MetricTimeSeries]:
         results = {}
-        metric_log_lines = [""]
         for metric in metric_names:
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
@@ -152,18 +181,17 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
             )
-            time_series = []
-            metric_log_lines.append(f"Metric: {metric}")
-            for series in response:
-                metric_log_lines.append(" Metric Labels:")
-                for label_key, label_value in series.metric.labels.items():
-                    metric_log_lines.append(f"  {label_key}: {label_value}")
-                metric_log_lines.append(" Resource Labels:")
-                for label_key, label_value in series.resource.labels.items():
-                    metric_log_lines.append(f"  {label_key}: {label_value}")
-                time_series.append(series)
-            results[metric] = time_series
-        logger.info("\n".join(metric_log_lines))
+            time_series = list(response)
+            if len(time_series) > 1:
+                self.fail(
+                    f"Query for {metric} should return exactly 1 time series. "
+                    f"Found {len(time_series)}."
+                )
+            metric_time_series = MetricTimeSeries.from_response(
+                metric, time_series[0]
+            )
+            metric_time_series.pretty_print()
+            results[metric] = metric_time_series
         return results
 
     # A helper function to check whether at least one of the "points" whose
@@ -217,10 +245,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 }
             )
             histogram_results = self.query_metrics(
-                HISTOGRAM_METRICS, self._build_histogram_query, interval
+                HISTOGRAM_METRICS, self.build_histogram_query, interval
             )
             counter_results = self.query_metrics(
-                COUNTER_METRICS, self._build_counter_query, interval
+                COUNTER_METRICS, self.build_counter_query, interval
             )
             all_results = {**histogram_results, **counter_results}
             self.assertNotEmpty(all_results, msg="No query metrics results")
@@ -229,11 +257,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             for metric in ALL_METRICS:
                 # Every metric needs to exist in the query results
                 self.assertIn(metric, all_results)
-
-                time_series = all_results[metric]
-                # There should be exactly 1 time series per metric with these
-                # label value combinations that we are expecting.
-                self.assertEqual(1, len(time_series))
 
         # Testing whether each metric has the correct set of metric keys and
         # values
@@ -258,9 +281,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "pod": test_client.hostname,
             }
             for metric in HISTOGRAM_CLIENT_METRICS:
-                actual_metric_labels = all_results[metric][0].metric.labels
+                actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
-                    expected_metric_labels, dict(actual_metric_labels)
+                    expected_metric_labels, actual_metric_labels
                 )
 
         # Testing whether each metric has the correct set of metric keys and
@@ -283,9 +306,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "pod": test_server.hostname,
             }
             for metric in HISTOGRAM_SERVER_METRICS:
-                actual_metric_labels = all_results[metric][0].metric.labels
+                actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
-                    expected_metric_labels, dict(actual_metric_labels)
+                    expected_metric_labels, actual_metric_labels
                 )
 
         # Testing whether each metric has the correct set of metric keys and
@@ -299,9 +322,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "pod": test_client.hostname,
             }
             for metric in COUNTER_CLIENT_METRICS:
-                actual_metric_labels = all_results[metric][0].metric.labels
+                actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
-                    expected_metric_labels, dict(actual_metric_labels)
+                    expected_metric_labels, actual_metric_labels
                 )
 
         # Testing whether each metric has the correct set of metric keys and
@@ -314,9 +337,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "pod": test_server.hostname,
             }
             for metric in COUNTER_SERVER_METRICS:
-                actual_metric_labels = all_results[metric][0].metric.labels
+                actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
-                    expected_metric_labels, dict(actual_metric_labels)
+                    expected_metric_labels, actual_metric_labels
                 )
 
         # Testing whether each metric has the right set of monitored resource
@@ -333,12 +356,14 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "project_id": self.project,
             }
             for metric in CLIENT_METRICS:
-                time_series = all_results[metric][0]
-                self.assertEqual("prometheus_target", time_series.resource.type)
+                metric_time_series = all_results[metric]
+                self.assertEqual(
+                    "prometheus_target", metric_time_series.resource_type
+                )
 
-                actual_resource_labels = time_series.resource.labels
+                actual_resource_labels = metric_time_series.resource_labels
                 self.assertDictEqual(
-                    expected_resource_labels, dict(actual_resource_labels)
+                    expected_resource_labels, actual_resource_labels
                 )
 
         # Testing whether each metric has the right set of monitored resource
@@ -355,12 +380,14 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "project_id": self.project,
             }
             for metric in SERVER_METRICS:
-                time_series = all_results[metric][0]
-                self.assertEqual("prometheus_target", time_series.resource.type)
+                metric_time_series = all_results[metric]
+                self.assertEqual(
+                    "prometheus_target", metric_time_series.resource_type
+                )
 
-                actual_resource_labels = time_series.resource.labels
+                actual_resource_labels = metric_time_series.resource_labels
                 self.assertDictEqual(
-                    expected_resource_labels, dict(actual_resource_labels)
+                    expected_resource_labels, actual_resource_labels
                 )
 
         # This tests whether each of the "byes sent" histogram type metric
@@ -372,7 +399,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 METRIC_SERVER_CALL_RCVD,
             ):
                 self.assertAtLeastOnePointWithinRange(
-                    all_results[metric][0].points, REQUEST_PAYLOAD_SIZE
+                    all_results[metric].points, REQUEST_PAYLOAD_SIZE
                 )
 
             for metric in (
@@ -380,7 +407,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 METRIC_SERVER_CALL_SENT,
             ):
                 self.assertAtLeastOnePointWithinRange(
-                    all_results[metric][0].points, RESPONSE_PAYLOAD_SIZE
+                    all_results[metric].points, RESPONSE_PAYLOAD_SIZE
                 )
 
 
