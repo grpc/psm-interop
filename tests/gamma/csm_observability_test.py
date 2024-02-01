@@ -225,7 +225,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # A helper function to check whether at least one of the "points" whose
     # mean should be within 5% of ref_bytes.
     def assertAtLeastOnePointWithinRange(
-        self, points, ref_bytes, tolerance: float = 0.05
+        self,
+        points: list[monitoring_v3.types.Point],
+        ref_bytes: int,
+        tolerance: float = 0.05,
     ):
         for point in points:
             if (
