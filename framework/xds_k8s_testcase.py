@@ -812,7 +812,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
         )
 
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -829,6 +829,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
+            **kwargs,
         )
 
     def startTestServers(

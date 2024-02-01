@@ -34,6 +34,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     debug_use_port_forwarding: bool
     td_bootstrap_image: str
     network: str
+    csm_workload_name: str
+    csm_canonical_service_name: str
 
     # Optional fields.
     service_account_name: Optional[str] = None
@@ -62,6 +64,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        csm_workload_name: str = "",
+        csm_canonical_service_name: str = "",
     ):
         super().__init__(
             k8s_namespace,
@@ -79,6 +83,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.deployment_template = deployment_template
         self.enable_workload_identity = enable_workload_identity
         self.debug_use_port_forwarding = debug_use_port_forwarding
+        self.csm_workload_name = csm_workload_name
+        self.csm_canonical_service_name = csm_canonical_service_name
 
         # Used by the TD bootstrap generator.
         self.td_bootstrap_image = td_bootstrap_image
@@ -109,8 +115,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         enable_csm_observability: bool = False,
         request_payload_size: int = 0,
         response_payload_size: int = 0,
-        csm_workload_name: str = "",
-        csm_canonical_service_name: str = "",
     ) -> XdsTestClient:
         logger.info(
             (
@@ -168,8 +172,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             generate_mesh_id=generate_mesh_id,
             print_response=print_response,
             enable_csm_observability=enable_csm_observability,
-            csm_workload_name=csm_workload_name,
-            csm_canonical_service_name=csm_canonical_service_name,
+            csm_workload_name=self.csm_workload_name,
+            csm_canonical_service_name=self.csm_canonical_service_name,
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled

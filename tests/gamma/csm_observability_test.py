@@ -25,6 +25,8 @@ import yaml
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
 from framework.helpers import skips
+from framework.test_app.runners.k8s import gamma_server_runner
+from framework.test_app.runners.k8s import k8s_xds_client_runner
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -90,6 +92,9 @@ CLIENT_METRICS = HISTOGRAM_CLIENT_METRICS + COUNTER_CLIENT_METRICS
 SERVER_METRICS = HISTOGRAM_SERVER_METRICS + COUNTER_SERVER_METRICS
 ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
+GammaServerRunner = gamma_server_runner.GammaServerRunner
+KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
+
 
 @dataclasses.dataclass(eq=False)
 class MetricTimeSeries:
@@ -133,6 +138,18 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.metric_client = cls.gcp_api_manager.monitoring_metric_service("v3")
+
+    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(
+            csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
+            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
+        )
+
+    def initKubernetesServerRunner(self) -> GammaServerRunner:
+        return super().initKubernetesServerRunner(
+            csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
+            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
+        )
 
     BuildQueryFn = Callable[[str], str]
 
@@ -217,8 +234,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             start_secs = int(time.time())
             test_server: _XdsTestServer = self.startTestServers(
                 enable_csm_observability=True,
-                csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
-                csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
             )[0]
 
         with self.subTest("2_start_test_client"):
@@ -227,8 +242,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 enable_csm_observability=True,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
-                csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
-                csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
             )
             logger.info("Letting test client run for %d seconds", TEST_RUN_SECS)
             time.sleep(TEST_RUN_SECS)

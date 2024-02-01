@@ -44,6 +44,8 @@ class GammaServerRunner(KubernetesServerRunner):
 
     route_name: str
     frontend_service_name: str
+    csm_workload_name: str
+    csm_canonical_service_name: str
 
     def __init__(
         self,
@@ -75,6 +77,8 @@ class GammaServerRunner(KubernetesServerRunner):
         bepolicy_name: str = "backend-policy",
         termination_grace_period_seconds: int = 0,
         pre_stop_hook: bool = False,
+        csm_workload_name: str = "",
+        csm_canonical_service_name: str = "",
     ):
         # pylint: disable=too-many-locals
         super().__init__(
@@ -107,6 +111,8 @@ class GammaServerRunner(KubernetesServerRunner):
         self.bepolicy_name = bepolicy_name
         self.termination_grace_period_seconds = termination_grace_period_seconds
         self.pre_stop_hook = pre_stop_hook
+        self.csm_workload_name = csm_workload_name
+        self.csm_canonical_service_name = csm_canonical_service_name
 
     def run(  # pylint: disable=arguments-differ
         self,
@@ -120,8 +126,6 @@ class GammaServerRunner(KubernetesServerRunner):
         route_template: str = "gamma/route_http.yaml",
         enable_csm_observability: bool = False,
         generate_mesh_id: bool = False,
-        csm_workload_name: str = "",
-        csm_canonical_service_name: str = "",
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -208,8 +212,8 @@ class GammaServerRunner(KubernetesServerRunner):
             pre_stop_hook=self.pre_stop_hook,
             enable_csm_observability=enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
-            csm_workload_name=csm_workload_name,
-            csm_canonical_service_name=csm_canonical_service_name,
+            csm_workload_name=self.csm_workload_name,
+            csm_canonical_service_name=self.csm_canonical_service_name,
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled
