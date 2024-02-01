@@ -683,11 +683,11 @@ class IsolatedXdsKubernetesTestCase(
         raise NotImplementedError
 
     @abc.abstractmethod
-    def initKubernetesServerRunner(self) -> KubernetesServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         raise NotImplementedError
 
     def tearDown(self):
@@ -795,7 +795,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             compute_api_version=self.compute_api_version,
         )
 
-    def initKubernetesServerRunner(self) -> KubernetesServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         return KubernetesServerRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.server_namespace
@@ -810,6 +810,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            **kwargs,
         )
 
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
