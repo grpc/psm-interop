@@ -238,11 +238,14 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
             )
             time_series = list(response)
-            if len(time_series) != 1:
-                self.fail(
-                    f"Query for {metric} should return exactly 1 time series. "
-                    f"Found {len(time_series)}."
-                )
+
+            self.assertLen(
+                time_series,
+                1,
+                msg=f"Query for {metric} should return exactly 1 time series."
+                f" Found {len(time_series)}.",
+            )
+
             metric_time_series = MetricTimeSeries.from_response(
                 metric, time_series[0]
             )
@@ -268,13 +271,16 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
             )
-            logger.info("Letting test client run for %d seconds", TEST_RUN_SECS)
-            time.sleep(TEST_RUN_SECS)
 
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
         with self.subTest("4_query_cloud_monitoring_metrics"):
+            logger.info(
+                "Letting test client run for %d seconds to produce metric data",
+                TEST_RUN_SECS,
+            )
+            time.sleep(TEST_RUN_SECS)
             end_secs = int(time.time())
             interval = monitoring_v3.TimeInterval(
                 start_time={"seconds": start_secs},
