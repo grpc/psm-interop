@@ -94,18 +94,23 @@ ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
+BuildQueryFn = Callable[[str], str]
+ANY = unittest.mock.ANY
 
 
-# This class should represent one TimeSeries object from
-# monitoring_v3.ListTimeSeriesResponse.
 @dataclasses.dataclass(eq=False)
 class MetricTimeSeries:
+    """
+    This class represents one TimeSeries object
+    from monitoring_v3.ListTimeSeriesResponse.
+    """
+
     # the metric name
     name: str
-    # each time series has a set of metric labels
-    metric_labels: dict[str, str]
     # each time series has a monitored resource
     resource_type: str
+    # each time series has a set of metric labels
+    metric_labels: dict[str, str]
     # each time series has a set of monitored resource labels
     resource_labels: dict[str, str]
     # each time series has a set of data points
@@ -119,9 +124,9 @@ class MetricTimeSeries:
     ) -> "MetricTimeSeries":
         return cls(
             name=name,
-            metric_labels=dict(response.metric.labels),
             resource_type=response.resource.type,
-            resource_labels=dict(response.resource.labels),
+            metric_labels=dict(sorted(response.metric.labels.items())),
+            resource_labels=dict(sorted(response.resource.labels.items())),
             points=list(response.points),
         )
 
@@ -129,7 +134,7 @@ class MetricTimeSeries:
         metric = dataclasses.asdict(self)
         # too much noise to print all data points from a time series
         metric.pop("points")
-        return yaml.dump(metric, sort_keys=True)
+        return yaml.dump(metric, sort_keys=False)
 
 
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
@@ -163,7 +168,26 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
         )
 
-    BuildQueryFn = Callable[[str], str]
+    def assertAtLeastOnePointWithinRange(
+        self,
+        points: list[monitoring_v3.types.Point],
+        ref_bytes: int,
+        tolerance: float = 0.05,
+    ):
+        """
+        A helper function to check whether at least one of the "points" whose
+        mean should be within X% of ref_bytes.
+        """
+        for point in points:
+            if (
+                ref_bytes * (1 - tolerance)
+                < point.value.distribution_value.mean
+                < ref_bytes * (1 + tolerance)
+            ):
+                return
+        self.fail(
+            f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
+        )
 
     @classmethod
     def build_histogram_query(cls, metric_type: str) -> str:
@@ -194,16 +218,19 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
         )
 
-    # A helper function to make the cloud monitoring API call to query metrics
-    # created by this test run.
     def query_metrics(
         self,
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
+        """
+        A helper function to make the cloud monitoring API call to query
+        metrics created by this test run.
+        """
         results = {}
         for metric in metric_names:
+            logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
                 filter=build_query_fn(metric),
@@ -211,7 +238,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
             )
             time_series = list(response)
-            if len(time_series) > 1:
+            if len(time_series) != 1:
                 self.fail(
                     f"Query for {metric} should return exactly 1 time series. "
                     f"Found {len(time_series)}."
@@ -219,28 +246,11 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             metric_time_series = MetricTimeSeries.from_response(
                 metric, time_series[0]
             )
-            logger.info(metric_time_series.pretty_print())
+            logger.info(
+                "Metric %s:\n%s", metric, metric_time_series.pretty_print()
+            )
             results[metric] = metric_time_series
         return results
-
-    # A helper function to check whether at least one of the "points" whose
-    # mean should be within 5% of ref_bytes.
-    def assertAtLeastOnePointWithinRange(
-        self,
-        points: list[monitoring_v3.types.Point],
-        ref_bytes: int,
-        tolerance: float = 0.05,
-    ):
-        for point in points:
-            if (
-                ref_bytes * (1 - tolerance)
-                < point.value.distribution_value.mean
-                < ref_bytes * (1 + tolerance)
-            ):
-                return
-        self.fail(
-            f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
-        )
 
     def test_csm_observability(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
@@ -267,10 +277,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("4_query_cloud_monitoring_metrics"):
             end_secs = int(time.time())
             interval = monitoring_v3.TimeInterval(
-                {
-                    "end_time": {"seconds": end_secs, "nanos": 0},
-                    "start_time": {"seconds": start_secs, "nanos": 0},
-                }
+                start_time={"seconds": start_secs},
+                end_time={"seconds": end_secs},
             )
             histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS, self.build_histogram_query, interval
@@ -290,10 +298,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # values
         with self.subTest("6_check_metrics_labels_histogram_client"):
             expected_metric_labels = {
-                "csm_mesh_id": unittest.mock.ANY,
+                "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
-                "csm_remote_workload_cluster_name": unittest.mock.ANY,
-                "csm_remote_workload_location": unittest.mock.ANY,
+                "csm_remote_workload_cluster_name": ANY,
+                "csm_remote_workload_location": ANY,
                 "csm_remote_workload_name": CSM_WORKLOAD_NAME_SERVER,
                 "csm_remote_workload_namespace_name": self.server_namespace,
                 "csm_remote_workload_project_id": self.project,
@@ -303,9 +311,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_status": "OK",
-                "grpc_target": unittest.mock.ANY,
-                "otel_scope_name": unittest.mock.ANY,
-                "otel_scope_version": unittest.mock.ANY,
+                "grpc_target": ANY,
+                "otel_scope_name": ANY,
+                "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
             for metric in HISTOGRAM_CLIENT_METRICS:
@@ -318,10 +326,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # values
         with self.subTest("7_check_metrics_labels_histogram_server"):
             expected_metric_labels = {
-                "csm_mesh_id": unittest.mock.ANY,
+                "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
-                "csm_remote_workload_cluster_name": unittest.mock.ANY,
-                "csm_remote_workload_location": unittest.mock.ANY,
+                "csm_remote_workload_cluster_name": ANY,
+                "csm_remote_workload_location": ANY,
                 "csm_remote_workload_name": CSM_WORKLOAD_NAME_CLIENT,
                 "csm_remote_workload_namespace_name": self.client_namespace,
                 "csm_remote_workload_project_id": self.project,
@@ -329,8 +337,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_status": "OK",
-                "otel_scope_name": unittest.mock.ANY,
-                "otel_scope_version": unittest.mock.ANY,
+                "otel_scope_name": ANY,
+                "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
             for metric in HISTOGRAM_SERVER_METRICS:
@@ -344,9 +352,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("8_check_metrics_labels_counter_client"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
-                "grpc_target": unittest.mock.ANY,
-                "otel_scope_name": unittest.mock.ANY,
-                "otel_scope_version": unittest.mock.ANY,
+                "grpc_target": ANY,
+                "otel_scope_name": ANY,
+                "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
             for metric in COUNTER_CLIENT_METRICS:
@@ -360,8 +368,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("9_check_metrics_labels_counter_server"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
-                "otel_scope_name": unittest.mock.ANY,
-                "otel_scope_version": unittest.mock.ANY,
+                "otel_scope_name": ANY,
+                "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
             for metric in COUNTER_SERVER_METRICS:
@@ -376,10 +384,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
-                "cluster": unittest.mock.ANY,
-                "instance": unittest.mock.ANY,
+                "cluster": ANY,
+                "instance": ANY,
                 "job": self.client_runner.pod_monitoring_name,
-                "location": unittest.mock.ANY,
+                "location": ANY,
                 "namespace": self.client_namespace,
                 "project_id": self.project,
             }
@@ -400,10 +408,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
-                "cluster": unittest.mock.ANY,
-                "instance": unittest.mock.ANY,
+                "cluster": ANY,
+                "instance": ANY,
                 "job": self.server_runner.pod_monitoring_name,
-                "location": unittest.mock.ANY,
+                "location": ANY,
                 "namespace": self.server_namespace,
                 "project_id": self.project,
             }
@@ -418,22 +426,16 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                     expected_resource_labels, actual_resource_labels
                 )
 
-        # This tests whether each of the "byes sent" histogram type metric
+        # This tests whether each of the "bytes sent" histogram type metric
         # should have at least 1 data point whose mean should converge to be
         # close to the number of bytes being sent by the RPCs.
         with self.subTest("12_check_bytes_sent_vs_data_points"):
-            for metric in (
-                METRIC_CLIENT_ATTEMPT_SENT,
-                METRIC_SERVER_CALL_RCVD,
-            ):
+            for metric in (METRIC_CLIENT_ATTEMPT_SENT, METRIC_SERVER_CALL_RCVD):
                 self.assertAtLeastOnePointWithinRange(
                     all_results[metric].points, REQUEST_PAYLOAD_SIZE
                 )
 
-            for metric in (
-                METRIC_CLIENT_ATTEMPT_RCVD,
-                METRIC_SERVER_CALL_SENT,
-            ):
+            for metric in (METRIC_CLIENT_ATTEMPT_RCVD, METRIC_SERVER_CALL_SENT):
                 self.assertAtLeastOnePointWithinRange(
                     all_results[metric].points, RESPONSE_PAYLOAD_SIZE
                 )
