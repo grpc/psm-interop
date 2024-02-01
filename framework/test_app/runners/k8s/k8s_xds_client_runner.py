@@ -100,7 +100,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             # permission to use GCP service account identity.
             self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
 
-    def run(  # pylint: disable=arguments-differ,too-many-locals
+    def run(  # pylint: disable=arguments-differ
         self,
         *,
         server_target,
