@@ -139,13 +139,13 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         super().setUpClass()
         cls.metric_client = cls.gcp_api_manager.monitoring_metric_service("v3")
 
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super().initKubernetesClientRunner(
             csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
         )
 
-    def initKubernetesServerRunner(self) -> GammaServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
         return super().initKubernetesServerRunner(
             csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
