@@ -683,11 +683,11 @@ class IsolatedXdsKubernetesTestCase(
         raise NotImplementedError
 
     @abc.abstractmethod
-    def initKubernetesServerRunner(self) -> KubernetesServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         raise NotImplementedError
 
     def tearDown(self):
@@ -795,7 +795,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             compute_api_version=self.compute_api_version,
         )
 
-    def initKubernetesServerRunner(self) -> KubernetesServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         return KubernetesServerRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.server_namespace
@@ -810,9 +810,10 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            **kwargs,
         )
 
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -829,6 +830,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
+            **kwargs,
         )
 
     def startTestServers(
@@ -904,7 +906,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             compute_api_version=self.compute_api_version,
         )
 
-    def initKubernetesServerRunner(self) -> KubernetesServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         return KubernetesServerRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.server_namespace
@@ -919,9 +921,10 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            **kwargs,
         )
 
-    def initKubernetesClientRunner(self) -> KubernetesClientRunner:
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -938,6 +941,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            **kwargs,
         )
 
     def startSecureTestServer(self, replica_count=1, **kwargs) -> XdsTestServer:

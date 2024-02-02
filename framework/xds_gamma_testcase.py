@@ -94,7 +94,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             compute_api_version=self.compute_api_version,
         )
 
-    def initKubernetesServerRunner(self) -> GammaServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
         return GammaServerRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.server_namespace
@@ -112,6 +112,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
             termination_grace_period_seconds=self.termination_grace_period_seconds,
             pre_stop_hook=self.pre_stop_hook,
+            **kwargs,
         )
 
     def startTestClient(
