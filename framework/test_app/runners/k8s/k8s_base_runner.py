@@ -915,6 +915,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 gcp_ui_url=self.gcp_ui_url,
                 deployment_id=run.deployment_id,
                 start_time=run.time_start_requested,
+                cursor_time=run.time_start_completed,
                 end_time=run.time_stopped,
             )
 
@@ -929,6 +930,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         deployment_id: Optional[str] = None,
         start_time: Optional[_datetime] = None,
         end_time: Optional[_datetime] = None,
+        cursor_time: Optional[_datetime] = None,
     ):
         """Output the link to test server/client logs in GCP Logs Explorer."""
         if not start_time:
@@ -939,6 +941,10 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logs_start = _helper_datetime.iso8601_utc_time(start_time)
         logs_end = _helper_datetime.iso8601_utc_time(end_time)
         request = {"timeRange": f"{logs_start}/{logs_end}"}
+        if cursor_time:
+            request["cursorTimestamp"] = _helper_datetime.iso8601_utc_time(
+                cursor_time
+            )
         query = {
             "resource.type": "k8s_container",
             "resource.labels.project_id": gcp_project,
