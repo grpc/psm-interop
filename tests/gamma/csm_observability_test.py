@@ -400,7 +400,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         A helper function to make the cloud monitoring API call to query
         metrics created by this test run.
         """
-
         # Based on default retry settings for list_time_series method:
         # https://github.com/googleapis/google-cloud-python/blob/google-cloud-monitoring-v2.18.0/packages/google-cloud-monitoring/google/cloud/monitoring_v3/services/metric_service/transports/base.py#L210-L218
         # Modified: predicate extended to retry on a wider range of error types.
@@ -420,7 +419,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             ),
             deadline=90.0,
         )
-
         results = {}
         for metric in metric_names:
             logger.info("Requesting list_time_series for metric %s", metric)
