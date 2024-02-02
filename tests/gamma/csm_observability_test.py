@@ -152,6 +152,22 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         super().setUpClass()
         cls.metric_client = cls.gcp_api_manager.monitoring_metric_service("v3")
 
+    # These parameters are more pertaining to the test itself, not to
+    # each run().
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(
+            csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
+            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
+        )
+
+    # These parameters are more pertaining to the test itself, not to
+    # each run().
+    def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
+        return super().initKubernetesServerRunner(
+            csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
+            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
+        )
+
     def test_csm_observability(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
@@ -342,22 +358,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 self.assertAtLeastOnePointWithinRange(
                     all_results[metric].points, RESPONSE_PAYLOAD_SIZE
                 )
-
-    # These parameters are more pertaining to the test itself, not to
-    # each run().
-    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super().initKubernetesClientRunner(
-            csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
-            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
-        )
-
-    # These parameters are more pertaining to the test itself, not to
-    # each run().
-    def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
-        return super().initKubernetesServerRunner(
-            csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
-            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
-        )
 
     @classmethod
     def build_histogram_query(cls, metric_type: str) -> str:
