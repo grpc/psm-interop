@@ -22,7 +22,7 @@ from absl.testing import absltest
 from google.api_core import exceptions as gapi_errors
 from google.api_core import retry as gapi_retries
 from google.cloud import monitoring_v3
-from kubernetes.stream import stream
+import requests
 import yaml
 
 from framework import xds_gamma_testcase
@@ -199,17 +199,10 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             for i in range(0, TEST_RUN_SECS // 10):
                 time.sleep(10)
                 logger.info(
-                    self.ping_gmp_endpoint(
-                        test_client.hostname,
-                        self.client_namespace,
-                        self.client_runner.deployment_name,
-                    )
-                )
-                logger.info(
-                    self.ping_gmp_endpoint(
-                        test_server.hostname,
-                        self.server_namespace,
-                        self.server_runner.deployment_name,
+                    requests.get(
+                        f"http://{test_server.hostname}"
+                        f".{self.server_namespace}.pod.cluster.local"
+                        ":9464/metrics"
                     )
                 )
             end_secs = int(time.time())
@@ -482,21 +475,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 return
         self.fail(
             f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
-        )
-
-    def ping_gmp_endpoint(
-        self, pod_name: str, namespace_name: str, container_name: str
-    ) -> str:
-        return stream(
-            self.k8s_api_manager.core.connect_get_namespaced_pod_exec,
-            pod_name,
-            namespace_name,
-            container=container_name,
-            command=["/bin/sh", "-c", "curl -s localhost:9464/metrics"],
-            stderr=True,
-            stdin=False,
-            stdout=True,
-            tty=False,
         )
 
 
