@@ -429,7 +429,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
             )
-            time_series = list(response)
+            time_series = list(filter(self.is_legit_time_series, response))
 
             self.assertLen(
                 time_series,
@@ -446,6 +446,21 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
             results[metric] = metric_time_series
         return results
+
+    @classmethod
+    def is_legit_time_series(
+        cls, series: monitoring_v3.types.TimeSeries
+    ) -> bool:
+        for point in series.points:
+            # Test flake: we found some time series with no actual data point
+            # in prod test runs.
+            # Here we will only include time series with actual data in it.
+            if point.value.distribution_value.count or point.value.double_value:
+                return True
+        logger.warning(
+            "Warning: found time_series with no valid data point\n%s", series
+        )
+        return False
 
     def assertAtLeastOnePointWithinRange(
         self,
