@@ -41,9 +41,13 @@ class GammaServerRunner(KubernetesServerRunner):
     pre_stop_hook: bool = False
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
+    pod_monitoring_port: int = 9464
+    monitoring_port: Optional[int] = None
+    monitoring_host: Optional[str] = None
 
     route_name: str
     frontend_service_name: str
+    enable_csm_observability: bool
     csm_workload_name: str
     csm_canonical_service_name: str
 
@@ -77,6 +81,7 @@ class GammaServerRunner(KubernetesServerRunner):
         bepolicy_name: str = "backend-policy",
         termination_grace_period_seconds: int = 0,
         pre_stop_hook: bool = False,
+        enable_csm_observability: bool = False,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
     ):
@@ -111,6 +116,7 @@ class GammaServerRunner(KubernetesServerRunner):
         self.bepolicy_name = bepolicy_name
         self.termination_grace_period_seconds = termination_grace_period_seconds
         self.pre_stop_hook = pre_stop_hook
+        self.enable_csm_observability = enable_csm_observability
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 
@@ -124,7 +130,6 @@ class GammaServerRunner(KubernetesServerRunner):
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
         route_template: str = "gamma/route_http.yaml",
-        enable_csm_observability: bool = False,
         generate_mesh_id: bool = False,
     ) -> List[XdsTestServer]:
         if not maintenance_port:
@@ -210,7 +215,7 @@ class GammaServerRunner(KubernetesServerRunner):
             bootstrap_version=bootstrap_version,
             termination_grace_period_seconds=self.termination_grace_period_seconds,
             pre_stop_hook=self.pre_stop_hook,
-            enable_csm_observability=enable_csm_observability,
+            enable_csm_observability=self.enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
             csm_workload_name=self.csm_workload_name,
             csm_canonical_service_name=self.csm_canonical_service_name,
@@ -218,13 +223,14 @@ class GammaServerRunner(KubernetesServerRunner):
 
         # Create a PodMonitoring resource if CSM Observability is enabled
         # This is GMP (Google Managed Prometheus)
-        if enable_csm_observability:
+        if self.enable_csm_observability:
             self.pod_monitoring_name = f"{self.deployment_id}-gmp"
             self.pod_monitoring = self._create_pod_monitoring(
                 "csm/pod-monitoring.yaml",
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
+                pod_monitoring_port=self.pod_monitoring_port,
             )
 
         servers = self._make_servers_for_deployment(
@@ -269,6 +275,32 @@ class GammaServerRunner(KubernetesServerRunner):
             be_policy_name=self.bepolicy_name,
             namespace_name=self.k8s_namespace.name,
             service_name=self.service_name,
+        )
+
+    def _xds_test_server_for_pod(
+        self,
+        pod: k8s.V1Pod,
+        *,
+        test_port: int = KubernetesServerRunner.DEFAULT_TEST_PORT,
+        maintenance_port: Optional[int] = None,
+        secure_mode: bool = False,
+    ) -> XdsTestServer:
+        if self.enable_csm_observability:
+            if self.debug_use_port_forwarding:
+                pf = self._start_port_forwarding_pod(
+                    pod, self.pod_monitoring_port
+                )
+                self.monitoring_port = pf.local_port
+                self.monitoring_host = pf.local_address
+            else:
+                self.monitoring_port = self.pod_monitoring_port
+                self.monitoring_host = pod.status.pod_ip
+
+        return super()._xds_test_server_for_pod(
+            pod=pod,
+            test_port=test_port,
+            maintenance_port=maintenance_port,
+            secure_mode=secure_mode,
         )
 
     # pylint: disable=arguments-differ

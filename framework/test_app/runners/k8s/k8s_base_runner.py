@@ -306,6 +306,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         namespace_name: str,
         deployment_id: str,
         pod_monitoring_name: str,
+        pod_monitoring_port: int,
         **kwargs,
     ) -> k8s.PodMonitoring:
         pod_monitoring = self._create_from_template(
@@ -314,6 +315,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             namespace_name=namespace_name,
             deployment_id=deployment_id,
             pod_monitoring_name=pod_monitoring_name,
+            pod_monitoring_port=pod_monitoring_port,
             **kwargs,
         )
         if not (

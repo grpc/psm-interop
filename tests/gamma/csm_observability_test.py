@@ -159,6 +159,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # each run().
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super().initKubernetesClientRunner(
+            enable_csm_observability=True,
             csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
         )
@@ -167,6 +168,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # each run().
     def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
         return super().initKubernetesServerRunner(
+            enable_csm_observability=True,
             csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
             csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
         )
@@ -176,14 +178,11 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #   resource creation out of self.startTestServers()
         with self.subTest("1_run_test_server"):
             start_secs = int(time.time())
-            test_server: _XdsTestServer = self.startTestServers(
-                enable_csm_observability=True,
-            )[0]
+            test_server: _XdsTestServer = self.startTestServers()[0]
 
         with self.subTest("2_start_test_client"):
             test_client: _XdsTestClient = self.startTestClient(
                 test_server,
-                enable_csm_observability=True,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
             )
@@ -199,10 +198,15 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             for i in range(0, TEST_RUN_SECS // 10):
                 time.sleep(10)
                 logger.info(
-                    requests.get(
-                        f"http://{test_server.hostname}"
-                        f".{self.server_namespace}.pod.cluster.local"
-                        ":9464/metrics"
+                    self.ping_gmp_endpoint(
+                        self.server_runner.monitoring_host,
+                        self.server_runner.monitoring_port,
+                    )
+                )
+                logger.info(
+                    self.ping_gmp_endpoint(
+                        self.client_runner.monitoring_host,
+                        self.client_runner.monitoring_port,
                     )
                 )
             end_secs = int(time.time())
@@ -476,6 +480,18 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         self.fail(
             f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
         )
+
+    def ping_gmp_endpoint(
+        self, monitoring_host: str, monitoring_port: int
+    ) -> str:
+        """
+        A helper function to ping the GMP endpoint to get what GMP sees
+        from the OTel exporter before passing metrics to Cloud Monitoring.
+        """
+        gmp_log = requests.get(
+            f"http://{monitoring_host}:{monitoring_port}/metrics"
+        )
+        return "\n".join(gmp_log.text.splitlines())
 
 
 if __name__ == "__main__":
