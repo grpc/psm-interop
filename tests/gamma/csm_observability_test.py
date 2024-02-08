@@ -23,6 +23,7 @@ from google.api_core import exceptions as gapi_errors
 from google.api_core import retry as gapi_retries
 from google.cloud import monitoring_v3
 import requests
+from requests.exceptions import RequestException
 import yaml
 
 from framework import xds_gamma_testcase
@@ -488,10 +489,16 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         A helper function to ping the GMP endpoint to get what GMP sees
         from the OTel exporter before passing metrics to Cloud Monitoring.
         """
-        gmp_log = requests.get(
-            f"http://{monitoring_host}:{monitoring_port}/metrics"
-        )
-        return "\n".join(gmp_log.text.splitlines())
+        try:
+            gmp_log = requests.get(
+                f"http://{monitoring_host}:{monitoring_port}/metrics"
+            )
+            return "\n".join(gmp_log.text.splitlines())
+        except RequestException as e:
+            logger.error("Http request to GMP endpoint failed: %r", e)
+            # It's OK the caller will receive nothing in case of an exception.
+            # Caller can continue.
+            return ""
 
 
 if __name__ == "__main__":
