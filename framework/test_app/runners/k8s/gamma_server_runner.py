@@ -38,7 +38,6 @@ class GammaServerRunner(KubernetesServerRunner):
     sa_policy: Optional[k8s.GcpSessionAffinityPolicy] = None
     be_policy: Optional[k8s.GcpBackendPolicy] = None
     termination_grace_period_seconds: Optional[int] = None
-    pre_stop_hook: bool = False
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
 
@@ -75,8 +74,8 @@ class GammaServerRunner(KubernetesServerRunner):
         safilter_name: str = "ssa-filter",
         sapolicy_name: str = "ssa-policy",
         bepolicy_name: str = "backend-policy",
-        termination_grace_period_seconds: int = 0,
         pre_stop_hook: bool = False,
+        termination_grace_period_seconds: Optional[int] = None,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
     ):
@@ -102,6 +101,8 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_template=namespace_template,
             debug_use_port_forwarding=debug_use_port_forwarding,
             enable_workload_identity=enable_workload_identity,
+            pre_stop_hook=pre_stop_hook,
+            termination_grace_period_seconds=termination_grace_period_seconds,
         )
 
         self.frontend_service_name = frontend_service_name
@@ -109,8 +110,6 @@ class GammaServerRunner(KubernetesServerRunner):
         self.safilter_name = safilter_name
         self.sapolicy_name = sapolicy_name
         self.bepolicy_name = bepolicy_name
-        self.termination_grace_period_seconds = termination_grace_period_seconds
-        self.pre_stop_hook = pre_stop_hook
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 

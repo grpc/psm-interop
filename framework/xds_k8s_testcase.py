@@ -786,6 +786,9 @@ class IsolatedXdsKubernetesTestCase(
 class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
     """Regular test case base class for testing PSM features in isolation."""
 
+    pre_stop_hook: bool = False
+    termination_grace_period_seconds: Optional[int] = None
+
     @classmethod
     def setUpClass(cls):
         """Hook method for setting up class fixture before running tests in
@@ -822,6 +825,8 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            termination_grace_period_seconds=self.termination_grace_period_seconds,
+            pre_stop_hook=self.pre_stop_hook,
             **kwargs,
         )
 
@@ -861,6 +866,9 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
                 self.server_xds_host, self.server_xds_port
             )
         return test_servers
+
+    def refreshTestServers(self) -> List[XdsTestServer]:
+        return self.server_runner.refresh_servers()
 
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs

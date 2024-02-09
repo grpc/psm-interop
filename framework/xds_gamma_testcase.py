@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     server_runner: GammaServerRunner
     frontend_service_name: str
-    pre_stop_hook: Optional[bool] = None
-    termination_grace_period_seconds: int = 0
+
+    pre_stop_hook: bool = False
+    termination_grace_period_seconds: Optional[int] = None
 
     def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
@@ -49,9 +50,6 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         # Calls XdsKubernetesBaseTestCase.setUp():
         super(xds_k8s_testcase.IsolatedXdsKubernetesTestCase, self).setUp()
         # pylint: enable=bad-super-call
-
-        if self.pre_stop_hook is None:
-            self.pre_stop_hook = False
 
         # Random suffix per test.
         self.createRandomSuffix()
@@ -78,7 +76,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.client_runner = self.initKubernetesClientRunner()
 
         # Cleanup.
-        self.force_cleanup = True
+        self.force_cleanup = False
         self.force_cleanup_namespace = True
 
     # TODO(sergiitk): [GAMMA] Make a TD-manager-less base test case
