@@ -828,7 +828,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         for forwarder in self.pod_port_forwarders:
             if forwarder.pod_name == pod.metadata.name:
                 logging.info(
-                    f"Port forwarding for {pod.metadata.name} already started. Skipping."
+                    "Port forwarding for %s already started. Skipping.",
+                    pod.metadata.name,
                 )
                 return None
         logger.info(
@@ -847,7 +848,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         for collector in self.pod_log_collectors:
             if collector.pod_name == pod_name:
                 logging.info(
-                    f"Log collection for {pod_name} already started. Skipping."
+                    "Log collection for %s already started. Skipping.",
+                    pod_name,
                 )
                 return None
         logfile_name = f"{self.k8s_namespace.name}_{pod_name}.log"

@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 import datetime
+import logging
 from typing import List, Optional
 
 from absl import flags
@@ -250,7 +250,7 @@ class SessionDrainAffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 self.assertIsNotNone(config)
                 json_config = json_format.MessageToDict(config)
                 parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
-                logging.info(f"Received CSDS: {parsed}")
+                logging.info("Received CSDS: %s", parsed)
                 self.assertLen(parsed.draining_endpoints, 1)
 
             retryer = retryers.constant_retryer(

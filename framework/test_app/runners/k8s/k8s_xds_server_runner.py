@@ -53,7 +53,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     service: Optional[k8s.V1Service] = None
 
     # Map from pod name to server
-    severs: Mapping[str, XdsTestServer] = {}
+    servers: Mapping[str, XdsTestServer] = {}
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -214,10 +214,11 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
-            termination_grace_period_seconds=termination_grace_period_seconds,
-            pre_stop_hook=pre_stop_hook,
+            termination_grace_period_seconds=self.termination_grace_period_seconds,
+            pre_stop_hook=self.pre_stop_hook,
         )
 
+        # TODO(sergiitk): broken: needs to return a map.
         self.servers = self._make_servers_for_deployment(
             replica_count,
             test_port=test_port,
@@ -227,6 +228,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         )
         return self.servers
 
+    # TODO(sergiitk): broken: needs to be converted to a map.
     def _make_servers_for_deployment(
         self,
         replica_count,
@@ -265,9 +267,13 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             self.servers[pod.metadata.name] = server
         return servers
 
-    def refresh_servers(self) -> List[XdsTestServer]:
+    def refresh_servers(
+        self,
+        log_to_stdout: bool = False,
+    ) -> List[XdsTestServer]:
         pods = self.k8s_namespace.list_deployment_pods(self.deployment)
-        pod_names = [pod.metadata.name for pod in pods]
+        # TODO(sergiitk): was unused, check why
+        # pod_names = [pod.metadata.name for pod in pods]
 
         servers: List[XdsTestServer] = []
         for pod in pods:
