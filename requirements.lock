@@ -25,7 +25,7 @@ google-auth==2.22.0
 google-auth-httplib2==0.1.0
 googleapis-common-protos==1.60.0
 grpc-google-iam-v1==0.12.6
-grpcio-status==1.57.0
+grpcio-status==1.60.1
 httplib2==0.22.0
 idna==3.4
 MarkupSafe==2.1.3
