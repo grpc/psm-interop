@@ -19,6 +19,19 @@ max-parents=8
 # "TODO(<username>):", "FIXME:", or anything else.
 notes=FIXME,XXX
 
+[TYPECHECK]
+# List of module names for which member attributes should not be checked
+# (useful for modules/projects where namespaces are manipulated during runtime
+# and thus existing member attributes cannot be deduced by static analysis. It
+# supports qualified module names, as well as Unix pattern matching.
+#
+# TODO(sergiitk): remove when astroid upgraded to astroid 2.15.5, see
+#   https://pylint.pycqa.org/projects/astroid/en/latest/changelog.html#what-s-new-in-astroid-2-15-5
+#   > Recognize stub pyi Python files.
+ignored-modules=
+  protos.grpc.testing.messages_pb2,
+  protos.grpc.testing.empty_pb2,
+
 [MESSAGES CONTROL]
 
 disable=
