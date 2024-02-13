@@ -26,7 +26,7 @@ display_usage() {
 A helper to run black pylint.
 
 USAGE:
-  ./bin/pylint.rc
+  ./bin/pylint.sh
 
 ONE-TIME INSTALLATION:
   1. python3.9 -m venv --upgrade-deps venv-pylint
