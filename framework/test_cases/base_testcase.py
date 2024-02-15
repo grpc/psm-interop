@@ -117,7 +117,8 @@ class BaseTestCase(absltest.TestCase):
             caller = "undefined_hook"
 
         fake_test_id = f"{cls.__name__}.{caller}"
-        # same cleanup as in self. test_name
+        # The same test name transformation as in self.test_name().
+        # TODO(sergiitk): move the transformation to a classmethod.
         test_name = fake_test_id.removeprefix("__main__.").split(" ", 1)[0]
         logging.error("----- PSM Test Case FAILED: %s -----", test_name)
         cls._log_framed_test_failure(test_name, error, is_unexpected=True)
