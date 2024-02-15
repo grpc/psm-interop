@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base test case used for xds test suites."""
-
-from typing import Optional
+import inspect
+import traceback
+from typing import Optional, Union
 import unittest
 
 from absl import logging
@@ -21,6 +22,7 @@ from absl.testing import absltest
 
 
 class BaseTestCase(absltest.TestCase):
+    # @override
     def run(self, result: Optional[unittest.TestResult] = None) -> None:
         super().run(result)
         # TODO(sergiitk): should this method be returning result? See
@@ -44,10 +46,8 @@ class BaseTestCase(absltest.TestCase):
                 self.test_name,
                 f" | Errors count: {total_errors}" if total_errors > 1 else "",
             )
-            if test_errors:
-                self._print_error_list(test_errors, is_unexpected_error=True)
-            if test_failures:
-                self._print_error_list(test_failures)
+            self._log_test_errors(test_errors, is_unexpected=True)
+            self._log_test_errors(test_failures)
         elif test_unexpected_successes:
             logging.error(
                 "----- PSM Test Case UNEXPECTEDLY SUCCEEDED: %s -----\n",
@@ -85,22 +85,74 @@ class BaseTestCase(absltest.TestCase):
         """
         return self.id().removeprefix("__main__.").split(" ", 1)[0]
 
-    def _print_error_list(
-        self, errors: list[str], is_unexpected_error: bool = False
+    def _log_test_errors(self, errors: list[str], is_unexpected: bool = False):
+        for err in errors:
+            self._log_framed_test_failure(self.test_name, err, is_unexpected)
+
+    @classmethod
+    def _log_class_hook_failure(cls, error: Exception):
+        """
+        Log error helper for failed unittest hooks, e.g. setUpClass.
+
+        Normally we don't want to make external calls in setUpClass.
+        But when we do, we want to wrap them into try/except, and call
+        _log_class_hook_failure, so the error is logged in our standard format.
+        Don't forget to re-raise!
+
+        Example:
+            @classmethod
+            def setUpClass(cls):
+                try:
+                    # Making bad external calls that end up raising
+                    raise OSError("Network bad!")
+                except Exception as error:  # noqa pylint: disable=broad-except
+                    cls._log_class_hook_failure(error)
+                    raise
+        """
+        caller: str
+        try:
+            caller_info: inspect.FrameInfo = inspect.stack()[1]
+            caller: str = caller_info.function
+        except (IndexError, AttributeError):
+            caller = "undefined_hook"
+
+        fake_test_id = f"{cls.__name__}.{caller}"
+        # same cleanup as in self. test_name
+        test_name = fake_test_id.removeprefix("__main__.").split(" ", 1)[0]
+        logging.error("----- PSM Test Case FAILED: %s -----", test_name)
+        cls._log_framed_test_failure(test_name, error, is_unexpected=True)
+
+    @classmethod
+    def _log_framed_test_failure(
+        cls,
+        test_name: str,
+        error: Union[str, Exception],
+        is_unexpected: bool = False,
     ) -> None:
+        trace: str
+        if isinstance(error, Exception):
+            trace = cls._format_error_with_trace(error)
+        else:
+            trace = error
+
         # FAILURE is an errors explicitly signalled using one of the
         # TestCase.assert*() methods, while ERROR means an unexpected exception.
-        fail_type: str = "ERROR" if is_unexpected_error else "FAILURE"
-        for err in errors:
-            logging.error(
-                "(%(fail_type)s) PSM Interop Test Failed: %(test_id)s"
-                "\n^^^^^"
-                "\n[%(test_id)s] PSM Failed Test Traceback BEGIN"
-                "\n%(error)s"
-                "[%(test_id)s] PSM Failed Test Traceback END\n",
-                {
-                    "test_id": self.test_name,
-                    "fail_type": fail_type,
-                    "error": err,
-                },
-            )
+        fail_type: str = "ERROR" if is_unexpected else "FAILURE"
+        logging.error(
+            "(%(fail_type)s) PSM Interop Test Failed: %(test_id)s"
+            "\n^^^^^"
+            "\n[%(test_id)s] PSM Failed Test Traceback BEGIN"
+            "\n%(error)s"
+            "[%(test_id)s] PSM Failed Test Traceback END\n",
+            {
+                "test_id": test_name,
+                "fail_type": fail_type,
+                "error": trace,
+            },
+        )
+
+    @classmethod
+    def _format_error_with_trace(cls, error: Exception) -> str:
+        return "".join(
+            traceback.TracebackException.from_exception(error).format()
+        )

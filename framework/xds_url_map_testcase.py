@@ -380,27 +380,33 @@ class XdsUrlMapTestCase(
         # whether setUpClass failed.
         cls.addClassCleanup(cls.cleanupAfterTests)
 
-        if not cls.started_test_cases:
-            # Create the GCP resource once before the first test start
-            GcpResourceManager().setup(cls.test_case_classes)
-        cls.started_test_cases.add(cls.__name__)
+        # Normally we don't want to make external calls in setUpClass.
+        try:
+            if not cls.started_test_cases:
+                # Create the GCP resource once before the first test start
+                GcpResourceManager().setup(cls.test_case_classes)
+            cls.started_test_cases.add(cls.__name__)
 
-        # Create the test case's own client runner with it's own namespace,
-        # enables concurrent running with other test cases.
-        cls.test_client_runner = (
-            GcpResourceManager().create_test_client_runner()
-        )
-        # Start the client, and allow the test to override the initial RPC config.
-        rpc, metadata = cls.client_init_config(
-            rpc="UnaryCall,EmptyCall", metadata=""
-        )
-        cls.test_client = cls.test_client_runner.run(
-            server_target=f"xds:///{cls.hostname()}",
-            rpc=rpc,
-            metadata=metadata,
-            qps=QPS.value,
-            print_response=True,
-        )
+            # Create the test case's own client runner with it's own namespace,
+            # enables concurrent running with other test cases.
+            cls.test_client_runner = (
+                GcpResourceManager().create_test_client_runner()
+            )
+            # Start the client, and allow the test to override the initial
+            # RPC config.
+            rpc, metadata = cls.client_init_config(
+                rpc="UnaryCall,EmptyCall", metadata=""
+            )
+            cls.test_client = cls.test_client_runner.run(
+                server_target=f"xds:///{cls.hostname()}",
+                rpc=rpc,
+                metadata=metadata,
+                qps=QPS.value,
+                print_response=True,
+            )
+        except Exception as error:  # noqa pylint: disable=broad-except
+            cls._log_class_hook_failure(error)
+            raise
 
     @classmethod
     def cleanupAfterTests(cls):
