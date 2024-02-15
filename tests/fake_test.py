@@ -80,5 +80,24 @@ class FakeSubtestTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
                     self.fail(f"Integer {num} is odd")
 
 
+class FakeSetupClassTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
+    """A fake class to debug BaseTestCase logs produced by setupClassError.
+
+    See FakeTest for notes on provisioning.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            # Making bad external calls that end up raising
+            raise OSError("Network bad!")
+        except Exception as error:  # noqa pylint: disable=broad-except
+            cls._log_class_hook_failure(error)
+            raise
+
+    def test_should_never_run(self):
+        self.fail("IF YOU SEE ME, SOMETHING IS WRONG!")
+
+
 if __name__ == "__main__":
     absltest.main()
