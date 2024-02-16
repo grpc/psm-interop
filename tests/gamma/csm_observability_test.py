@@ -202,25 +202,25 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 end_time={"seconds": end_secs},
             )
             server_histogram_results = self.query_metrics(
-                HISTOGRAM_METRICS,
+                HISTOGRAM_SERVER_METRICS,
                 self.build_histogram_query,
                 self.server_namespace,
                 interval,
             )
             client_histogram_results = self.query_metrics(
-                HISTOGRAM_METRICS,
+                HISTOGRAM_CLIENT_METRICS,
                 self.build_histogram_query,
                 self.client_namespace,
                 interval,
             )
             server_counter_results = self.query_metrics(
-                COUNTER_METRICS,
+                COUNTER_SERVER_METRICS,
                 self.build_counter_query,
                 self.server_namespace,
                 interval,
             )
             client_counter_results = self.query_metrics(
-                COUNTER_METRICS,
+                COUNTER_CLIENT_METRICS,
                 self.build_counter_query,
                 self.client_namespace,
                 interval,
