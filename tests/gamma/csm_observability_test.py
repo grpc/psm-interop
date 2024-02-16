@@ -204,28 +204,33 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             server_histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS,
                 self.build_histogram_query,
-                self.client_namespace,
+                self.server_namespace,
                 interval,
             )
             client_histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS,
                 self.build_histogram_query,
-                self.server_namespace,
+                self.client_namespace,
                 interval,
             )
             server_counter_results = self.query_metrics(
                 COUNTER_METRICS,
                 self.build_counter_query,
-                self.client_namespace,
+                self.server_namespace,
                 interval,
             )
             client_counter_results = self.query_metrics(
                 COUNTER_METRICS,
                 self.build_counter_query,
-                self.server_namespace,
+                self.client_namespace,
                 interval,
             )
-            all_results = {**histogram_results, **counter_results}
+            all_results = {
+                **server_histogram_results,
+                **client_histogram_results,
+                **server_counter_results,
+                **client_counter_results,
+            }
             self.assertNotEmpty(all_results, msg="No query metrics results")
 
         with self.subTest("5_check_metrics_time_series"):
@@ -399,23 +404,24 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f'metric.type = "{metric_type}" AND '
             'metric.labels.grpc_status = "OK" AND '
             f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
-            f'metric.labels.csm_remote_workload_namespace_name = "{namespace}"'
+            f'resource.labels.namespace = "{namespace}"'
         )
 
     @classmethod
-    def build_counter_query(cls, metric_type: str) -> str:
+    def build_counter_query(cls, metric_type: str, namespace: str) -> str:
         # For these num rpcs started counter metrics, they do not have the
         # 'grpc_status' label
         return (
             f'metric.type = "{metric_type}" AND '
-            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
+            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
+            f'resource.labels.namespace = "{namespace}"'
         )
 
     def query_metrics(
         self,
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
-        remote_namespace: str,
+        namespace: str,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
         """
@@ -446,7 +452,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
-                filter=build_query_fn(metric, remote_namespace),
+                filter=build_query_fn(metric, namespace),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
