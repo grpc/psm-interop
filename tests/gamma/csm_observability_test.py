@@ -96,7 +96,7 @@ ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
-BuildQueryFn = Callable[[str], str]
+BuildQueryFn = Callable[[str, str], str]
 ANY = unittest.mock.ANY
 
 
@@ -202,10 +202,28 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 end_time={"seconds": end_secs},
             )
             histogram_results = self.query_metrics(
-                HISTOGRAM_METRICS, self.build_histogram_query, interval
+                HISTOGRAM_METRICS,
+                self.build_histogram_query,
+                self.client_namespace,
+                interval,
+            )
+            histogram_results = self.query_metrics(
+                HISTOGRAM_METRICS,
+                self.build_histogram_query,
+                self.server_namespace,
+                interval,
             )
             counter_results = self.query_metrics(
-                COUNTER_METRICS, self.build_counter_query, interval
+                COUNTER_METRICS,
+                self.build_counter_query,
+                self.client_namespace,
+                interval,
+            )
+            counter_results = self.query_metrics(
+                COUNTER_METRICS,
+                self.build_counter_query,
+                self.server_namespace,
+                interval,
             )
             all_results = {**histogram_results, **counter_results}
             self.assertNotEmpty(all_results, msg="No query metrics results")
@@ -362,7 +380,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 )
 
     @classmethod
-    def build_histogram_query(cls, metric_type: str) -> str:
+    def build_histogram_query(cls, metric_type: str, namespace: str) -> str:
         #
         # The list_time_series API requires us to query one metric
         # at a time.
@@ -375,10 +393,13 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # The 'grpc_method' filter condition is needed because the
         # server metrics are also serving on the Channelz requests.
         #
+        # The 'csm_remote_workload_namespace_name' filter condition allows us to
+        # filter metrics just for the current test run.
         return (
             f'metric.type = "{metric_type}" AND '
             'metric.labels.grpc_status = "OK" AND '
-            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
+            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
+            f'metric.labels.csm_remote_workload_namespace_name = "{namespace}"'
         )
 
     @classmethod
@@ -394,6 +415,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         self,
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
+        namespace: str,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
         """
@@ -424,7 +446,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
-                filter=build_query_fn(metric),
+                filter=build_query_fn(metric, namespace),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
