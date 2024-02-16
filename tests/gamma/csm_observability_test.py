@@ -96,7 +96,7 @@ ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
-BuildQueryFn = Callable[[str], str]
+BuildQueryFn = Callable[[str, str], str]
 ANY = unittest.mock.ANY
 
 
@@ -201,13 +201,36 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 start_time={"seconds": start_secs},
                 end_time={"seconds": end_secs},
             )
-            histogram_results = self.query_metrics(
-                HISTOGRAM_METRICS, self.build_histogram_query, interval
+            server_histogram_results = self.query_metrics(
+                HISTOGRAM_SERVER_METRICS,
+                self.build_histogram_query,
+                self.server_namespace,
+                interval,
             )
-            counter_results = self.query_metrics(
-                COUNTER_METRICS, self.build_counter_query, interval
+            client_histogram_results = self.query_metrics(
+                HISTOGRAM_CLIENT_METRICS,
+                self.build_histogram_query,
+                self.client_namespace,
+                interval,
             )
-            all_results = {**histogram_results, **counter_results}
+            server_counter_results = self.query_metrics(
+                COUNTER_SERVER_METRICS,
+                self.build_counter_query,
+                self.server_namespace,
+                interval,
+            )
+            client_counter_results = self.query_metrics(
+                COUNTER_CLIENT_METRICS,
+                self.build_counter_query,
+                self.client_namespace,
+                interval,
+            )
+            all_results = {
+                **server_histogram_results,
+                **client_histogram_results,
+                **server_counter_results,
+                **client_counter_results,
+            }
             self.assertNotEmpty(all_results, msg="No query metrics results")
 
         with self.subTest("5_check_metrics_time_series"):
@@ -362,7 +385,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 )
 
     @classmethod
-    def build_histogram_query(cls, metric_type: str) -> str:
+    def build_histogram_query(cls, metric_type: str, namespace: str) -> str:
         #
         # The list_time_series API requires us to query one metric
         # at a time.
@@ -375,25 +398,30 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # The 'grpc_method' filter condition is needed because the
         # server metrics are also serving on the Channelz requests.
         #
+        # The 'resource.labels.namespace' filter condition allows us to
+        # filter metrics just for the current test run.
         return (
             f'metric.type = "{metric_type}" AND '
             'metric.labels.grpc_status = "OK" AND '
-            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
+            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
+            f'resource.labels.namespace = "{namespace}"'
         )
 
     @classmethod
-    def build_counter_query(cls, metric_type: str) -> str:
+    def build_counter_query(cls, metric_type: str, namespace: str) -> str:
         # For these num rpcs started counter metrics, they do not have the
         # 'grpc_status' label
         return (
             f'metric.type = "{metric_type}" AND '
-            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}"'
+            f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
+            f'resource.labels.namespace = "{namespace}"'
         )
 
     def query_metrics(
         self,
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
+        namespace: str,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
         """
@@ -424,7 +452,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
-                filter=build_query_fn(metric),
+                filter=build_query_fn(metric, namespace),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
