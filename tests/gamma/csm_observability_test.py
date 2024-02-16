@@ -398,7 +398,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # The 'grpc_method' filter condition is needed because the
         # server metrics are also serving on the Channelz requests.
         #
-        # The 'csm_remote_workload_namespace_name' filter condition allows us to
+        # The 'resource.labels.namespace' filter condition allows us to
         # filter metrics just for the current test run.
         return (
             f'metric.type = "{metric_type}" AND '
