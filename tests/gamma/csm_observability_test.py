@@ -201,25 +201,25 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 start_time={"seconds": start_secs},
                 end_time={"seconds": end_secs},
             )
-            histogram_results = self.query_metrics(
+            server_histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS,
                 self.build_histogram_query,
                 self.client_namespace,
                 interval,
             )
-            histogram_results = self.query_metrics(
+            client_histogram_results = self.query_metrics(
                 HISTOGRAM_METRICS,
                 self.build_histogram_query,
                 self.server_namespace,
                 interval,
             )
-            counter_results = self.query_metrics(
+            server_counter_results = self.query_metrics(
                 COUNTER_METRICS,
                 self.build_counter_query,
                 self.client_namespace,
                 interval,
             )
-            counter_results = self.query_metrics(
+            client_counter_results = self.query_metrics(
                 COUNTER_METRICS,
                 self.build_counter_query,
                 self.server_namespace,
@@ -415,7 +415,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         self,
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
-        namespace: str,
+        remote_namespace: str,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
         """
@@ -446,7 +446,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
-                filter=build_query_fn(metric, namespace),
+                filter=build_query_fn(metric, remote_namespace),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
