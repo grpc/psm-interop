@@ -47,6 +47,14 @@ _timedelta = datetime.timedelta
 def bootstrap_version_testcases() -> List:
     return (
         dict(
+            version="v0.16.0",
+            image="gcr.io/grpc-testing/td-grpc-bootstrap:2bf1b5ed00f852ffea8d24759c6fa673acc9ef10",
+        ),
+        dict(
+            version="v0.15.0",
+            image="gcr.io/grpc-testing/td-grpc-bootstrap:7d8d90477792e2e1bfe3a3da20b3dc9ef01d326c",
+        ),
+        dict(
             version="v0.14.0",
             image="gcr.io/grpc-testing/td-grpc-bootstrap:d6baaf7b0e0c63054ac4d9bedc09021ff261d599",
         ),
