@@ -253,13 +253,25 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         self, signalnum: _SignalNum, frame: Optional[FrameType]
     ) -> None:
         # TODO(sergiitk): move to base_testcase.BaseTestCase
-        logger.info("Caught Ctrl+C, cleaning up...")
-        self._handling_sigint = True
-        # Force resource cleanup by their name. Addresses the case where ctrl-c
-        # is pressed while waiting for the resource creation.
-        self.force_cleanup = True
-        self.tearDown()
-        self.tearDownClass()
+        if self._handling_sigint:
+            logger.info("Ctrl+C pressed twice, aborting the cleanup.")
+        else:
+            cleanup_delay_sec = 2
+            logger.info(
+                "Caught Ctrl+C. Cleanup will start in %d seconds."
+                " Press Ctrl+C again to abort.",
+                cleanup_delay_sec,
+            )
+            self._handling_sigint = True
+            # Sleep for a few seconds to allow second Ctrl-C before the cleanup.
+            time.sleep(cleanup_delay_sec)
+            # Force resource cleanup by their name. Addresses the case where
+            # ctrl-c is pressed while waiting for the resource creation.
+            self.force_cleanup = True
+            self.tearDown()
+            self.tearDownClass()
+
+        # Remove the sigint handler.
         self._handling_sigint = False
         if self._prev_sigint_handler is not None:
             signal.signal(signal.SIGINT, self._prev_sigint_handler)
