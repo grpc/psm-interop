@@ -205,6 +205,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     def _xds_test_client_for_pod(
         self, pod: k8s.V1Pod, *, server_target: str
     ) -> XdsTestClient:
+        monitoring_port = None
         if self.debug_use_port_forwarding:
             pf = self._start_port_forwarding_pod(pod, self.stats_port)
             rpc_port, rpc_host = pf.local_port, pf.local_address
