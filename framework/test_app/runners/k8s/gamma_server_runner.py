@@ -281,6 +281,7 @@ class GammaServerRunner(KubernetesServerRunner):
         test_port: int = KubernetesServerRunner.DEFAULT_TEST_PORT,
         maintenance_port: Optional[int] = None,
         secure_mode: bool = False,
+        monitoring_port: Optional[int] = None,
     ) -> XdsTestServer:
         if self.enable_csm_observability:
             if self.debug_use_port_forwarding:
