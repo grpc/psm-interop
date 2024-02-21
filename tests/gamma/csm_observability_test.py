@@ -142,6 +142,10 @@ class MetricTimeSeries:
         return yaml.dump(metric, sort_keys=False)
 
 
+# This class is purely for debugging purposes. We want to log what we see
+# from the Prometheus endpoint before being sent to Cloud Monitoring.
+# Once we determined the root cause of b/323596669 we can remove this
+# class.
 class PrometheusLogger:
     def __init__(
         self, k8s_runner: k8s_base_runner.KubernetesBaseRunner, pod_name: str
