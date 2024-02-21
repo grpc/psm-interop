@@ -41,9 +41,6 @@ class GammaServerRunner(KubernetesServerRunner):
     pre_stop_hook: bool = False
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
-    pod_monitoring_port: int = 9464
-    monitoring_port: Optional[int] = None
-    monitoring_host: Optional[str] = None
 
     route_name: str
     frontend_service_name: str
@@ -230,7 +227,7 @@ class GammaServerRunner(KubernetesServerRunner):
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
-                pod_monitoring_port=self.pod_monitoring_port,
+                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
             )
 
         servers = self._make_servers_for_deployment(
@@ -288,19 +285,18 @@ class GammaServerRunner(KubernetesServerRunner):
         if self.enable_csm_observability:
             if self.debug_use_port_forwarding:
                 pf = self._start_port_forwarding_pod(
-                    pod, self.pod_monitoring_port
+                    pod, self.DEFAULT_MONITORING_PORT
                 )
-                self.monitoring_port = pf.local_port
-                self.monitoring_host = pf.local_address
+                monitoring_port = pf.local_port
             else:
-                self.monitoring_port = self.pod_monitoring_port
-                self.monitoring_host = pod.status.pod_ip
+                monitoring_port = self.DEFAULT_MONITORING_PORT
 
         return super()._xds_test_server_for_pod(
             pod=pod,
             test_port=test_port,
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
+            monitoring_port=monitoring_port,
         )
 
     # pylint: disable=arguments-differ

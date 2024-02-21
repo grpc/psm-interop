@@ -44,9 +44,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     gcp_iam: Optional[gcp.iam.IamV1] = None
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
-    pod_monitoring_port: int = 9464
-    monitoring_port: Optional[int] = None
-    monitoring_host: Optional[str] = None
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -190,7 +187,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
-                pod_monitoring_port=self.pod_monitoring_port,
+                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
             )
 
         # Load test client pod. We need only one client at the moment
@@ -213,15 +210,13 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             rpc_port, rpc_host = pf.local_port, pf.local_address
             if self.enable_csm_observability:
                 pf = self._start_port_forwarding_pod(
-                    pod, self.pod_monitoring_port
+                    pod, self.DEFAULT_MONITORING_PORT
                 )
-                self.monitoring_port = pf.local_port
-                self.monitoring_host = pf.local_address
+                monitoring_port = pf.local_port
         else:
             rpc_port, rpc_host = self.stats_port, None
             if self.enable_csm_observability:
-                self.monitoring_port = self.pod_monitoring_port
-                self.monitoring_host = pod.status.pod_ip
+                monitoring_port = self.DEFAULT_MONITORING_PORT
 
         return XdsTestClient(
             ip=pod.status.pod_ip,
@@ -229,6 +224,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             server_target=server_target,
             hostname=pod.metadata.name,
             rpc_host=rpc_host,
+            monitoring_port=monitoring_port,
         )
 
     # pylint: disable=arguments-differ

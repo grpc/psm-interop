@@ -14,7 +14,7 @@
 import dataclasses
 import logging
 import time
-from typing import Callable, Iterable
+from typing import Callable, Iterable, TextIO
 import unittest.mock
 
 from absl import flags
@@ -30,6 +30,7 @@ from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.test_app.runners.k8s import gamma_server_runner
+from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,27 @@ class MetricTimeSeries:
         return yaml.dump(metric, sort_keys=False)
 
 
+class PrometheusLogger:
+    def __init__(
+        self, k8s_runner: k8s_base_runner.KubernetesBaseRunner, pod_name: str
+    ):
+        logfile_name = (
+            f"{k8s_runner.k8s_namespace.name}_{pod_name}_prometheus.log"
+        )
+        log_path = k8s_runner.logs_subdir / logfile_name
+        self.log_stream: TextIO = open(
+            log_path, "w", errors="ignore", encoding="utf-8"
+        )
+
+    def write(self, line):
+        self.log_stream.write(line)
+        self.log_stream.write("\n")
+        self.log_stream.flush()
+
+    def close(self):
+        self.log_stream.close()
+
+
 class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     metric_client: monitoring_v3.MetricServiceClient
 
@@ -191,25 +213,37 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("4_query_cloud_monitoring_metrics"):
+        with self.subTest("4_export_prometheus_metrics_data"):
             logger.info(
                 "Letting test client run for %d seconds to produce metric data",
                 TEST_RUN_SECS,
             )
-            for i in range(0, TEST_RUN_SECS // 10):
-                time.sleep(10)
-                logger.info(
-                    self.ping_gmp_endpoint(
-                        self.server_runner.monitoring_host,
-                        self.server_runner.monitoring_port,
+            server_prometheus_logger = PrometheusLogger(
+                self.server_runner, test_server.hostname
+            )
+            client_prometheus_logger = PrometheusLogger(
+                self.client_runner, test_client.hostname
+            )
+            try:
+                for i in range(0, TEST_RUN_SECS // 10):
+                    time.sleep(10)
+                    server_prometheus_logger.write(
+                        self.ping_prometheus_endpoint(
+                            test_server.rpc_host,
+                            test_server.monitoring_port,
+                        )
                     )
-                )
-                logger.info(
-                    self.ping_gmp_endpoint(
-                        self.client_runner.monitoring_host,
-                        self.client_runner.monitoring_port,
+                    client_prometheus_logger.write(
+                        self.ping_prometheus_endpoint(
+                            test_client.rpc_host,
+                            test_client.monitoring_port,
+                        )
                     )
-                )
+            finally:
+                server_prometheus_logger.close()
+                client_prometheus_logger.close()
+
+        with self.subTest("5_query_cloud_monitoring_metrics"):
             end_secs = int(time.time())
             interval = monitoring_v3.TimeInterval(
                 start_time={"seconds": start_secs},
@@ -247,14 +281,14 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             }
             self.assertNotEmpty(all_results, msg="No query metrics results")
 
-        with self.subTest("5_check_metrics_time_series"):
+        with self.subTest("6_check_metrics_time_series"):
             for metric in ALL_METRICS:
                 # Every metric needs to exist in the query results
                 self.assertIn(metric, all_results)
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("6_check_metrics_labels_histogram_client"):
+        with self.subTest("7_check_metrics_labels_histogram_client"):
             expected_metric_labels = {
                 "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
@@ -282,7 +316,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("7_check_metrics_labels_histogram_server"):
+        with self.subTest("8_check_metrics_labels_histogram_server"):
             expected_metric_labels = {
                 "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
@@ -307,7 +341,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("8_check_metrics_labels_counter_client"):
+        with self.subTest("9_check_metrics_labels_counter_client"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_target": ANY,
@@ -323,7 +357,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the correct set of metric keys and
         # values
-        with self.subTest("9_check_metrics_labels_counter_server"):
+        with self.subTest("10_check_metrics_labels_counter_server"):
             expected_metric_labels = {
                 "grpc_method": GRPC_METHOD_NAME,
                 "otel_scope_name": ANY,
@@ -338,7 +372,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the right set of monitored resource
         # label keys and values
-        with self.subTest("10_check_client_resource_labels_client"):
+        with self.subTest("11_check_client_resource_labels_client"):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
@@ -362,7 +396,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Testing whether each metric has the right set of monitored resource
         # label keys and values
-        with self.subTest("11_check_server_resource_labels_server"):
+        with self.subTest("12_check_server_resource_labels_server"):
             # all metrics should have the same set of monitored resource labels
             # keys, which come from the GMP job
             expected_resource_labels = {
@@ -387,7 +421,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # This tests whether each of the "bytes sent" histogram type metric
         # should have at least 1 data point whose mean should converge to be
         # close to the number of bytes being sent by the RPCs.
-        with self.subTest("12_check_bytes_sent_vs_data_points"):
+        with self.subTest("13_check_bytes_sent_vs_data_points"):
             for metric in (METRIC_CLIENT_ATTEMPT_SENT, METRIC_SERVER_CALL_RCVD):
                 self.assertAtLeastOnePointWithinRange(
                     all_results[metric].points, REQUEST_PAYLOAD_SIZE
@@ -471,7 +505,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
             )
-            time_series = list(filter(self.is_legit_time_series, response))
+            time_series = list(response)
 
             self.assertLen(
                 time_series,
@@ -488,21 +522,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
             results[metric] = metric_time_series
         return results
-
-    @classmethod
-    def is_legit_time_series(
-        cls, series: monitoring_v3.types.TimeSeries
-    ) -> bool:
-        for point in series.points:
-            # Test flake: we found some time series with no actual data point
-            # in prod test runs.
-            # Here we will only include time series with actual data in it.
-            if point.value.distribution_value.count or point.value.double_value:
-                return True
-        logger.warning(
-            "Warning: found time_series with no valid data point\n%s", series
-        )
-        return False
 
     def assertAtLeastOnePointWithinRange(
         self,
@@ -525,20 +544,20 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
         )
 
-    def ping_gmp_endpoint(
+    def ping_prometheus_endpoint(
         self, monitoring_host: str, monitoring_port: int
     ) -> str:
         """
-        A helper function to ping the GMP endpoint to get what GMP sees
-        from the OTel exporter before passing metrics to Cloud Monitoring.
+        A helper function to ping the pod's Prometheus endpoint to get what GMP
+        sees from the OTel exporter before passing metrics to Cloud Monitoring.
         """
         try:
-            gmp_log = requests.get(
+            prometheus_log = requests.get(
                 f"http://{monitoring_host}:{monitoring_port}/metrics"
             )
-            return "\n".join(gmp_log.text.splitlines())
+            return "\n".join(prometheus_log.text.splitlines())
         except RequestException as e:
-            logger.error("Http request to GMP endpoint failed: %r", e)
+            logger.warning("Http request to Prometheus endpoint failed: %r", e)
             # It's OK the caller will receive nothing in case of an exception.
             # Caller can continue.
             return ""
