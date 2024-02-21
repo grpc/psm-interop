@@ -75,7 +75,6 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self.server_target = server_target
         self.maintenance_port = maintenance_port or rpc_port
         self.hostname = hostname
-        self.rpc_host = rpc_host
         self.monitoring_port = monitoring_port
 
     @property

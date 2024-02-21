@@ -61,7 +61,6 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         self.maintenance_port = maintenance_port or rpc_port
         self.secure_mode = secure_mode
         self.xds_host, self.xds_port = xds_host, xds_port
-        self.rpc_host = rpc_host
         self.monitoring_port = monitoring_port
 
     @property
