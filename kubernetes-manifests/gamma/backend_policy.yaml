@@ -2,7 +2,7 @@
 kind: GCPBackendPolicy
 apiVersion: networking.gke.io/v1
 metadata:
-  name: ${be_policy_name}
+  name: ${backend_policy_name}
   namespace: ${namespace_name}
   labels:
     owner: xds-k8s-interop-test
@@ -12,6 +12,8 @@ spec:
     kind: Service
     name: ${service_name}
   default:
+    % if draining_timeout_sec > 0:
     connectionDraining:
-      drainingTimeoutSec: 600
+      drainingTimeoutSec: ${draining_timeout_sec}
+    % endif
 ...

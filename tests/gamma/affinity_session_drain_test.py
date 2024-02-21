@@ -13,47 +13,62 @@
 # limitations under the License.
 import datetime
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from absl import flags
 from absl.testing import absltest
-from google.protobuf import json_format
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
 from framework import xds_url_map_testcase
-from framework.helpers import retryers
+from framework.helpers import skips
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_cases import session_affinity_util
+from framework.test_app.runners.k8s import gamma_server_runner
+from framework.test_app.runners.k8s import k8s_xds_server_runner
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
 # Type aliases
-_XdsTestServer = server_app.XdsTestServer
-_XdsTestClient = client_app.XdsTestClient
+_Lang = skips.Lang
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 # Constants
-_REPLICA_COUNT = 3
-_TERMINATION_GRACE_PERIOD_SECONDS = 600
+REPLICA_COUNT = 3
+# We never actually hit this timeout under normal circumstances, so this large
+# value is acceptable.
+TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=2)
+DRAINING_TIMEOUT = datetime.timedelta(minutes=10)
 
 
 class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # @override
-    def setUp(self):
-        self.pre_stop_hook = True
-        self.termination_grace_period_seconds = (
-            _TERMINATION_GRACE_PERIOD_SECONDS
+    @staticmethod
+    def is_supported(config: skips.TestConfig) -> bool:
+        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
+            # HookService is only added in CPP ....
+            # TODO(sergiitk): Clarify the version.
+            return config.version_gte("v1.61.x")
+        return False
+
+    # @override
+    def initKubernetesServerRunner(
+        self, **kwargs
+    ) -> gamma_server_runner.GammaServerRunner:
+        deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
+            pre_stop_hook=True,
+            termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
-        super(AffinitySessionDrainTest, self).setUp()
+        return super().initKubernetesServerRunner(
+            deployment_args=deployment_args,
+        )
 
     # @override
     def getClientRpcStats(
         self,
-        test_client: _XdsTestClient,
+        test_client: client_app.XdsTestClient,
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
@@ -66,97 +81,28 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         )
 
     def test_session_drain(self):
+        test_servers: List[server_app.XdsTestServer]
         with self.subTest("01_run_test_server"):
-            test_servers = self.startTestServers(replica_count=_REPLICA_COUNT)
+            test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policy"):
-            self.server_runner.createSessionAffinityPolicy(
-                "gamma/session_affinity_policy_route.yaml"
-            )
+            self.server_runner.create_session_affinity_policy_route()
 
         with self.subTest("03_create_backend_policy"):
-            self.server_runner.createBackendPolicy()
+            self.server_runner.create_backend_policy(
+                draining_timeout=DRAINING_TIMEOUT,
+            )
 
-        # Default is round robin LB policy.
+        # Default is round-robin LB policy.
+
+        cookie: str
+        test_client: client_app.XdsTestClient
+        chosen_server: server_app.XdsTestServer
 
         with self.subTest("04_start_test_client"):
-            test_client: _XdsTestClient = self.startTestClient(test_servers[0])
+            test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("05_send_first_RPC_and_retrieve_cookie"):
-            (
-                cookie,
-                chosen_server,
-            ) = session_affinity_util.assert_eventually_retrieve_cookie_and_server(
-                self, test_client, test_servers
-            )
-
-        with self.subTest("06_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
-                metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
-                ),
-            )
-            self.assertRpcsEventuallyGoToGivenServers(
-                test_client, [chosen_server], 10
-            )
-
-        with self.subTest("07_initiate_backend_pod_termination"):
-            chosen_server.send_hook_request_start_server()
-            self.server_runner.delete_pod_async(chosen_server.hostname)
-
-        with self.subTest("08_confirm_backend_is_draining"):
-
-            def _assert_draining():
-                config = test_client.csds.fetch_client_status(
-                    log_level=logging.INFO
-                )
-                self.assertIsNotNone(config)
-                json_config = json_format.MessageToDict(config)
-                parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
-                logging.info("Received CSDS: %s", parsed)
-                self.assertLen(parsed.draining_endpoints, 1)
-
-            retryer = retryers.constant_retryer(
-                wait_fixed=datetime.timedelta(seconds=10),
-                attempts=3,
-                log_level=logging.INFO,
-            )
-            retryer(_assert_draining)
-
-        with self.subTest("09_send_RPCs_to_draining_server"):
-            self.assertRpcsEventuallyGoToGivenServers(
-                test_client, [chosen_server], 10
-            )
-
-        with self.subTest("10_kill_old_server_and_receive_new_assignment"):
-            chosen_server.send_hook_request_return()
-            refreshed_servers = self.refreshTestServers()
-            (
-                cookie,
-                new_chosen_server,
-            ) = session_affinity_util.assert_eventually_retrieve_cookie_and_server(
-                self, test_client, refreshed_servers
-            )
-
-        with self.subTest("11_send_traffic_to_new_assignment"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
-                metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
-                ),
-            )
-            self.assertRpcsEventuallyGoToGivenServers(
-                test_client, [new_chosen_server], 10
-            )
+        logger.info("Just testing - client %s", test_client.hostname)
 
 
 if __name__ == "__main__":

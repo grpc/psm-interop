@@ -34,11 +34,6 @@ RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 _REPLICA_COUNT = 3
 
-# TODO(rbellevi): set this property on the prestop hook test class
-# We never actually hit this timeout under normal circumstances, so this large
-# value is acceptable.
-# termination_grace_period_seconds: int = 600
-
 
 class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     def getClientRpcStats(
@@ -64,7 +59,7 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
 
         with self.subTest("02_create_ssa_filter"):
-            self.server_runner.createSessionAffinityFilter()
+            self.server_runner.create_session_affinity_filter()
 
         # Default is round robin LB policy.
 
@@ -100,9 +95,7 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             test_servers = self.startTestServers(replica_count=_REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policy"):
-            self.server_runner.createSessionAffinityPolicy(
-                "gamma/session_affinity_policy_route.yaml"
-            )
+            self.server_runner.create_session_affinity_policy_route()
 
         # Default is round robin LB policy.
 
@@ -138,9 +131,7 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             test_servers = self.startTestServers(replica_count=_REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policy"):
-            self.server_runner.createSessionAffinityPolicy(
-                "gamma/session_affinity_policy_service.yaml"
-            )
+            self.server_runner.create_session_affinity_policy_service()
 
         # Default is round robin LB policy.
 

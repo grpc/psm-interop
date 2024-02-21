@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime
 import logging
-from typing import List, Optional
+from typing import List
 
 from framework.infrastructure import k8s
 import framework.infrastructure.traffic_director_gamma as td_gamma
@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     server_runner: GammaServerRunner
     frontend_service_name: str
-
-    pre_stop_hook: bool = False
-    termination_grace_period_seconds: Optional[int] = None
 
     def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
@@ -77,7 +74,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         # Cleanup.
         self.force_cleanup = False
-        self.force_cleanup_namespace = True
+        self.force_cleanup_namespace = False
 
     # TODO(sergiitk): [GAMMA] Make a TD-manager-less base test case
     def initTrafficDirectorManager(
@@ -108,8 +105,6 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
-            termination_grace_period_seconds=self.termination_grace_period_seconds,
-            pre_stop_hook=self.pre_stop_hook,
             **kwargs,
         )
 

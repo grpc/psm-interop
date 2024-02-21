@@ -567,30 +567,31 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     def _create_backend_policy(
         self, template, **kwargs
     ) -> k8s.GcpBackendPolicy:
-        be_policy = self._create_from_template(
+        backend_policy_name: str = kwargs["backend_policy_name"]
+        backend_policy = self._create_from_template(
             template,
             custom_object=True,
             **kwargs,
         )
         if not (
-            isinstance(be_policy, k8s.GcpBackendPolicy)
-            and be_policy.kind == "GCPBackendPolicy"
+            isinstance(backend_policy, k8s.GcpBackendPolicy)
+            and backend_policy.kind == "GCPBackendPolicy"
         ):
             raise _RunnerError(
                 f"Expected ResourceInstance[GCPBackendPolicy] to be"
                 f" created from manifest {template}"
             )
-        if be_policy.metadata.name != kwargs["be_policy_name"]:
+        if backend_policy.metadata.name != backend_policy_name:
             raise _RunnerError(
                 "ResourceInstance[GCPBackendPolicy] created with"
-                f" unexpected name: {be_policy.metadata.name}"
+                f" unexpected name: {backend_policy.metadata.name}"
             )
         logger.debug(
             "ResourceInstance[GCPBackendPolicy] %s created at %s",
-            be_policy.metadata.name,
-            be_policy.metadata.creation_timestamp,
+            backend_policy.metadata.name,
+            backend_policy.metadata.creation_timestamp,
         )
-        return be_policy
+        return backend_policy
 
     def _create_service(self, template, **kwargs) -> k8s.V1Service:
         service = self._create_from_template(template, **kwargs)
