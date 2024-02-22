@@ -123,11 +123,18 @@ class PortForwarder:
 
     def close(self) -> None:
         if self.subprocess is not None:
-            logger.info(
-                "Shutting down port forwarding, pid %s", self.subprocess.pid
-            )
+            logger.info("Shutting down %s", self)
             self.subprocess.kill()
             stdout, _ = self.subprocess.communicate(timeout=5)
-            logger.info("Port forwarding stopped")
-            logger.debug("Port forwarding remaining stdout: %s", stdout)
+            logger.debug(
+                "Port forwarding stopped. Remaining stdout: %s", stdout
+            )
             self.subprocess = None
+
+    def __str__(self):
+        return (
+            f"PortForwarder(pid='{self.subprocess.pid}',"
+            f" namespace='{self.namespace}',"
+            f" destination='{self.destination}',"
+            f" '{self.local_address}:{self.local_port} -> {self.remote_port}')"
+        )

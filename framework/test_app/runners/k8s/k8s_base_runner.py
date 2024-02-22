@@ -826,11 +826,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int
     ) -> k8s.PortForwarder:
-        logger.info(
-            "LOCAL DEV MODE: Enabling port forwarding to %s:%s",
-            pod.status.pod_ip,
-            remote_port,
-        )
         port_forwarder = self.k8s_namespace.port_forward_pod(pod, remote_port)
         self.pod_port_forwarders.append(port_forwarder)
         return port_forwarder
