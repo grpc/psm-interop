@@ -1,15 +1,40 @@
-<%def name="lifecycle()">
-  % if pre_stop_hook:
-    preStop:
-      exec:
-        command:
-        - "grpcurl"
-        - "-plaintext"
-        - "-import-path"
-        - "/"
-        - "-proto"
-        - "/src/proto/grpc/testing/test.proto"
-        - "localhost:8000"
-        - "grpc.testing.HookService/Hook"
-  % endif
+<%def name="lifecycle()" filter="trim">
+      ## containers:
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "grpcurl"
+              - "-plaintext"
+              - "-import-path"
+              - "/"
+              - "-proto"
+              - "/src/proto/grpc/testing/test.proto"
+              - "localhost:8000"
+              - "grpc.testing.HookService/Hook"
+</%def>
+<%def name="container()" filter="trim">
+      ## containers:
+      - name: hook
+        image: gcr.io/grpc-testing/rbellevi/pre-stop-hook-test:6
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/prestop.sh"]
+        volumeMounts:
+          ${volume_mount()}
+</%def>
+<%def name="volume_mount()" filter="trim">
+      ## containers:
+        ## volumeMounts:
+          - name: prestop-hook-volume
+            ## TODO(sergiitk): update to /tmp/prestop-hook
+            mountPath: /hook
+
+</%def>
+<%def name="volume()" filter="trim">
+      ## volumes:
+        - name: prestop-hook-volume
+          emptyDir:
+            medium: Memory
 </%def>

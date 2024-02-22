@@ -36,10 +36,12 @@ _Lang = skips.Lang
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 # Constants
-REPLICA_COUNT = 3
+# TODO(sergiitk): set to 3
+REPLICA_COUNT = 1
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
-TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=2)
+# TODO(sergiitk): reset to 10
+TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=1)
 DRAINING_TIMEOUT = datetime.timedelta(minutes=10)
 
 

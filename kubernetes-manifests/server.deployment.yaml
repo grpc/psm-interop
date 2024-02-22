@@ -1,4 +1,4 @@
-<%namespace name="prestop_hook" file="prestop-hook.yaml" import="pre_stop_hook" />
+<%namespace name="prestop_hook" file="prestop-hook.yaml" />
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,6 +39,7 @@ spec:
           ## Extend the number of probes well beyond the duration of the test
           ## driver waiting for the container to start.
           failureThreshold: 1000
+        ${prestop_hook.lifecycle() if pre_stop_hook else ''}
         args:
           - "--port=${test_port}"
           % if enable_csm_observability:
@@ -77,6 +78,7 @@ spec:
           - mountPath: /tmp/grpc-xds/
             name: grpc-td-conf
             readOnly: true
+          ${prestop_hook.volume_mount() if pre_stop_hook else ''}
         resources:
           limits:
             cpu: 800m
@@ -84,8 +86,7 @@ spec:
           requests:
             cpu: 100m
             memory: 512Mi
-        lifecycle:
-          ${prestop_hook.lifecycle()}
+      ${prestop_hook.container() if pre_stop_hook else ''}
       initContainers:
         - name: grpc-td-init
           image: ${td_bootstrap_image}
@@ -118,4 +119,5 @@ spec:
         - name: grpc-td-conf
           emptyDir:
             medium: Memory
+        ${prestop_hook.volume() if pre_stop_hook else ''}
 ...
