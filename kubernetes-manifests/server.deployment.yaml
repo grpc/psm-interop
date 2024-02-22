@@ -1,3 +1,4 @@
+<%namespace name="prestop_hook" file="prestop-hook.yaml" import="pre_stop_hook" />
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -83,12 +84,8 @@ spec:
           requests:
             cpu: 100m
             memory: 512Mi
-        % if pre_stop_hook:
         lifecycle:
-          preStop:
-            exec:
-              command: ["grpcurl", "-plaintext", "-import-path", "/", "-proto", "/src/proto/grpc/testing/test.proto", "localhost:8000", "grpc.testing.HookService/Hook"]
-        % endif
+          ${prestop_hook.lifecycle()}
       initContainers:
         - name: grpc-td-init
           image: ${td_bootstrap_image}

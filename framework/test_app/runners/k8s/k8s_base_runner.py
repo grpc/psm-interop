@@ -14,6 +14,7 @@
 """
 Common functionality for running xDS Test Client and Server on Kubernetes.
 """
+import functools
 from abc import ABCMeta
 import contextlib
 import dataclasses
@@ -23,6 +24,7 @@ import pathlib
 from typing import List, Optional
 
 import mako.template
+import mako.lookup
 import yaml
 
 from framework.helpers import retryers
@@ -226,11 +228,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         return total_restart
 
     @classmethod
-    def _render_template(cls, template_file, **kwargs):
-        template = mako.template.Template(filename=str(template_file))
-        return template.render(**kwargs)
-
-    @classmethod
     def _manifests_from_yaml_file(cls, yaml_file):
         with open(yaml_file) as f:
             with contextlib.closing(yaml.safe_load_all(f)) as yml:
@@ -243,12 +240,30 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             for manifest in yml:
                 yield manifest
 
+    def _render_template(self, template_file: str, **kwargs):
+        template = self._template_lookup.get_template(template_file)
+        return template.render(**kwargs)
+
     @classmethod
-    def _template_file_from_name(cls, template_name):
+    @property
+    @functools.cache
+    def _template_lookup(cls) -> mako.lookup.TemplateLookup:
+        return mako.lookup.TemplateLookup(
+            directories=(str(cls.template_root_path),),
+            input_encoding="utf-8",
+            output_encoding="utf-8",
+            encoding_errors="replace",
+            filesystem_checks=False,
+        )
+
+    @classmethod
+    @property
+    @functools.cache
+    def template_root_path(cls) -> pathlib.Path:
         templates_path = (
             pathlib.Path(__file__).parent / cls.TEMPLATE_DIR_RELATIVE_PATH
         )
-        return templates_path.joinpath(template_name).resolve()
+        return templates_path.resolve()
 
     def _create_from_template(
         self,
@@ -257,10 +272,10 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         custom_object: bool = False,
         **kwargs,
     ) -> object:
-        template_file = self._template_file_from_name(template_name)
-        logger.debug("Loading k8s manifest template: %s", template_file)
+        template_file = self.template_root_path / template_name
+        logger.info("Loading k8s manifest template: %s", template_file)
 
-        yaml_doc = self._render_template(template_file, **kwargs)
+        yaml_doc = self._render_template(template_name, **kwargs)
         logger.info(
             "Rendered template %s/%s:\n%s",
             self.TEMPLATE_DIR_NAME,
