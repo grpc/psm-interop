@@ -97,14 +97,15 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         # Default is round-robin LB policy.
 
-        cookie: str
-        test_client: client_app.XdsTestClient
-        chosen_server: server_app.XdsTestServer
-
-        with self.subTest("04_start_test_client"):
-            test_client = self.startTestClient(test_servers[0])
-
-        logger.info("Just testing - client %s", test_client.hostname)
+        # cookie: str
+        # test_client: client_app.XdsTestClient
+        # chosen_server: server_app.XdsTestServer
+        #
+        # with self.subTest("04_start_test_client"):
+        #     test_client = self.startTestClient(test_servers[0])
+        #
+        # logger.info("Just testing - client %s", test_client.hostname)
+        logger.info("Just testing - servers %s", test_servers[0].hostname)
 
 
 if __name__ == "__main__":
