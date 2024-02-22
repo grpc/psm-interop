@@ -241,11 +241,11 @@ class GammaServerRunner(KubernetesServerRunner):
         # The controller will not populate the NEGs until there are
         # endpoint slices.
         # For this reason, we run this check after the servers were created,
-        # and increase the wait time from 1 minute to 3.
+        # and increased the default wait time (1m).
         self._wait_service_neg_status_annotation(
             self.service_name,
             test_port,
-            timeout_sec=datetime.timedelta(minutes=3).total_seconds(),
+            timeout_sec=datetime.timedelta(minutes=4).total_seconds(),
         )
 
         return servers
