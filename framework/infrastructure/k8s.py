@@ -146,7 +146,7 @@ class KubernetesApiManager:
     def dynamic_client(self) -> dynamic.DynamicClient:
         return self._dynamic_client
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def grpc_route(self, version: str) -> dynamic_res.Resource:
         api_name = "gateway.networking.k8s.io"
         kind = "GRPCRoute"
@@ -160,7 +160,7 @@ class KubernetesApiManager:
 
         return self._load_dynamic_api(api_name, version, kind)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def http_route(self, version: str) -> dynamic_res.Resource:
         api_name = "gateway.networking.k8s.io"
         kind = "HTTPRoute"
@@ -172,7 +172,7 @@ class KubernetesApiManager:
 
         return self._load_dynamic_api(api_name, version, kind)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def gcp_session_affinity_filter(self, version: str) -> dynamic_res.Resource:
         api_name = "networking.gke.io"
         kind = "GCPSessionAffinityFilter"
@@ -184,7 +184,7 @@ class KubernetesApiManager:
 
         return self._load_dynamic_api(api_name, version, kind)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def gcp_session_affinity_policy(self, version: str) -> dynamic_res.Resource:
         api_name = "networking.gke.io"
         kind = "GCPSessionAffinityPolicy"
@@ -196,7 +196,7 @@ class KubernetesApiManager:
 
         return self._load_dynamic_api(api_name, version, kind)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def gcp_backend_policy(self, version: str) -> dynamic_res.Resource:
         api_name = "networking.gke.io"
         kind = "GCPBackendPolicy"
@@ -208,7 +208,7 @@ class KubernetesApiManager:
 
         return self._load_dynamic_api(api_name, version, kind)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def pod_monitoring(self, version: str) -> dynamic_res.Resource:
         api_name = "monitoring.googleapis.com"
         kind = "PodMonitoring"
@@ -296,12 +296,12 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         return self._name
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_gke_mesh(self) -> dynamic_res.Resource:
         return self._get_dynamic_api("net.gke.io/v1alpha1", "TDMesh")
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_grpc_route(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "gateway.networking.k8s.io/v1alpha2",
@@ -309,7 +309,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_http_route(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "gateway.networking.k8s.io/v1beta1",
@@ -317,7 +317,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_session_affinity_filter(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
@@ -325,7 +325,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_session_affinity_policy(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
@@ -333,7 +333,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def pod_monitoring(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "monitoring.googleapis.com/v1",
@@ -341,7 +341,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def api_backend_policy(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
@@ -367,7 +367,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         api = self._get_dynamic_api(manifest["apiVersion"], manifest["kind"])
         return api.create(manifest)
 
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def _get_dynamic_api(self, api_version, kind) -> dynamic_res.Resource:
         group, _, version = api_version.partition("/")
 

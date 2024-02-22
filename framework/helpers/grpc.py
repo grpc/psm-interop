@@ -27,7 +27,7 @@ RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
 MetadataByPeer: list[str, RpcMetadata]
 
 
-@functools.cache  # pylint: disable=no-member
+@functools.cache
 def status_from_int(grpc_status_int: int) -> Optional[grpc.StatusCode]:
     """Converts the integer gRPC status code to the grpc.StatusCode enum."""
     for grpc_status in grpc.StatusCode:
@@ -63,7 +63,7 @@ class PrettyStatsPerMethod:
     result: Dict[str, int]
 
     @property
-    @functools.cache  # pylint: disable=no-member
+    @functools.cache
     def rpcs_completed(self):
         """Returns the total count of competed RPCs across all statuses."""
         return sum(self.result.values())
