@@ -62,7 +62,8 @@ class PrettyStatsPerMethod:
     # }
     result: Dict[str, int]
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def rpcs_completed(self):
         """Returns the total count of competed RPCs across all statuses."""
         return sum(self.result.values())

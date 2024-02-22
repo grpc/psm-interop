@@ -295,46 +295,53 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def name(self):
         return self._name
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_gke_mesh(self) -> dynamic_res.Resource:
         return self._get_dynamic_api("net.gke.io/v1alpha1", "TDMesh")
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_grpc_route(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "gateway.networking.k8s.io/v1alpha2",
             "GRPCRoute",
         )
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_http_route(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "gateway.networking.k8s.io/v1beta1",
             "HTTPRoute",
         )
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_session_affinity_filter(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
             "GCPSessionAffinityFilter",
         )
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_session_affinity_policy(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
             "GCPSessionAffinityPolicy",
         )
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def pod_monitoring(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "monitoring.googleapis.com/v1",
             "PodMonitoring",
         )
 
-    @functools.cached_property  # pylint: disable=no-member
+    @property
+    @functools.cache  # pylint: disable=no-member
     def api_backend_policy(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
             "networking.gke.io/v1",
