@@ -231,11 +231,18 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             try:
                 for i in range(0, TEST_RUN_SECS // 10):
                     time.sleep(10)
+                    curr_secs = int(time.time())
+                    server_prometheus_logger.write(
+                        f"Prometheus endpoint content at {curr_secs}"
+                    )
                     server_prometheus_logger.write(
                         self.ping_prometheus_endpoint(
                             test_server.rpc_host,
                             test_server.monitoring_port,
                         )
+                    )
+                    client_prometheus_logger.write(
+                        f"Prometheus endpoint content at {curr_secs}"
                     )
                     client_prometheus_logger.write(
                         self.ping_prometheus_endpoint(
