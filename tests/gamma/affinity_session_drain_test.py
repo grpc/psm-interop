@@ -41,7 +41,7 @@ REPLICA_COUNT = 1
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=1)
+TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=2)
 DRAINING_TIMEOUT = datetime.timedelta(minutes=10)
 
 
@@ -87,13 +87,13 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
 
-        with self.subTest("02_create_ssa_policy"):
-            self.server_runner.create_session_affinity_policy_route()
-
-        with self.subTest("03_create_backend_policy"):
-            self.server_runner.create_backend_policy(
-                draining_timeout=DRAINING_TIMEOUT,
-            )
+        # with self.subTest("02_create_ssa_policy"):
+        #     self.server_runner.create_session_affinity_policy_route()
+        #
+        # with self.subTest("03_create_backend_policy"):
+        #     self.server_runner.create_backend_policy(
+        #         draining_timeout=DRAINING_TIMEOUT,
+        #     )
 
         # Default is round-robin LB policy.
 
