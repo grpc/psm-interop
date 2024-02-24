@@ -133,6 +133,9 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         )
         super().run()
 
+        # TODO(sergiitk): move to the object config, and remove from args.
+        self.log_to_stdout = log_to_stdout
+
         if self.enable_workload_identity:
             # Allow Kubernetes service account to use the GCP service account
             # identity.
@@ -187,17 +190,30 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
                 pod_monitoring_name=self.pod_monitoring_name,
             )
 
-        # Load test client pod. We need only one client at the moment
-        pod_name = self._wait_deployment_pod_count(self.deployment)[0]
-        pod: k8s.V1Pod = self._wait_pod_started(pod_name)
-        if self.should_collect_logs:
-            self._start_logging_pod(pod, log_to_stdout=log_to_stdout)
+        # We don't support for multiple client replicas at the moment.
+        return self._make_clients_for_deployment(server_target=server_target)[0]
+
+    def _make_clients_for_deployment(
+        self, replica_count: int = 1, *, server_target: str
+    ) -> list[XdsTestClient]:
+        pod_names = self._wait_deployment_pod_count(
+            self.deployment, replica_count
+        )
+
+        for pod_name in pod_names:
+            pod = self._wait_pod_started(pod_name)
+            self._pod_started_logic(pod)
 
         # Verify the deployment reports all pods started as well.
-        self._wait_deployment_with_available_replicas(self.deployment_name)
+        self._wait_deployment_with_available_replicas(
+            self.deployment_name, replica_count
+        )
         self._start_completed()
 
-        return self._xds_test_client_for_pod(pod, server_target=server_target)
+        return [
+            self._xds_test_client_for_pod(pod, server_target=server_target)
+            for pod in self.pods_started.values()
+        ]
 
     def _xds_test_client_for_pod(
         self, pod: k8s.V1Pod, *, server_target: str

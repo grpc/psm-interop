@@ -14,17 +14,18 @@
 """
 Common functionality for running xDS Test Client and Server on Kubernetes.
 """
-import functools
 from abc import ABCMeta
+import collections
 import contextlib
 import dataclasses
 import datetime
+import functools
 import logging
 import pathlib
 from typing import List, Optional
 
-import mako.template
 import mako.lookup
+import mako.template
 import yaml
 
 from framework.helpers import retryers
@@ -53,6 +54,10 @@ class RunHistory:
     time_stopped: _datetime
 
 
+# TODO(sergiitk): Wow this class is dirty. Tracking managed object state mixed
+#   with k8s API wrappers, yaml parsing, mako templating and other weird stuff.
+#   Public methods are impossible to find among all the _private().
+#   This monster must be broken apart, or it'll eat us first.
 class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Pylint wants abstract classes to override abstract methods.
     # pylint: disable=abstract-method
@@ -60,8 +65,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     TEMPLATE_DIR_NAME = "kubernetes-manifests"
     TEMPLATE_DIR_RELATIVE_PATH = f"../../../../{TEMPLATE_DIR_NAME}"
     ROLE_WORKLOAD_IDENTITY_USER = "roles/iam.workloadIdentityUser"
-    pod_port_forwarders: List[k8s.PortForwarder]
-    pod_log_collectors: List[k8s.PodLogCollector]
 
     # Required fields.
     k8s_namespace: k8s.KubernetesNamespace
@@ -74,17 +77,40 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Fields with default values.
     namespace_template: str = "namespace.yaml"
     reuse_namespace: bool = False
+    log_to_stdout: bool = False
 
-    # Mutable state. Describes the current run.
+    # The history of all runs performed by this runner.
+    # Persisted across multiple runs.
+    run_history: collections.deque[RunHistory]
+
+    # Below is mutable state associated with the current run.
     namespace: Optional[k8s.V1Namespace] = None
     deployment: Optional[k8s.V1Deployment] = None
     deployment_id: Optional[str] = None
     service_account: Optional[k8s.V1ServiceAccount] = None
+
+    # A map of pod names to pod objects as they were at the moment
+    # of deployment creation.
+    # All user-requested operations that modify the deployment directly (such as
+    # scaling, manual pod deletion, etc.) must update this mapping.
+    # Note that this doesn't represent the current state of the pods, so
+    # don't update pod definitions just because they loaded at a later time.
+    pods_started: dict[str, k8s.V1Pod]
+    # When a pod is shut down due to a user-requested operation described above,
+    # delete it from pods_created, and move to pods_stopped.
+    pods_stopped: dict[str, k8s.V1Pod]
+
+    # A map of pod names to grpc apps.
+    # pods_grpc_app: dict[str, framework.rpc.grpc.GrpcApp]
+
+    # Auxiliary resources created for the current run.
+    pod_port_forwarders: list[k8s.PortForwarder]
+    pod_log_collectors: list[k8s.PodLogCollector]
+
+    # Current run metadata.
     time_start_requested: Optional[_datetime] = None
     time_start_completed: Optional[_datetime] = None
     time_stopped: Optional[_datetime] = None
-    # The history of all runs performed by this runner.
-    run_history: List[RunHistory]
 
     def __init__(
         self,
@@ -114,10 +140,11 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             self.namespace_template = namespace_template
         self.reuse_namespace = reuse_namespace
 
-        # Mutable state
-        self.run_history = []
-        self.pod_port_forwarders = []
-        self.pod_log_collectors = []
+        # Persistent across many runs.
+        self.run_history = collections.deque()
+
+        # Mutable state associated with each run.
+        self._reset_state()
 
         # Highlighter.
         self._highlighter = _HighlighterYaml()
@@ -175,6 +202,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 len(self.pod_log_collectors),
             )
 
+        # Reset the mutable state associated with the current run.
         self.namespace = None
         self.deployment = None
         self.deployment_id = None
@@ -184,6 +212,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.time_stopped = None
         self.pod_port_forwarders = []
         self.pod_log_collectors = []
+        self.pods_started = {}
+        self.pods_stopped = {}
 
     def _cleanup_namespace(self, *, force=False):
         if (self.namespace and not self.reuse_namespace) or force:
@@ -273,7 +303,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         **kwargs,
     ) -> object:
         template_file = self.template_root_path / template_name
-        logger.info("Loading k8s manifest template: %s", template_file)
+        logger.debug("Loading k8s manifest template: %s", template_file)
 
         yaml_doc = self._render_template(template_name, **kwargs)
         logger.info(
@@ -298,11 +328,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
         logger.info("%s %s created", k8s_object.kind, k8s_object.metadata.name)
         return k8s_object
-
-    def _reuse_deployment(self, deployment_name) -> k8s.V1Deployment:
-        deployment = self.k8s_namespace.get_deployment(deployment_name)
-        # TODO(sergiitk): check if good or must be recreated
-        return deployment
 
     def _reuse_service(self, service_name) -> k8s.V1Service:
         service = self.k8s_namespace.get_service(service_name)
@@ -445,14 +470,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             resource.metadata.creation_timestamp,
         )
         return resource
-
-    def delete_pod_async(self, pod_name: str):
-        logger.info(
-            "Initiating deletion of pod %s in namespace %s",
-            pod_name,
-            self.k8s_namespace.name,
-        )
-        self.k8s_namespace.delete_pod_async(pod_name)
 
     def _create_deployment(self, template, **kwargs) -> k8s.V1Deployment:
         # Not making deployment_name an explicit kwarg to be consistent with
@@ -837,6 +854,11 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             "Pod %s ready, IP: %s", pod.metadata.name, pod.status.pod_ip
         )
         return pod
+
+    def _pod_started_logic(self, pod: k8s.V1Pod):
+        self.pods_started[pod.metadata.name] = pod
+        if self.should_collect_logs:
+            self._start_logging_pod(pod, log_to_stdout=self.log_to_stdout)
 
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int

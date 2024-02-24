@@ -183,6 +183,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         )
         super().run()
 
+        # TODO(sergiitk): move to the object config, and remove from args.
+        self.log_to_stdout = log_to_stdout
+
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
         if self.reuse_service:
@@ -237,7 +240,6 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             replica_count,
             test_port=test_port,
             maintenance_port=maintenance_port,
-            log_to_stdout=log_to_stdout,
             secure_mode=secure_mode,
         )
 
@@ -247,18 +249,14 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         *,
         test_port: int,
         maintenance_port: int,
-        log_to_stdout: bool,
         secure_mode: bool = False,
     ) -> List[XdsTestServer]:
         pod_names = self._wait_deployment_pod_count(
             self.deployment, replica_count
         )
-        pods = []
         for pod_name in pod_names:
             pod = self._wait_pod_started(pod_name)
-            pods.append(pod)
-            if self.should_collect_logs:
-                self._start_logging_pod(pod, log_to_stdout=log_to_stdout)
+            self._pod_started_logic(pod)
 
         # Verify the deployment reports all pods started as well.
         self._wait_deployment_with_available_replicas(
@@ -267,7 +265,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self._start_completed()
 
         servers: List[XdsTestServer] = []
-        for pod in pods:
+        for pod in self.pods_started.values():
             servers.append(
                 self._xds_test_server_for_pod(
                     pod,

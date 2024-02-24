@@ -37,7 +37,7 @@ RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 # Constants
 # TODO(sergiitk): set to 3
-REPLICA_COUNT = 1
+REPLICA_COUNT = 2
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
@@ -61,7 +61,7 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     ) -> gamma_server_runner.GammaServerRunner:
         deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
             pre_stop_hook=True,
-            termination_grace_period=TERMINATION_GRACE_PERIOD,
+            # termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
@@ -87,6 +87,13 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
 
+        chosen_server = test_servers[0]
+        logger.info("Chosen server %s", chosen_server.hostname)
+
+        with self.subTest("02_stopping_chosen_server"):
+            self.server_runner.request_pod_deletion(chosen_server.hostname)
+            # self.server_runner.cleanup()
+
         # with self.subTest("02_create_ssa_policy"):
         #     self.server_runner.create_session_affinity_policy_route()
         #
@@ -105,7 +112,6 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #     test_client = self.startTestClient(test_servers[0])
         #
         # logger.info("Just testing - client %s", test_client.hostname)
-        logger.info("Just testing - servers %s", test_servers[0].hostname)
 
 
 if __name__ == "__main__":

@@ -145,6 +145,9 @@ class GammaServerRunner(KubernetesServerRunner):
         )
         k8s_base_runner.KubernetesBaseRunner.run(self)
 
+        # TODO(sergiitk): move to the object config, and remove from args.
+        self.log_to_stdout = log_to_stdout
+
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
         if self.reuse_service:
@@ -230,7 +233,6 @@ class GammaServerRunner(KubernetesServerRunner):
             replica_count,
             test_port=test_port,
             maintenance_port=maintenance_port,
-            log_to_stdout=log_to_stdout,
             secure_mode=secure_mode,
         )
 
@@ -288,7 +290,7 @@ class GammaServerRunner(KubernetesServerRunner):
             draining_timeout_sec=draining_timeout_sec,
         )
 
-    # pylint: disable=arguments-differ
+    # @override
     def cleanup(self, *, force=False, force_namespace=False):
         try:
             if self.route or force:
@@ -339,5 +341,3 @@ class GammaServerRunner(KubernetesServerRunner):
             self._cleanup_namespace(force=(force_namespace and force))
         finally:
             self._stop()
-
-    # pylint: enable=arguments-differ
