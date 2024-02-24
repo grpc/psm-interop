@@ -471,6 +471,28 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return resource
 
+    def request_pod_deletion(self, name: str):
+        """
+        Request a pod with the given name to be deleted asynchronously.
+
+        Unlike other delete methods, async deletes don't wait on the result
+        of the operation.
+        TODO(sergiitk): explain why raise
+        """
+        # TODO(sergiitk): log ns?
+        logger.info("Requesting pod deletion: %s", name)
+        # TODO(sergiitk): stop forwarding and stuff, register stop?
+        try:
+            self.k8s_namespace.delete_pod_async(name)
+        except k8s.NotFound:
+            logger.warning("Pod requested for deletion not found: %s", name)
+            raise
+        except retryers.RetryError:
+            logger.warning(
+                "Exhausted retries requesting pod deletion: %s", name
+            )
+            raise
+
     def _create_deployment(self, template, **kwargs) -> k8s.V1Deployment:
         # Not making deployment_name an explicit kwarg to be consistent with
         # the rest of the _create_* methods, which pass kwargs as-is
