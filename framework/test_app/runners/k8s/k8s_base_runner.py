@@ -190,17 +190,21 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
     def _reset_state(self):
         """Reset the mutable state of the previous run."""
-        if self.pod_port_forwarders:
-            logger.warning(
-                "Port forwarders weren't cleaned up from the past run: %s",
-                len(self.pod_port_forwarders),
-            )
+        try:
+            if self.pod_port_forwarders:
+                logger.warning(
+                    "Port forwarders not cleaned from the past run: %s",
+                    len(self.pod_port_forwarders),
+                )
 
-        if self.pod_log_collectors:
-            logger.warning(
-                "Pod log collectors weren't cleaned up from the past run: %s",
-                len(self.pod_log_collectors),
-            )
+            if self.pod_log_collectors:
+                logger.warning(
+                    "Pod log collectors not cleaned from the past run: %s",
+                    len(self.pod_log_collectors),
+                )
+        except AttributeError:
+            # Properties may not be defined when called from constructor.
+            pass
 
         # Reset the mutable state associated with the current run.
         self.namespace = None
@@ -248,13 +252,17 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         if not self.k8s_namespace or not deployment:
             return 0
         total_restart: int = 0
+        # TODO(sergiitk): bug: this only counts deployment_id associated
+        #  with the last run().
         pods: List[k8s.V1Pod] = self.k8s_namespace.list_deployment_pods(
             deployment
         )
         for pod in pods:
-            total_restart += sum(
-                status.restart_count for status in pod.status.container_statuses
-            )
+            if pod.status.container_statuses:
+                total_restart += sum(
+                    status.restart_count
+                    for status in pod.status.container_statuses
+                )
         return total_restart
 
     @classmethod

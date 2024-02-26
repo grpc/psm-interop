@@ -20,6 +20,7 @@ import json
 import logging
 import pathlib
 import threading
+from collections.abc import Iterable
 from typing import Any, Callable, List, Optional, Tuple
 import warnings
 
@@ -1057,7 +1058,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def pretty_format_statuses(
         self,
-        k8s_objects: List[Optional[object]],
+        k8s_objects: Iterable[Optional[object]],
         *,
         highlight: bool = True,
     ) -> str:
