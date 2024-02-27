@@ -14,13 +14,13 @@
 # TODO(sergiitk): to k8s/ package, and get rid of k8s_internal, which is only
 #   added to get around circular dependencies caused by k8s.py clashing with
 #   k8s/__init__.py
+from collections.abc import Iterable
 import datetime
 import functools
 import json
 import logging
 import pathlib
 import threading
-from collections.abc import Iterable
 from typing import Any, Callable, List, Optional, Tuple
 import warnings
 
@@ -690,18 +690,25 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             grace_period_seconds=grace_period_seconds,
         )
 
-    def delete_pod_async(self, name: str) -> None:
+    def delete_pod_async(
+        self, name: str, grace_period_seconds: int = DELETE_GRACE_PERIOD_SEC
+    ) -> None:
         # TODO(sergiitk): Do we need async? Won't it break error handling?
         # NOTE(rbellevi): Yes. We need async. Because we need the test to do stuff between
         # when SIGTERM is sent to the container and when it actually dies.
+        delete_options = client.V1DeleteOptions(propagation_policy="Foreground")
+
+        # Checking for None because 0 is valid grace period value. When the
+        # field is None, grace period defaults to k8s's setting (usually 30s).
+        # if grace_period_seconds is not None:
+        #     delete_options.grace_period_seconds = grace_period_seconds
+
         self._execute(
             self._api.core.delete_namespaced_pod,
             name=name,
             namespace=self.name,
-            body=client.V1DeleteOptions(
-                propagation_policy="Foreground",
-            ),
-            async_req=True,
+            body=delete_options,
+            # async_req=True,
         )
 
     def get(self) -> V1Namespace:
@@ -1096,6 +1103,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
                 f" {_helper_datetime.ago(metadata.creation_timestamp)}"
             )
         if metadata and metadata.deletion_timestamp:
+            # TODO(sergiitk): Handle the case with deletion_timestamp is in
+            #  the future, (e.g. waiting on prestop while in grace period).
             result.append(
                 f"Deletion requested: {metadata.deletion_timestamp};"
                 f" {_helper_datetime.ago(metadata.deletion_timestamp)}"

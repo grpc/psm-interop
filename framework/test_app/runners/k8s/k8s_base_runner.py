@@ -265,6 +265,11 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 )
         return total_restart
 
+    def list_deployment_pods(self) -> list[k8s.V1Pod]:
+        if not self.deployment_id:
+            return []
+        return self.k8s_namespace.list_deployment_pods(self.deployment)
+
     @classmethod
     def _manifests_from_yaml_file(cls, yaml_file):
         with open(yaml_file) as f:
@@ -479,7 +484,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return resource
 
-    def request_pod_deletion(self, name: str):
+    def request_pod_deletion(self, name: str, grace_period_seconds: int = None):
         """
         Request a pod with the given name to be deleted asynchronously.
 
@@ -491,7 +496,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("Requesting pod deletion: %s", name)
         # TODO(sergiitk): stop forwarding and stuff, register stop?
         try:
-            self.k8s_namespace.delete_pod_async(name)
+            self.k8s_namespace.delete_pod_async(
+                name, grace_period_seconds=grace_period_seconds
+            )
         except k8s.NotFound:
             logger.warning("Pod requested for deletion not found: %s", name)
             raise
@@ -889,6 +896,11 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.pods_started[pod.metadata.name] = pod
         if self.should_collect_logs:
             self._start_logging_pod(pod, log_to_stdout=self.log_to_stdout)
+
+    def _pod_stopped_logic(self, name):
+        if name in self.pods_started:
+            # Move from started to stopped
+            self.pods_stopped[name] = self.pods_started.pop(name)
 
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int

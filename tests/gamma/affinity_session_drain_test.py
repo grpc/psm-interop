@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import datetime
+import datetime as dt
 import logging
-from typing import List, Optional
+from typing import Final, List, Optional
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import TypeAlias, override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
@@ -32,22 +32,22 @@ logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
 # Type aliases
-_Lang = skips.Lang
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
+_Lang: TypeAlias = skips.Lang
+# RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 # Constants
 # TODO(sergiitk): set to 3
-REPLICA_COUNT = 2
+REPLICA_COUNT: Final[int] = 1
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD = datetime.timedelta(minutes=2)
-DRAINING_TIMEOUT = datetime.timedelta(minutes=10)
+TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=3)
+DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 
 
 class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
-    # @override
     @staticmethod
+    @override
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
             # HookService is only added in CPP ....
@@ -55,19 +55,19 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             return config.version_gte("v1.61.x")
         return False
 
-    # @override
+    @override
     def initKubernetesServerRunner(
         self, **kwargs
     ) -> gamma_server_runner.GammaServerRunner:
         deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
             pre_stop_hook=True,
-            # termination_grace_period=TERMINATION_GRACE_PERIOD,
+            termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
         )
 
-    # @override
+    @override
     def getClientRpcStats(
         self,
         test_client: client_app.XdsTestClient,
@@ -91,8 +91,31 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         logger.info("Chosen server %s", chosen_server.hostname)
 
         with self.subTest("02_stopping_chosen_server"):
-            self.server_runner.request_pod_deletion(chosen_server.hostname)
+            self.server_runner.request_pod_deletion(
+                chosen_server.hostname,
+                # TODO(sergiitk): move conversion to request_pod_deletion
+                grace_period_seconds=int(
+                    TERMINATION_GRACE_PERIOD.total_seconds()
+                ),
+            )
+            self.server_runner._pod_stopped_logic(chosen_server.hostname)
             # self.server_runner.cleanup()
+
+        with self.subTest("03_wait_for_pods"):
+            # self.server_runner._wait_deployment_pod_count(
+            #     self.server_runner.deployment, REPLICA_COUNT
+            # )
+            self.server_runner.k8s_namespace.wait_for_deployment_replica_count(
+                self.server_runner.deployment, REPLICA_COUNT
+            )
+
+        new_pods = self.server_runner.list_deployment_pods()
+
+        logger.info(
+            "Result pods, len %i:\n\n%s",
+            len(new_pods),
+            self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
+        )
 
         # with self.subTest("02_create_ssa_policy"):
         #     self.server_runner.create_session_affinity_policy_route()
