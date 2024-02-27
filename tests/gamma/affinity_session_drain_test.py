@@ -41,7 +41,7 @@ REPLICA_COUNT: Final[int] = 1
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=3)
+TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 
 
@@ -87,35 +87,54 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
 
-        chosen_server = test_servers[0]
-        logger.info("Chosen server %s", chosen_server.hostname)
+        with self.subTest("02_create_ssa_policy"):
+            self.server_runner.create_session_affinity_policy_route()
 
-        with self.subTest("02_stopping_chosen_server"):
-            self.server_runner.request_pod_deletion(
-                chosen_server.hostname,
-                # TODO(sergiitk): move conversion to request_pod_deletion
-                grace_period_seconds=int(
-                    TERMINATION_GRACE_PERIOD.total_seconds()
-                ),
-            )
-            self.server_runner._pod_stopped_logic(chosen_server.hostname)
-            # self.server_runner.cleanup()
-
-        with self.subTest("03_wait_for_pods"):
-            # self.server_runner._wait_deployment_pod_count(
-            #     self.server_runner.deployment, REPLICA_COUNT
-            # )
-            self.server_runner.k8s_namespace.wait_for_deployment_replica_count(
-                self.server_runner.deployment, REPLICA_COUNT
+        with self.subTest("03_create_backend_policy"):
+            self.server_runner.create_backend_policy(
+                draining_timeout=DRAINING_TIMEOUT,
             )
 
-        new_pods = self.server_runner.list_deployment_pods()
+        # Default is round-robin LB policy.
 
-        logger.info(
-            "Result pods, len %i:\n\n%s",
-            len(new_pods),
-            self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
-        )
+        cookie: str
+        test_client: client_app.XdsTestClient
+        chosen_server: server_app.XdsTestServer
+
+        with self.subTest("04_start_test_client"):
+            test_client = self.startTestClient(test_servers[0])
+
+        logger.info("Just testing - client %s", test_client.hostname)
+
+        # chosen_server = test_servers[0]
+        # logger.info("Chosen server %s", chosen_server.hostname)
+
+        # with self.subTest("02_stopping_chosen_server"):
+        #     self.server_runner.request_pod_deletion(
+        #         chosen_server.hostname,
+        #         # TODO(sergiitk): move conversion to request_pod_deletion
+        #         grace_period_seconds=int(
+        #             TERMINATION_GRACE_PERIOD.total_seconds()
+        #         ),
+        #     )
+        #     self.server_runner._pod_stopped_logic(chosen_server.hostname)
+        #     # self.server_runner.cleanup()
+        #
+        # with self.subTest("03_wait_for_pods"):
+        #     # self.server_runner._wait_deployment_pod_count(
+        #     #     self.server_runner.deployment, REPLICA_COUNT
+        #     # )
+        #     self.server_runner.k8s_namespace.wait_for_deployment_replica_count(
+        #         self.server_runner.deployment, REPLICA_COUNT
+        #     )
+        #
+        # new_pods = self.server_runner.list_deployment_pods()
+        #
+        # logger.info(
+        #     "Result pods, len %i:\n\n%s",
+        #     len(new_pods),
+        #     self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
+        # )
 
         # with self.subTest("02_create_ssa_policy"):
         #     self.server_runner.create_session_affinity_policy_route()
