@@ -11,6 +11,7 @@ grpcio-channelz~=1.60
 kubernetes~=27.2
 six~=1.13
 tenacity~=6.2
+typing-extensions~=4.10
 packaging~=23.1
 Pygments~=2.9
 python-dateutil~=2.8
