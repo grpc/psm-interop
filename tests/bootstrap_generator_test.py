@@ -18,6 +18,7 @@ from typing import List
 from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
+from typing_extensions import override
 
 from framework import bootstrap_generator_testcase
 from framework import xds_k8s_testcase
@@ -92,11 +93,9 @@ class BootstrapGeneratorClientTest(
     test_server: XdsTestServer
 
     @classmethod
-    def setUpClass(cls):
-        """Hook method for setting up class fixture before running tests in
-        the class.
-        """
-        super().setUpClass()
+    @override
+    def _bootstrap_resources_setup(cls):
+        super()._bootstrap_resources_setup()
 
         # For client tests, we use a single server instance that can be shared
         # across all the parameterized clients. And this server runner will use
