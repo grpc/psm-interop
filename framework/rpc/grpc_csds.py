@@ -18,7 +18,7 @@ https://github.com/envoyproxy/envoy/blob/main/api/envoy/service/status/v3/csds.p
 import json
 import logging
 import re
-from typing import Any, Final, Optional, cast, Type
+from typing import Any, Final, Optional, Type, cast
 
 from google.protobuf import json_format
 from typing_extensions import TypeAlias
@@ -78,7 +78,7 @@ class DumpedXdsConfig(dict):
 
         # Parse new generic xDS Config.
         for generic_xds_config in self.get("genericXdsConfigs", []):
-            self._parse_lb_endpoint(generic_xds_config)
+            self._parse_generic_xds_config(generic_xds_config)
 
         # Parse endpoints
         for endpoint_config in self.eds:
@@ -135,10 +135,11 @@ class DumpedXdsConfig(dict):
 
     def _parse_lb_endpoint(self, lb_endpoint: ClientConfigDict):
         try:
+            endpoint_address = self._lb_endpoint_address(lb_endpoint)
             if lb_endpoint["healthStatus"] == "HEALTHY":
-                self.endpoints.append(self._lb_endpoint_address(lb_endpoint))
+                self.endpoints.append(endpoint_address)
             elif lb_endpoint["healthStatus"] == "DRAINING":
-                self.draining_endpoints.append(lb_endpoint)
+                self.draining_endpoints.append(endpoint_address)
         except _PARSE_ERRORS as e:
             logging.debug("Parse endpoint failed with %s: %s", type(e), e)
 

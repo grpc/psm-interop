@@ -225,6 +225,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             self.namespace = None
 
     def stop_pod_dependencies(self, *, log_drain_sec: int = 0):
+        # TODO(sergiitk): attempt stopping the hook - override in server runner
+
         # Signal to stop logging early so less drain time needed.
         self.maybe_stop_logging()
 

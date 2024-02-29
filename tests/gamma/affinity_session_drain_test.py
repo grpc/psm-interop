@@ -17,15 +17,12 @@ from typing import Final, Optional
 
 from absl import flags
 from absl.testing import absltest
-from google.protobuf import json_format
 from typing_extensions import TypeAlias, override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import retryers
 from framework.helpers import skips
-from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
@@ -161,7 +158,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 ),
             )
             self.server_runner._pod_stopped_logic(chosen_server.hostname)
-
+        #
         with self.subTest("08_test_client_csds_shows_chosen_server_draining"):
             retryer = retryers.constant_retryer(
                 wait_fixed=dt.timedelta(seconds=10),
@@ -169,7 +166,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 log_level=logging.INFO,
             )
             retryer(self.assertDrainingEndpointCount, test_client)
-
+        #
         with self.subTest("09_chosen_server_receives_rpcs_while_draining"):
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, (chosen_server,)
@@ -195,38 +192,25 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 new_cookie,
             )
 
-        # with self.subTest("03_wait_for_pods"):
-        #     # self.server_runner._wait_deployment_pod_count(
-        #     #     self.server_runner.deployment, REPLICA_COUNT
-        #     # )
-        #     self.server_runner.k8s_namespace.wait_for_deployment_replica_count(
-        #         self.server_runner.deployment, REPLICA_COUNT
-        #     )
-        #
-        # new_pods = self.server_runner.list_deployment_pods()
-        #
-        # logger.info(
-        #     "Result pods, len %i:\n\n%s",
-        #     len(new_pods),
-        #     self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
-        # )
-
     def assertDrainingEndpointCount(
         self,
         test_client: client_app.XdsTestClient,
         expected_count: int = 1,
     ):
-        client_config = test_client.csds.fetch_client_status(
+        client_config = test_client.csds.fetch_client_status_parsed(
             log_level=logging.INFO
         )
-        parsed_config = grpc_csds.DumpedXdsConfig.from_message(client_config)
+        if not client_config:
+            self.fail("Replace me with a return")
+
         logging.info(
-            "Received CSDS info:\nHEALTHY endpoints: %s"
-            "\nDRAINING endpoints: %s",
-            parsed_config.endpoints,
-            parsed_config.draining_endpoints,
+            "Received CSDS client config. EDS endpoints:"
+            "\nHEALTHY: %s"
+            "\nDRAINING: %s",
+            client_config.endpoints,
+            client_config.draining_endpoints,
         )
-        self.assertLen(parsed_config.draining_endpoints, expected_count)
+        self.assertLen(client_config.draining_endpoints, expected_count)
 
 
 if __name__ == "__main__":
