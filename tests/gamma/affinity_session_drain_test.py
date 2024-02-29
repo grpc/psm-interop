@@ -86,6 +86,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
 
     def test_session_drain(self):
         test_servers: list[server_app.XdsTestServer]
+        # Pod names correspond to test_server hostnames.
         pod_names: tuple[str]
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
@@ -111,7 +112,14 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         with self.subTest("04_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("05_retrieve_cookie"):
+        with self.subTest("05_confirm_all_servers_receive_traffic"):
+            self.assertRpcsEventuallyGoToGivenServers(test_client, test_servers)
+            logger.info(
+                "Confirmed all servers received traffic: %s",
+                [server.hostname for server in test_servers],
+            )
+
+        with self.subTest("06_retrieve_cookie"):
             cookie, chosen_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
@@ -119,7 +127,12 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 "Chosen server: %s, cookie: %s", chosen_server.hostname, cookie
             )
 
-        with self.subTest("06_send_RPCs_with_cookie"):
+        with self.subTest("07_send_RPCs_with_cookie"):
+            logger.info(
+                "Configuring server %s to send cookie %s",
+                chosen_server.hostname,
+                cookie,
+            )
             test_client.update_config.configure_unary(
                 metadata=(
                     (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
@@ -128,9 +141,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, (chosen_server,)
             )
-            logger.info(
-                "Confirmed RPCs only sent to %s", chosen_server.hostname
-            )
+            logger.info("Confirmed all RPCs sent to %s", chosen_server.hostname)
 
         # logger.info("Just testing - client %s", test_client.hostname)
 

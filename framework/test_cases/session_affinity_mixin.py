@@ -70,9 +70,9 @@ class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
         resource, there will be periods of time when the SSA config may not
         be applied. This is therefore an eventually consistent function.
         """
-        return self._retrieve_cookie_and_server(test_client, test_servers)
-        retryer = retryers.constant_retryer(
-            wait_fixed=dt.timedelta(seconds=10),
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
             timeout=timeout,
             log_level=logging.INFO,
         )
@@ -93,8 +93,11 @@ class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
         test_client: _XdsTestClient,
         servers: Sequence[_XdsTestServer],
     ) -> tuple[str, _XdsTestServer]:
+        # Request stats for a single RPC.
         lb_stats = self.assertSuccessfulRpcs(test_client, 1)
         cookies = self._get_cookies_by_peer(lb_stats.metadatas_by_peer)
+        if not cookies:
+            self.fail("No cookie header found")
         self.assertLen(
             cookies, 1, msg="More than one server has cookies assigned"
         )

@@ -95,7 +95,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
         )
-        return cast(stats, LoadBalancerStatsResponse)
+        return cast(LoadBalancerStatsResponse, stats)
 
     def get_client_accumulated_stats(
         self, *, timeout_sec: Optional[int] = None
@@ -109,7 +109,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
         )
-        return cast(stats, LoadBalancerAccumulatedStatsResponse)
+        return cast(LoadBalancerAccumulatedStatsResponse, stats)
 
 
 class XdsUpdateClientConfigureServiceClient(

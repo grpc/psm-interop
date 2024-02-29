@@ -185,7 +185,7 @@ class PrettyLoadBalancerStats:
         )
 
 
-def lb_stats_pretty(lb: grpc_testing.LoadBalancerStatsResponse) -> str:
+def lb_stats_pretty(lb_stats: grpc_testing.LoadBalancerStatsResponse) -> str:
     """Pretty print LoadBalancerStatsResponse.
 
     Example:
@@ -200,7 +200,7 @@ def lb_stats_pretty(lb: grpc_testing.LoadBalancerStatsResponse) -> str:
         psm-grpc-server-a: 200
         psm-grpc-server-b: 42
     """
-    pretty_lb_stats = PrettyLoadBalancerStats.from_response(lb)
+    pretty_lb_stats = PrettyLoadBalancerStats.from_response(lb_stats)
     stats_as_dict = dataclasses.asdict(pretty_lb_stats)
 
     # Don't print metadatas_by_peer unless it has data
