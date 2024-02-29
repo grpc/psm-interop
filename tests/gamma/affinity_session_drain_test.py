@@ -78,10 +78,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         metadata_keys: Optional[tuple[str, ...]] = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
+        if not metadata_keys:
+            metadata_keys = (session_affinity_mixin.COOKIE_METADATA_KEY,)
         return super().getClientRpcStats(
-            test_client,
-            num_rpcs,
-            metadata_keys=metadata_keys or client_app.REQ_LB_STATS_METADATA_ALL,
+            test_client, num_rpcs, metadata_keys=metadata_keys
         )
 
     def test_session_drain(self):
@@ -113,7 +113,11 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             test_client = self.startTestClient(test_servers[0])
 
         with self.subTest("05_confirm_all_servers_receive_traffic"):
-            self.assertRpcsEventuallyGoToGivenServers(test_client, test_servers)
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client,
+                test_servers,
+                num_rpcs=120,  # Nice and even.
+            )
             logger.info(
                 "Confirmed all servers received traffic: %s",
                 [server.hostname for server in test_servers],

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This contains common helpers for working with grpc data structures."""
+import collections
 import dataclasses
 import functools
 from typing import Optional
@@ -25,9 +26,8 @@ from framework.rpc import grpc_testing
 # Type aliases
 _RpcsByPeerPretty: TypeAlias = dict[str, int]
 _RpcsByMethodPretty: TypeAlias = dict[str, _RpcsByPeerPretty]
-# RpcMetadata: TypeAlias = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
-# MetadataByPeer: TypeAlias = list[str, RpcMetadata]
-# MetadatasByPeer: TypeAlias = dict[str, MetadataByPeer]
+_MetadataByPeerPretty: TypeAlias = dict[str, list[str]]
+_MetadatasByPeerPretty: TypeAlias = dict[str, _MetadataByPeerPretty]
 
 
 @functools.cache
@@ -135,7 +135,7 @@ class PrettyLoadBalancerStats:
     # }
     rpcs_by_method: _RpcsByMethodPretty
 
-    # metadatas_by_peer: Dict[str, "MetadataByPeer"]
+    metadatas_by_peer: _MetadatasByPeerPretty
 
     @classmethod
     def _parse_rpcs_by_peer(
@@ -156,20 +156,24 @@ class PrettyLoadBalancerStats:
                 result[method] = cls._parse_rpcs_by_peer(stats.rpcs_by_peer)
         return result
 
-    # @staticmethod
-    # def _parse_metadatas_by_peer(
-    #     metadatas_by_peer: grpc_testing.LoadBalancerStatsResponse.MetadataByPeer,
-    # ) -> MetadatasByPeer:
-    #     result: MetadatasByPeer = dict()
-    #     for peer, metadatas in metadatas_by_peer.items():
-    #         pretty_metadata = ""
-    #         for rpc_metadatas in metadatas.rpc_metadata:
-    #             for metadata in rpc_metadatas.metadata:
-    #                 pretty_metadata += (
-    #                     metadata.key + ": " + metadata.value + ", "
-    #                 )
-    #         result[peer] = pretty_metadata
-    #     return result
+    @staticmethod
+    def _parse_metadatas_by_peer(
+        metadatas_by_peer: grpc_testing.MetadatasByPeer,
+    ) -> _MetadatasByPeerPretty:
+        result: _MetadatasByPeerPretty = collections.defaultdict(dict)
+        for peer, metadata_by_peer in metadatas_by_peer.items():
+            for rpc_metadata in metadata_by_peer.rpc_metadata:
+                # Metadata values are repeated all the time, only add unique.
+                uniq_vals: dict[str, set[str]] = collections.defaultdict(set)
+                for metadata in rpc_metadata.metadata:
+                    key: str = metadata.key
+                    if metadata.type == grpc_testing.MetadataType.TRAILING:
+                        key = f"TRAILING_{key}"
+                    uniq_vals[key].add(metadata.value)
+
+                for key, uniq_val in uniq_vals.items():
+                    result[peer][key] = list(uniq_val)
+        return dict(result)
 
     @classmethod
     def from_response(
@@ -179,9 +183,9 @@ class PrettyLoadBalancerStats:
             num_failures=lb_stats.num_failures,
             rpcs_by_peer=cls._parse_rpcs_by_peer(lb_stats.rpcs_by_peer),
             rpcs_by_method=cls._parse_rpcs_by_method(lb_stats.rpcs_by_method),
-            # metadatas_by_peer=cls._parse_metadatas_by_peer(
-            #     lb_stats.metadatas_by_peer
-            # ),
+            metadatas_by_peer=cls._parse_metadatas_by_peer(
+                lb_stats.metadatas_by_peer
+            ),
         )
 
 
@@ -199,12 +203,18 @@ def lb_stats_pretty(lb_stats: grpc_testing.LoadBalancerStatsResponse) -> str:
       rpcs_by_peer:
         psm-grpc-server-a: 200
         psm-grpc-server-b: 42
+      metadatas_by_peer:
+        psm-grpc-server-a:
+          cookie: [c1, c2]
+          TRAILING_cookie: [foo]
+        psm-grpc-server-b:
+          cookie: [bar]
     """
     pretty_lb_stats = PrettyLoadBalancerStats.from_response(lb_stats)
     stats_as_dict = dataclasses.asdict(pretty_lb_stats)
 
     # Don't print metadatas_by_peer unless it has data
-    # if not stats_as_dict["metadatas_by_peer"]:
-    #     stats_as_dict.pop("metadatas_by_peer")
+    if not stats_as_dict["metadatas_by_peer"]:
+        stats_as_dict.pop("metadatas_by_peer")
 
     return yaml.dump(stats_as_dict, sort_keys=False)

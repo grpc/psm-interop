@@ -38,7 +38,7 @@ _SessionAffinityMixinType: TypeAlias = Union[
 _Cookies = dict[str, str]
 
 # Constants
-_COOKIE_METADATA_KEY: Final[str] = "set-cookie"
+COOKIE_METADATA_KEY: Final[str] = "set-cookie"
 _SET_COOKIE_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=5)
 
 
@@ -119,6 +119,6 @@ class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
         for peer, peer_metadatas in metadatas_by_peer.items():
             for rpc_metadata in peer_metadatas.rpc_metadata:
                 for metadata in rpc_metadata.metadata:
-                    if metadata.key.lower() == _COOKIE_METADATA_KEY:
+                    if metadata.key.lower() == COOKIE_METADATA_KEY:
                         cookies[peer] = metadata.value
         return cookies

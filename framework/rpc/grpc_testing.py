@@ -48,9 +48,17 @@ RpcsByPeerMap: TypeAlias = (
 RpcsByMethod: TypeAlias = (
     "messages_pb2.LoadBalancerStatsResponse.rpcs_by_method"
 )
+
+# RPC Metadata
+RpcMetadata: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcMetadata
+MetadataByPeer: TypeAlias = (
+    messages_pb2.LoadBalancerStatsResponse.MetadataByPeer
+)
 MetadatasByPeer: TypeAlias = (
     "messages_pb2.LoadBalancerStatsResponse.metadatas_by_peer"
 )
+MetadataType: TypeAlias = messages_pb2.LoadBalancerStatsResponse.MetadataType
+# An argument to XdsUpdateClientConfigureService.Configure.
 # Rpc type name, key, value.
 ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 
