@@ -25,8 +25,8 @@ from typing import Final, Sequence, Union
 from typing_extensions import TypeAlias
 
 from framework import xds_k8s_testcase
-from framework.rpc import grpc_testing
 from framework.helpers import retryers
+from framework.rpc import grpc_testing
 from framework.test_cases import testcase_mixins
 
 # Type aliases
@@ -43,7 +43,7 @@ _SET_COOKIE_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=5)
 
 
 class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs):  # pylint: disable=arguments-differ
         super().__init_subclass__(**kwargs)
         if not issubclass(cls, xds_k8s_testcase.XdsKubernetesBaseTestCase):
             raise AttributeError(
@@ -70,6 +70,7 @@ class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
         resource, there will be periods of time when the SSA config may not
         be applied. This is therefore an eventually consistent function.
         """
+        return self._retrieve_cookie_and_server(test_client, test_servers)
         retryer = retryers.constant_retryer(
             wait_fixed=dt.timedelta(seconds=10),
             timeout=timeout,

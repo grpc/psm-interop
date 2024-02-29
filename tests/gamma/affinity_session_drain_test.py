@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Final, List, Optional
+from typing import Final, Optional
 
 from absl import flags
 from absl.testing import absltest
@@ -32,13 +32,11 @@ from framework.test_cases import session_affinity_mixin
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
-# Type aliases
+# Type aliases.
 _Lang: TypeAlias = skips.Lang
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
-# Constants
-# TODO(sergiitk): set to 3
-REPLICA_COUNT: Final[int] = 1
+# Constants.
+REPLICA_COUNT: Final[int] = 3
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
@@ -46,7 +44,7 @@ TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=3)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 
 
-class AffinitySessionDrainTest(
+class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     xds_gamma_testcase.GammaXdsKubernetesTestCase,
     session_affinity_mixin.SessionAffinityMixin,
 ):
@@ -87,19 +85,24 @@ class AffinitySessionDrainTest(
         )
 
     def test_session_drain(self):
-        test_servers: List[server_app.XdsTestServer]
+        test_servers: list[server_app.XdsTestServer]
+        pod_names: tuple[str]
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
+            pod_names = tuple(self.server_runner.pods_started.keys())
+            self.assertLen(pod_names, REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policy"):
             self.server_runner.create_session_affinity_policy_route()
-        #
+
         with self.subTest("03_create_backend_policy"):
             self.server_runner.create_backend_policy(
                 draining_timeout=DRAINING_TIMEOUT,
             )
 
         # Default is round-robin LB policy.
+        # TODO(sergiitk): what does it mean? The doc says MAGLEV.
+        # https://cloud.google.com/kubernetes-engine/docs/how-to/configure-gateway-resources#session_affinity
 
         cookie: str
         test_client: client_app.XdsTestClient
@@ -108,7 +111,7 @@ class AffinitySessionDrainTest(
         with self.subTest("04_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("05_send_first_RPC_and_retrieve_cookie"):
+        with self.subTest("05_retrieve_cookie"):
             cookie, chosen_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
@@ -117,18 +120,16 @@ class AffinitySessionDrainTest(
             )
 
         with self.subTest("06_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
+            test_client.update_config.configure_unary(
                 metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(
-                test_client, [chosen_server], 10
+                test_client, (chosen_server,)
+            )
+            logger.info(
+                "Confirmed RPCs only sent to %s", chosen_server.hostname
             )
 
         # logger.info("Just testing - client %s", test_client.hostname)

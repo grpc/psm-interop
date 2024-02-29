@@ -276,6 +276,7 @@ class GammaServerRunner(KubernetesServerRunner):
 
     def create_backend_policy(
         self,
+        *,
         draining_timeout: Optional[datetime.timedelta] = None,
     ):
         draining_timeout_sec: int = 0

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import abc
+from collections.abc import Sequence
 import contextlib
 import datetime
 import enum
@@ -459,7 +460,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     def assertRpcsEventuallyGoToGivenServers(
         self,
         test_client: XdsTestClient,
-        servers: List[XdsTestServer],
+        servers: Sequence[XdsTestServer],
         num_rpcs: int = 100,
     ):
         retryer = retryers.constant_retryer(
@@ -484,7 +485,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     def _assertRpcsEventuallyGoToGivenServers(
         self,
         test_client: XdsTestClient,
-        servers: List[XdsTestServer],
+        servers: Sequence[XdsTestServer],
         num_rpcs: int,
     ):
         server_hostnames = [server.hostname for server in servers]
