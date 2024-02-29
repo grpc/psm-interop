@@ -708,7 +708,6 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             name=name,
             namespace=self.name,
             body=delete_options,
-            # async_req=True,
         )
 
     def get(self) -> V1Namespace:

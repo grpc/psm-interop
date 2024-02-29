@@ -25,6 +25,7 @@ from framework import xds_k8s_testcase
 from framework import xds_url_map_testcase
 from framework.helpers import retryers
 from framework.helpers import skips
+from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
@@ -42,8 +43,8 @@ _Lang: TypeAlias = skips.Lang
 REPLICA_COUNT: Final[int] = 3
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
-# TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
+# TODO(sergiitk): update comment
+TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=5)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 WAIT_FOR_CSDS_DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=1)
 
@@ -65,9 +66,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     def initKubernetesServerRunner(
         self, **kwargs
     ) -> gamma_server_runner.GammaServerRunner:
+        # Note: no need for termination_grace_period for all servers,
+        # we simply call pod delete with needed termination_grace_period.
         deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
             pre_stop_hook=True,
-            termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
@@ -148,7 +150,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, (chosen_server,)
             )
-            logger.info("Confirmed all RPCs sent to %s", chosen_server.hostname)
+            logger.info("Confirmed all RPCs went to %s", chosen_server.hostname)
 
         with self.subTest("07_stopping_chosen_server"):
             self.server_runner.request_pod_deletion(
@@ -215,10 +217,8 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         expected_count: int = 1,
     ):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
-        self.assertIsNotNone(config)
-        json_config = json_format.MessageToDict(config)
-        parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
-        logging.info("Received CSDS: %s", parsed)
+        parsed = grpc_csds.DumpedXdsConfig.from_message(config)
+        logging.info("Received CSDS endpoints: %s", parsed.endpoints)
         self.assertLen(parsed.draining_endpoints, expected_count)
 
 

@@ -19,10 +19,13 @@ from typing import Optional
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
-from framework.test_app.client_app import XdsTestClient
+from framework.test_app import client_app
 from framework.test_app.runners.k8s import k8s_base_runner
 
 logger = logging.getLogger(__name__)
+
+
+XdsTestClient = client_app.XdsTestClient
 
 
 class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):

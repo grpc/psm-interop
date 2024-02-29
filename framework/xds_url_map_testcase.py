@@ -16,9 +16,7 @@
 import abc
 from dataclasses import dataclass
 import datetime
-import json
 import os
-import re
 import sys
 import time
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
@@ -35,6 +33,7 @@ from framework.helpers import grpc as helpers_grpc
 from framework.helpers import retryers
 from framework.helpers import skips
 from framework.infrastructure import k8s
+from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app.runners.k8s import k8s_xds_client_runner
@@ -68,6 +67,8 @@ _timedelta = datetime.timedelta
 # TODO(sergiitk): should not be here! Move all usages to grpc_testing.
 RpcTypeUnaryCall = grpc_testing.RPC_TYPE_UNARY_CALL
 RpcTypeEmptyCall = grpc_testing.RPC_TYPE_EMPTY_CALL
+# TODO(sergiitk): should not be here! Move all usages to grpc_csds.
+DumpedXdsConfig = grpc_csds.DumpedXdsConfig
 
 
 def _split_camel(s: str, delimiter: str = "-") -> str:
@@ -75,100 +76,6 @@ def _split_camel(s: str, delimiter: str = "-") -> str:
     return "".join(
         delimiter + c.lower() if c.isupper() else c for c in s
     ).lstrip(delimiter)
-
-
-class DumpedXdsConfig(dict):
-    """A convenience class to check xDS config.
-
-    Feel free to add more pre-compute fields.
-    """
-
-    def __init__(self, xds_json: JsonType):  # pylint: disable=too-many-branches
-        super().__init__(xds_json)
-        self.json_config = xds_json
-        self.lds = None
-        self.rds = None
-        self.rds_version = None
-        self.cds = []
-        self.eds = []
-        self.endpoints = []
-
-        self.draining_endpoints = []
-
-        for xds_config in self.get("xdsConfig", []):
-            try:
-                if "listenerConfig" in xds_config:
-                    self.lds = xds_config["listenerConfig"]["dynamicListeners"][
-                        0
-                    ]["activeState"]["listener"]
-                elif "routeConfig" in xds_config:
-                    self.rds = xds_config["routeConfig"]["dynamicRouteConfigs"][
-                        0
-                    ]["routeConfig"]
-                    self.rds_version = xds_config["routeConfig"][
-                        "dynamicRouteConfigs"
-                    ][0]["versionInfo"]
-                elif "clusterConfig" in xds_config:
-                    for cluster in xds_config["clusterConfig"][
-                        "dynamicActiveClusters"
-                    ]:
-                        self.cds.append(cluster["cluster"])
-                elif "endpointConfig" in xds_config:
-                    for endpoint in xds_config["endpointConfig"][
-                        "dynamicEndpointConfigs"
-                    ]:
-                        self.eds.append(endpoint["endpointConfig"])
-            # TODO(lidiz) reduce the catch to LookupError
-            except Exception as e:  # pylint: disable=broad-except
-                logging.debug(
-                    "Parsing dumped xDS config failed with %s: %s", type(e), e
-                )
-        for generic_xds_config in self.get("genericXdsConfigs", []):
-            try:
-                if re.search(r"\.Listener$", generic_xds_config["typeUrl"]):
-                    self.lds = generic_xds_config["xdsConfig"]
-                elif re.search(
-                    r"\.RouteConfiguration$", generic_xds_config["typeUrl"]
-                ):
-                    self.rds = generic_xds_config["xdsConfig"]
-                    self.rds_version = generic_xds_config["versionInfo"]
-                elif re.search(r"\.Cluster$", generic_xds_config["typeUrl"]):
-                    self.cds.append(generic_xds_config["xdsConfig"])
-                elif re.search(
-                    r"\.ClusterLoadAssignment$", generic_xds_config["typeUrl"]
-                ):
-                    self.eds.append(generic_xds_config["xdsConfig"])
-            # TODO(lidiz) reduce the catch to LookupError
-            except Exception as e:  # pylint: disable=broad-except
-                logging.debug(
-                    "Parsing dumped xDS config failed with %s: %s", type(e), e
-                )
-        for endpoint_config in self.eds:
-            for endpoint in endpoint_config.get("endpoints", {}):
-                for lb_endpoint in endpoint.get("lbEndpoints", {}):
-                    try:
-                        if lb_endpoint["healthStatus"] == "HEALTHY":
-                            self.endpoints.append(
-                                "%s:%s"
-                                % (
-                                    lb_endpoint["endpoint"]["address"][
-                                        "socketAddress"
-                                    ]["address"],
-                                    lb_endpoint["endpoint"]["address"][
-                                        "socketAddress"
-                                    ]["portValue"],
-                                )
-                            )
-                        elif lb_endpoint["healthStatus"] == "DRAINING":
-                            self.draining_endpoints.append(lb_endpoint)
-                    # TODO(lidiz) reduce the catch to LookupError
-                    except Exception as e:  # pylint: disable=broad-except
-                        logging.debug(
-                            "Parse endpoint failed with %s: %s", type(e), e
-                        )
-
-    def __str__(self) -> str:
-        return json.dumps(self, indent=2)
 
 
 class RpcDistributionStats:
