@@ -14,6 +14,8 @@
 import logging
 from typing import Optional
 
+from typing_extensions import override
+
 from framework import xds_k8s_testcase
 from framework.helpers import rand as helpers_rand
 from framework.infrastructure import k8s
@@ -36,11 +38,22 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
     across gRPC clients and servers."""
 
     @classmethod
+    @override
     def setUpClass(cls):
-        """Hook method for setting up class fixture before running tests in
-        the class.
-        """
         super().setUpClass()
+        # Normally we don't want to make external calls in setUpClass, but
+        # when we do, we call _log_class_hook_failure to frame errors.
+        try:
+            cls._bootstrap_resources_setup()
+        except Exception as error:  # noqa pylint: disable=broad-except
+            cls._log_class_hook_failure(error)
+            raise
+
+    @classmethod
+    def _bootstrap_resources_setup(cls):
+        """
+        Provision resources shared between all tests.
+        """
         if cls.server_maintenance_port is None:
             cls.server_maintenance_port = (
                 KubernetesServerRunner.DEFAULT_MAINTENANCE_PORT
