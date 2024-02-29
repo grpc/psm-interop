@@ -216,10 +216,17 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         test_client: client_app.XdsTestClient,
         expected_count: int = 1,
     ):
-        config = test_client.csds.fetch_client_status(log_level=logging.INFO)
-        parsed = grpc_csds.DumpedXdsConfig.from_message(config)
-        logging.info("Received CSDS endpoints: %s", parsed.endpoints)
-        self.assertLen(parsed.draining_endpoints, expected_count)
+        client_config = test_client.csds.fetch_client_status(
+            log_level=logging.INFO
+        )
+        parsed_config = grpc_csds.DumpedXdsConfig.from_message(client_config)
+        logging.info(
+            "Received CSDS info:\nHEALTHY endpoints: %s"
+            "\nDRAINING endpoints: %s",
+            parsed_config.endpoints,
+            parsed_config.draining_endpoints,
+        )
+        self.assertLen(parsed_config.draining_endpoints, expected_count)
 
 
 if __name__ == "__main__":
