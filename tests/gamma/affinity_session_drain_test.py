@@ -27,13 +27,14 @@ from framework.test_app import client_app
 from framework.test_app import server_app
 from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
+from framework.test_cases import session_affinity_mixin
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
 # Type aliases
 _Lang: TypeAlias = skips.Lang
-# RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
+RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 # Constants
 # TODO(sergiitk): set to 3
@@ -41,11 +42,14 @@ REPLICA_COUNT: Final[int] = 1
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
+TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=3)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 
 
-class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+class AffinitySessionDrainTest(
+    xds_gamma_testcase.GammaXdsKubernetesTestCase,
+    session_affinity_mixin.SessionAffinityMixin,
+):
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
@@ -60,8 +64,8 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         self, **kwargs
     ) -> gamma_server_runner.GammaServerRunner:
         deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
-            pre_stop_hook=True,
-            termination_grace_period=TERMINATION_GRACE_PERIOD,
+            # pre_stop_hook=True,
+            # termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
@@ -89,7 +93,7 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
         with self.subTest("02_create_ssa_policy"):
             self.server_runner.create_session_affinity_policy_route()
-
+        #
         with self.subTest("03_create_backend_policy"):
             self.server_runner.create_backend_policy(
                 draining_timeout=DRAINING_TIMEOUT,
@@ -104,10 +108,32 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("04_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        logger.info("Just testing - client %s", test_client.hostname)
+        with self.subTest("05_send_first_RPC_and_retrieve_cookie"):
+            cookie, chosen_server = self.assertSsaCookieAssigned(
+                test_client, test_servers
+            )
+            logger.info(
+                "Chosen server: %s, cookie: %s", chosen_server.hostname, cookie
+            )
+
+        with self.subTest("06_send_RPCs_with_cookie"):
+            test_client.update_config.configure(
+                rpc_types=(RpcTypeUnaryCall,),
+                metadata=(
+                    (
+                        RpcTypeUnaryCall,
+                        "cookie",
+                        cookie,
+                    ),
+                ),
+            )
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client, [chosen_server], 10
+            )
+
+        # logger.info("Just testing - client %s", test_client.hostname)
 
         # chosen_server = test_servers[0]
-        # logger.info("Chosen server %s", chosen_server.hostname)
 
         # with self.subTest("02_stopping_chosen_server"):
         #     self.server_runner.request_pod_deletion(
@@ -135,25 +161,6 @@ class AffinitySessionDrainTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         #     len(new_pods),
         #     self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
         # )
-
-        # with self.subTest("02_create_ssa_policy"):
-        #     self.server_runner.create_session_affinity_policy_route()
-        #
-        # with self.subTest("03_create_backend_policy"):
-        #     self.server_runner.create_backend_policy(
-        #         draining_timeout=DRAINING_TIMEOUT,
-        #     )
-
-        # Default is round-robin LB policy.
-
-        # cookie: str
-        # test_client: client_app.XdsTestClient
-        # chosen_server: server_app.XdsTestServer
-        #
-        # with self.subTest("04_start_test_client"):
-        #     test_client = self.startTestClient(test_servers[0])
-        #
-        # logger.info("Just testing - client %s", test_client.hostname)
 
 
 if __name__ == "__main__":

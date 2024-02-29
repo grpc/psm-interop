@@ -14,17 +14,20 @@
 """This contains common helpers for working with grpc data structures."""
 import dataclasses
 import functools
-from typing import Dict, List, Optional
+from typing import Optional
 
 import grpc
+from typing_extensions import TypeAlias
 import yaml
 
 from framework.rpc import grpc_testing
 
 # Type aliases
-RpcsByPeer: Dict[str, int]
-RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
-MetadataByPeer: list[str, RpcMetadata]
+_RpcsByPeerPretty: TypeAlias = dict[str, int]
+_RpcsByMethodPretty: TypeAlias = dict[str, _RpcsByPeerPretty]
+# RpcMetadata: TypeAlias = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
+# MetadataByPeer: TypeAlias = list[str, RpcMetadata]
+# MetadatasByPeer: TypeAlias = dict[str, MetadataByPeer]
 
 
 @functools.cache
@@ -60,7 +63,7 @@ class PrettyStatsPerMethod:
     #   "(0, OK)": 20,
     #   "(14, UNAVAILABLE)": 10
     # }
-    result: Dict[str, int]
+    result: dict[str, int]
 
     @property
     @functools.cache
@@ -72,7 +75,7 @@ class PrettyStatsPerMethod:
     def from_response(
         method_name: str, method_stats: grpc_testing.MethodStats
     ) -> "PrettyStatsPerMethod":
-        stats: Dict[str, int] = dict()
+        stats: dict[str, int] = dict()
         for status_int, count in method_stats.result.items():
             status: Optional[grpc.StatusCode] = status_from_int(status_int)
             status_formatted = status_pretty(status) if status else "None"
@@ -103,11 +106,9 @@ def accumulated_stats_pretty(
           (14, UNAVAILABLE): 20
     """
     # Only look at stats_per_method, as the other fields are deprecated.
-    result: List[Dict] = []
-    for method_name, method_stats in accumulated_stats.stats_per_method.items():
-        pretty_stats = PrettyStatsPerMethod.from_response(
-            method_name, method_stats
-        )
+    result: list[dict] = []
+    for method, stats in accumulated_stats.stats_per_method.items():
+        pretty_stats = PrettyStatsPerMethod.from_response(method, stats)
         # Skip methods with no RPCs reported when ignore_empty is True.
         if ignore_empty and not pretty_stats.rpcs_started:
             continue
@@ -124,7 +125,7 @@ class PrettyLoadBalancerStats:
     # The number of completed RPCs for each peer.
     # Format: a dictionary from the host name (str) to the RPC count (int), f.e.
     # {"host-a": 10, "host-b": 20}
-    rpcs_by_peer: "RpcsByPeer"
+    rpcs_by_peer: _RpcsByPeerPretty
 
     # The number of completed RPCs per method per each pear.
     # Format: a dictionary from the method name to RpcsByPeer (see above), f.e.:
@@ -132,51 +133,55 @@ class PrettyLoadBalancerStats:
     #   "UNARY_CALL": {"host-a": 10, "host-b": 20},
     #   "EMPTY_CALL": {"host-a": 42},
     # }
-    rpcs_by_method: Dict[str, "RpcsByPeer"]
+    rpcs_by_method: _RpcsByMethodPretty
 
-    metadatas_by_peer: Dict[str, "MetadataByPeer"]
+    # metadatas_by_peer: Dict[str, "MetadataByPeer"]
 
-    @staticmethod
+    @classmethod
     def _parse_rpcs_by_peer(
-        rpcs_by_peer: grpc_testing.RpcsByPeer,
-    ) -> "RpcsByPeer":
-        result = dict()
+        cls, rpcs_by_peer: grpc_testing.RpcsByPeerMap
+    ) -> _RpcsByPeerPretty:
+        result: _RpcsByPeerPretty = dict()
         for peer, count in rpcs_by_peer.items():
             result[peer] = count
         return result
 
-    @staticmethod
-    def _parse_metadatas_by_peer(
-        metadatas_by_peer: grpc_testing.LoadBalancerStatsResponse.MetadataByPeer,
-    ) -> "MetadataByPeer":
-        result = dict()
-        for peer, metadatas in metadatas_by_peer.items():
-            pretty_metadata = ""
-            for rpc_metadatas in metadatas.rpc_metadata:
-                for metadata in rpc_metadatas.metadata:
-                    pretty_metadata += (
-                        metadata.key + ": " + metadata.value + ", "
-                    )
-            result[peer] = pretty_metadata
+    @classmethod
+    def _parse_rpcs_by_method(
+        cls, rpcs_by_method: grpc_testing.RpcsByMethod
+    ) -> _RpcsByMethodPretty:
+        result: _RpcsByMethodPretty = dict()
+        for method, stats in rpcs_by_method.items():
+            if stats:
+                result[method] = cls._parse_rpcs_by_peer(stats.rpcs_by_peer)
         return result
+
+    # @staticmethod
+    # def _parse_metadatas_by_peer(
+    #     metadatas_by_peer: grpc_testing.LoadBalancerStatsResponse.MetadataByPeer,
+    # ) -> MetadatasByPeer:
+    #     result: MetadatasByPeer = dict()
+    #     for peer, metadatas in metadatas_by_peer.items():
+    #         pretty_metadata = ""
+    #         for rpc_metadatas in metadatas.rpc_metadata:
+    #             for metadata in rpc_metadatas.metadata:
+    #                 pretty_metadata += (
+    #                     metadata.key + ": " + metadata.value + ", "
+    #                 )
+    #         result[peer] = pretty_metadata
+    #     return result
 
     @classmethod
     def from_response(
         cls, lb_stats: grpc_testing.LoadBalancerStatsResponse
     ) -> "PrettyLoadBalancerStats":
-        rpcs_by_method: Dict[str, "RpcsByPeer"] = dict()
-        for method_name, stats in lb_stats.rpcs_by_method.items():
-            if stats:
-                rpcs_by_method[method_name] = cls._parse_rpcs_by_peer(
-                    stats.rpcs_by_peer
-                )
         return PrettyLoadBalancerStats(
             num_failures=lb_stats.num_failures,
             rpcs_by_peer=cls._parse_rpcs_by_peer(lb_stats.rpcs_by_peer),
-            rpcs_by_method=rpcs_by_method,
-            metadatas_by_peer=cls._parse_metadatas_by_peer(
-                lb_stats.metadatas_by_peer
-            ),
+            rpcs_by_method=cls._parse_rpcs_by_method(lb_stats.rpcs_by_method),
+            # metadatas_by_peer=cls._parse_metadatas_by_peer(
+            #     lb_stats.metadatas_by_peer
+            # ),
         )
 
 
@@ -199,7 +204,7 @@ def lb_stats_pretty(lb: grpc_testing.LoadBalancerStatsResponse) -> str:
     stats_as_dict = dataclasses.asdict(pretty_lb_stats)
 
     # Don't print metadatas_by_peer unless it has data
-    if not stats_as_dict["metadatas_by_peer"]:
-        stats_as_dict.pop("metadatas_by_peer")
+    # if not stats_as_dict["metadatas_by_peer"]:
+    #     stats_as_dict.pop("metadatas_by_peer")
 
     return yaml.dump(stats_as_dict, sort_keys=False)

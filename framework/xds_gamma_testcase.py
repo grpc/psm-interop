@@ -15,6 +15,8 @@ import datetime
 import logging
 from typing import List
 
+from typing_extensions import override
+
 from framework.infrastructure import k8s
 import framework.infrastructure.traffic_director_gamma as td_gamma
 from framework.test_app import client_app
@@ -77,6 +79,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.force_cleanup_namespace = False
 
     # TODO(sergiitk): [GAMMA] Make a TD-manager-less base test case
+    @override
     def initTrafficDirectorManager(
         self,
     ) -> td_gamma.TrafficDirectorGammaManager:
@@ -108,6 +111,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             **kwargs,
         )
 
+    @override
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
@@ -134,6 +138,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             **kwargs,
         )
 
+    @override
     def startTestServers(
         self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:

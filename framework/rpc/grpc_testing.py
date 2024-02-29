@@ -21,6 +21,7 @@ from typing import Iterable, Optional, Tuple
 import grpc
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
+from typing_extensions import TypeAlias
 
 import framework.rpc
 from protos.grpc.testing import empty_pb2
@@ -29,7 +30,7 @@ from protos.grpc.testing import test_pb2_grpc
 
 # Type aliases
 _LoadBalancerStatsRequest = messages_pb2.LoadBalancerStatsRequest
-LoadBalancerStatsResponse = messages_pb2.LoadBalancerStatsResponse
+LoadBalancerStatsResponse: TypeAlias = messages_pb2.LoadBalancerStatsResponse
 _LoadBalancerAccumulatedStatsRequest = (
     messages_pb2.LoadBalancerAccumulatedStatsRequest
 )
@@ -37,7 +38,16 @@ LoadBalancerAccumulatedStatsResponse = (
     messages_pb2.LoadBalancerAccumulatedStatsResponse
 )
 MethodStats = messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
-RpcsByPeer = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+RpcsByPeer: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+RpcsByPeerMap: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.RpcsByPeer.rpcs_by_peer"
+)
+RpcsByMethod: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.rpcs_by_method"
+)
+MetadatasByPeer: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.metadatas_by_peer"
+)
 
 _HOOK_SERVER_PORT = 8000
 
