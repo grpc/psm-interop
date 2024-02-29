@@ -17,10 +17,13 @@ from typing import Final, Optional
 
 from absl import flags
 from absl.testing import absltest
+from google.protobuf import json_format
 from typing_extensions import TypeAlias, override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
+from framework import xds_url_map_testcase
+from framework.helpers import retryers
 from framework.helpers import skips
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
@@ -40,8 +43,9 @@ REPLICA_COUNT: Final[int] = 3
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): reset to 10
-TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=3)
+TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+WAIT_FOR_CSDS_DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=1)
 
 
 class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
@@ -62,8 +66,8 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         self, **kwargs
     ) -> gamma_server_runner.GammaServerRunner:
         deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
-            # pre_stop_hook=True,
-            # termination_grace_period=TERMINATION_GRACE_PERIOD,
+            pre_stop_hook=True,
+            termination_grace_period=TERMINATION_GRACE_PERIOD,
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
@@ -131,10 +135,9 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 "Chosen server: %s, cookie: %s", chosen_server.hostname, cookie
             )
 
-        with self.subTest("07_send_RPCs_with_cookie"):
+        with self.subTest("07_only_chosen_server_receives_rpcs_with_cookie"):
             logger.info(
-                "Configuring server %s to send cookie %s",
-                chosen_server.hostname,
+                "Configuring client to send cookie %s",
                 cookie,
             )
             test_client.update_config.configure_unary(
@@ -147,21 +150,49 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             )
             logger.info("Confirmed all RPCs sent to %s", chosen_server.hostname)
 
-        # logger.info("Just testing - client %s", test_client.hostname)
+        with self.subTest("07_stopping_chosen_server"):
+            self.server_runner.request_pod_deletion(
+                chosen_server.hostname,
+                # TODO(sergiitk): move conversion to request_pod_deletion
+                grace_period_seconds=int(
+                    TERMINATION_GRACE_PERIOD.total_seconds()
+                ),
+            )
+            self.server_runner._pod_stopped_logic(chosen_server.hostname)
 
-        # chosen_server = test_servers[0]
+        with self.subTest("08_test_client_csds_shows_chosen_server_draining"):
+            retryer = retryers.constant_retryer(
+                wait_fixed=dt.timedelta(seconds=10),
+                timeout=WAIT_FOR_CSDS_DRAINING_TIMEOUT,
+                log_level=logging.INFO,
+            )
+            retryer(self.assertDrainingEndpointCount, test_client)
 
-        # with self.subTest("02_stopping_chosen_server"):
-        #     self.server_runner.request_pod_deletion(
-        #         chosen_server.hostname,
-        #         # TODO(sergiitk): move conversion to request_pod_deletion
-        #         grace_period_seconds=int(
-        #             TERMINATION_GRACE_PERIOD.total_seconds()
-        #         ),
-        #     )
-        #     self.server_runner._pod_stopped_logic(chosen_server.hostname)
-        #     # self.server_runner.cleanup()
-        #
+        with self.subTest("09_chosen_server_receives_rpcs_while_draining"):
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client, (chosen_server,)
+            )
+            logger.info(
+                "Confirmed all RPCs are still sent to the chosen server"
+                " while it's in the DRAINING state: %s",
+                chosen_server.hostname,
+            )
+
+        with self.subTest("10_repin_cookie"):
+            logger.info("Configuring test client to not send cookie metadata")
+            test_client.update_config.configure_unary()
+
+            # Find another server
+            # TODO(sergiitk): we should return a map cookie-server.
+            new_cookie, new_chosen_server = self.assertSsaCookieAssigned(
+                test_client, test_servers
+            )
+            logger.info(
+                "Chosen server: %s, cookie: %s",
+                new_chosen_server.hostname,
+                new_cookie,
+            )
+
         # with self.subTest("03_wait_for_pods"):
         #     # self.server_runner._wait_deployment_pod_count(
         #     #     self.server_runner.deployment, REPLICA_COUNT
@@ -177,6 +208,18 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         #     len(new_pods),
         #     self.server_runner.k8s_namespace.pretty_format_statuses(new_pods),
         # )
+
+    def assertDrainingEndpointCount(
+        self,
+        test_client: client_app.XdsTestClient,
+        expected_count: int = 1,
+    ):
+        config = test_client.csds.fetch_client_status(log_level=logging.INFO)
+        self.assertIsNotNone(config)
+        json_config = json_format.MessageToDict(config)
+        parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
+        logging.info("Received CSDS: %s", parsed)
+        self.assertLen(parsed.draining_endpoints, expected_count)
 
 
 if __name__ == "__main__":

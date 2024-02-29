@@ -690,18 +690,18 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             grace_period_seconds=grace_period_seconds,
         )
 
-    def delete_pod_async(
-        self, name: str, grace_period_seconds: int = DELETE_GRACE_PERIOD_SEC
+    def delete_pod(
+        self,
+        name: str,
+        grace_period_seconds: Optional[int] = DELETE_GRACE_PERIOD_SEC,
     ) -> None:
-        # TODO(sergiitk): Do we need async? Won't it break error handling?
-        # NOTE(rbellevi): Yes. We need async. Because we need the test to do stuff between
-        # when SIGTERM is sent to the container and when it actually dies.
         delete_options = client.V1DeleteOptions(propagation_policy="Foreground")
 
-        # Checking for None because 0 is valid grace period value. When the
-        # field is None, grace period defaults to k8s's setting (usually 30s).
-        # if grace_period_seconds is not None:
-        #     delete_options.grace_period_seconds = grace_period_seconds
+        # Checking for None because 0 is valid grace period value, meaning
+        # immediate deletion. While not setting the field indicates the
+        # grace period defaults to k8s's setting (usually 30s).
+        if grace_period_seconds is not None:
+            delete_options.grace_period_seconds = grace_period_seconds
 
         self._execute(
             self._api.core.delete_namespaced_pod,

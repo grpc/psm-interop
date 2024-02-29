@@ -497,7 +497,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("Requesting pod deletion: %s", name)
         # TODO(sergiitk): stop forwarding and stuff, register stop?
         try:
-            self.k8s_namespace.delete_pod_async(
+            self.k8s_namespace.delete_pod(
                 name, grace_period_seconds=grace_period_seconds
             )
         except k8s.NotFound:
