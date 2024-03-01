@@ -265,6 +265,17 @@ class RetryError(tenacity.RetryError):
             else default
         )
 
+    def exception_str(self) -> str:
+        return f"Error: {self._exception_str(self.exception())}"
+
+    def result_str(self) -> str:
+        result = self.result()
+        return f"Result: {result}" if result is not None else "No result"
+
+    @classmethod
+    def _exception_str(cls, err: Optional[BaseException]) -> str:
+        return f"{type(err).__name__}: {err}" if err else "???"
+
     # TODO(sergiitk): Remove in py3.11, this will be built-in. See PEP 678.
     def add_note(self, note: str):
         self.note = note

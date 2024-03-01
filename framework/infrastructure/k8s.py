@@ -693,6 +693,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def delete_pod(
         self,
         name: str,
+        *,
         grace_period_seconds: Optional[int] = DELETE_GRACE_PERIOD_SEC,
     ) -> None:
         delete_options = client.V1DeleteOptions(propagation_policy="Foreground")

@@ -18,7 +18,7 @@ from abc import ABCMeta
 import collections
 import contextlib
 import dataclasses
-import datetime
+import datetime as dt
 import functools
 import logging
 import pathlib
@@ -42,8 +42,7 @@ logger = logging.getLogger(__name__)
 _RunnerError = base_runner.RunnerError
 _HighlighterYaml = framework.helpers.highlighter.HighlighterYaml
 _helper_datetime = framework.helpers.datetime
-_datetime = datetime.datetime
-_timedelta = datetime.timedelta
+_datetime = dt.datetime
 
 
 @dataclasses.dataclass(frozen=True)
@@ -487,7 +486,12 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return resource
 
-    def request_pod_deletion(self, name: str, grace_period_seconds: int = None):
+    def request_pod_deletion(
+        self,
+        name: str,
+        *,
+        grace_period: Optional[dt.timedelta] = None,
+    ):
         """
         Request a pod with the given name to be deleted asynchronously.
 
@@ -500,7 +504,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # TODO(sergiitk): stop forwarding and stuff, register stop?
         try:
             self.k8s_namespace.delete_pod(
-                name, grace_period_seconds=grace_period_seconds
+                name,
+                grace_period_seconds=int(grace_period.total_seconds()),
             )
         except k8s.NotFound:
             logger.warning("Pod requested for deletion not found: %s", name)
@@ -1021,7 +1026,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         if not start_time:
             start_time = _datetime.now()
         if not end_time:
-            end_time = start_time + _timedelta(minutes=30)
+            end_time = start_time + dt.timedelta(minutes=30)
 
         logs_start = _helper_datetime.iso8601_utc_time(start_time)
         logs_end = _helper_datetime.iso8601_utc_time(end_time)
