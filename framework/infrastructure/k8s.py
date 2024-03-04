@@ -1019,13 +1019,20 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         local_port: Optional[int] = None,
         local_address: Optional[str] = None,
     ) -> k8s_port_forwarder.PortForwarder:
-        pf = k8s_port_forwarder.PortForwarder(
-            self._api.context,
-            self.name,
-            f"pod/{pod.metadata.name}",
+        destination = f"pod/{pod.metadata.name}"
+        logger.info(
+            "LOCAL DEV MODE: Enabling port forwarding to %s %s:%s",
+            destination,
+            pod.status.pod_ip,
             remote_port,
-            local_port,
-            local_address,
+        )
+        pf = k8s_port_forwarder.PortForwarder(
+            context=self._api.context,
+            namespace=self.name,
+            destination=destination,
+            remote_port=remote_port,
+            local_port=local_port,
+            local_address=local_address,
         )
         pf.connect()
         return pf
