@@ -21,13 +21,13 @@ from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.infrastructure import traffic_director
 from framework.rpc import grpc_channelz
+from framework.rpc import grpc_csds
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
@@ -99,7 +99,7 @@ class TestHeaderBasedAffinity(xds_url_map_testcase.XdsUrlMapTestCase):
         ] = GcpResourceManager().affinity_backend_service()
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         # 3 endpoints in the affinity backend service.
         self.assertNumEndpoints(xds_config, 3)
         self.assertEqual(
@@ -174,7 +174,7 @@ class TestHeaderBasedAffinityMultipleHeaders(
         ] = GcpResourceManager().affinity_backend_service()
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         # 3 endpoints in the affinity backend service.
         self.assertNumEndpoints(xds_config, 3)
         self.assertEqual(

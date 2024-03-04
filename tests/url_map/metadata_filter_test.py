@@ -18,13 +18,13 @@ from absl import flags
 from absl.testing import absltest
 
 from framework import xds_url_map_testcase
+from framework.rpc import grpc_csds
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
@@ -95,7 +95,7 @@ class TestMetadataFilterMatchAll(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(len(xds_config.rds["virtualHosts"][0]["routes"]), 2)
         self.assertEqual(
@@ -170,7 +170,7 @@ class TestMetadataFilterMatchAny(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(len(xds_config.rds["virtualHosts"][0]["routes"]), 2)
         self.assertEqual(
@@ -230,7 +230,7 @@ class TestMetadataFilterMatchAnyAndAll(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(len(xds_config.rds["virtualHosts"][0]["routes"]), 2)
         self.assertEqual(
@@ -298,7 +298,7 @@ class TestMetadataFilterMatchMultipleRules(
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(len(xds_config.rds["virtualHosts"][0]["routes"]), 3)
         self.assertEqual(

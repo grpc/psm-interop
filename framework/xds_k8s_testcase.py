@@ -30,7 +30,6 @@ import grpc
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework import xds_url_map_testcase
 from framework.helpers import grpc as helpers_grpc
 from framework.helpers import rand as helpers_rand
 from framework.helpers import retryers
@@ -560,12 +559,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             for attempt in retryer:
                 with attempt:
                     self.assertSuccessfulRpcs(test_client)
-                    raw_config = test_client.csds.fetch_client_status(
+                    dumped_config = test_client.csds.fetch_client_status_parsed(
                         log_level=logging.INFO
                     )
-                    dumped_config = xds_url_map_testcase.DumpedXdsConfig(
-                        json_format.MessageToDict(raw_config)
-                    )
+                    self.assertIsNotNone(dumped_config)
                     route_config_version = dumped_config.rds_version
                     if previous_route_config_version == route_config_version:
                         logger.info(

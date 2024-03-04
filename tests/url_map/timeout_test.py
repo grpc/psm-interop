@@ -21,13 +21,13 @@ import grpc
 
 from framework import xds_url_map_testcase
 from framework.helpers import skips
+from framework.rpc import grpc_csds
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 ExpectedResult = xds_url_map_testcase.ExpectedResult
@@ -65,7 +65,7 @@ class _BaseXdsTimeOutTestCase(XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["route"][
