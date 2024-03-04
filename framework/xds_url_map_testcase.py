@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Final, Iterable, Mapping, Optional, Tuple
+from typing import Any, Final, Iterable, Mapping, Optional, Sequence, Tuple
 import unittest
 
 from absl import flags
@@ -138,7 +138,7 @@ class RpcDistributionStats:
 class ExpectedResult:
     """Describes the expected result of assertRpcStatusCode method below."""
 
-    rpc_type: str = RpcTypeUnaryCall
+    rpc_type: str = grpc_testing.RPC_TYPE_UNARY_CALL
     status_code: grpc.StatusCode = grpc.StatusCode.OK
     ratio: float = 1
 
@@ -427,8 +427,8 @@ class XdsUrlMapTestCase(
         cls,
         test_client: XdsTestClient,
         *,
-        rpc_types: Iterable[str],
-        metadata: Optional[Iterable[Tuple[str, str, str]]] = None,
+        rpc_types: Sequence[str],
+        metadata: Optional[grpc_testing.ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
         num_rpcs: int,
     ) -> RpcDistributionStats:

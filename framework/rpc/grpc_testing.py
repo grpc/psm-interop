@@ -15,12 +15,14 @@
 This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
+from collections.abc import Sequence
 import logging
-from typing import Final, Iterable, Optional, Tuple
+from typing import Final, Optional, cast
 
 import grpc
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
+from typing_extensions import TypeAlias
 
 import framework.rpc
 from protos.grpc.testing import empty_pb2
@@ -28,21 +30,32 @@ from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 
 # Type aliases
-_LoadBalancerStatsRequest = messages_pb2.LoadBalancerStatsRequest
-LoadBalancerStatsResponse = messages_pb2.LoadBalancerStatsResponse
-_LoadBalancerAccumulatedStatsRequest = (
-    messages_pb2.LoadBalancerAccumulatedStatsRequest
-)
-LoadBalancerAccumulatedStatsResponse = (
+LoadBalancerStatsResponse: TypeAlias = messages_pb2.LoadBalancerStatsResponse
+LoadBalancerAccumulatedStatsResponse: TypeAlias = (
     messages_pb2.LoadBalancerAccumulatedStatsResponse
 )
-MethodStats = messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
-RpcsByPeer = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+MethodStats: TypeAlias = (
+    messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
+)
+RpcsByPeer: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+
+# RPC Metadata
+RpcMetadata: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcMetadata
+MetadataByPeer: TypeAlias = (
+    messages_pb2.LoadBalancerStatsResponse.MetadataByPeer
+)
+# An argument to XdsUpdateClientConfigureService.Configure.
+# Rpc type name, key, value.
+ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 
 # Constants.
 # ProtoBuf translatable RpcType enums
 RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
 RPC_TYPE_EMPTY_CALL: Final[str] = "EMPTY_CALL"
+RPC_TYPES_BOTH_CALLS: Final[tuple[str, str]] = (
+    RPC_TYPE_UNARY_CALL,
+    RPC_TYPE_EMPTY_CALL,
+)
 
 
 class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
@@ -69,9 +82,9 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
         if timeout_sec is None:
             timeout_sec = self.STATS_PARTIAL_RESULTS_TIMEOUT_SEC
 
-        return self.call_unary_with_deadline(
+        stats = self.call_unary_with_deadline(
             rpc="GetClientStats",
-            req=_LoadBalancerStatsRequest(
+            req=messages_pb2.LoadBalancerStatsRequest(
                 num_rpcs=num_rpcs,
                 timeout_sec=timeout_sec,
                 metadata_keys=metadata_keys or None,
@@ -79,6 +92,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
         )
+        return cast(LoadBalancerStatsResponse, stats)
 
     def get_client_accumulated_stats(
         self, *, timeout_sec: Optional[int] = None
@@ -86,19 +100,20 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
         if timeout_sec is None:
             timeout_sec = self.STATS_ACCUMULATED_RESULTS_TIMEOUT_SEC
 
-        return self.call_unary_with_deadline(
+        stats = self.call_unary_with_deadline(
             rpc="GetClientAccumulatedStats",
-            req=_LoadBalancerAccumulatedStatsRequest(),
+            req=messages_pb2.LoadBalancerAccumulatedStatsRequest(),
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
         )
+        return cast(LoadBalancerAccumulatedStatsResponse, stats)
 
 
 class XdsUpdateClientConfigureServiceClient(
     framework.rpc.grpc.GrpcClientHelper
 ):
     stub: test_pb2_grpc.XdsUpdateClientConfigureServiceStub
-    CONFIGURE_TIMEOUT_SEC: int = 5
+    CONFIGURE_TIMEOUT_SEC: Final[int] = 5
 
     def __init__(
         self, channel: grpc.Channel, *, log_target: Optional[str] = ""
@@ -112,8 +127,8 @@ class XdsUpdateClientConfigureServiceClient(
     def configure(
         self,
         *,
-        rpc_types: Iterable[str],
-        metadata: Optional[Iterable[Tuple[str, str, str]]] = None,
+        rpc_types: Sequence[str],
+        metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
         timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
@@ -135,12 +150,55 @@ class XdsUpdateClientConfigureServiceClient(
                 )
         if app_timeout:
             request.timeout_sec = app_timeout
-        # Configure's response is empty
+        # The response is empty.
         self.call_unary_with_deadline(
             rpc="Configure",
             req=request,
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
+        )
+
+    def configure_unary(
+        self,
+        *,
+        metadata: Optional[ConfigureMetadata] = None,
+        app_timeout: Optional[int] = None,
+        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+    ) -> None:
+        self.configure(
+            rpc_types=(RPC_TYPE_UNARY_CALL,),
+            metadata=metadata,
+            app_timeout=app_timeout,
+            timeout_sec=timeout_sec,
+        )
+
+    def configure_empty(
+        self,
+        *,
+        metadata: Optional[ConfigureMetadata] = None,
+        app_timeout: Optional[int] = None,
+        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+    ) -> None:
+        self.configure(
+            rpc_types=(RPC_TYPE_EMPTY_CALL,),
+            metadata=metadata,
+            app_timeout=app_timeout,
+            timeout_sec=timeout_sec,
+        )
+
+    def configure_rpc_type(
+        self,
+        *,
+        rpc_type: str,
+        metadata: Optional[ConfigureMetadata] = None,
+        app_timeout: Optional[int] = None,
+        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+    ) -> None:
+        self.configure(
+            rpc_types=(rpc_type,),
+            metadata=metadata,
+            app_timeout=app_timeout,
+            timeout_sec=timeout_sec,
         )
 
 
