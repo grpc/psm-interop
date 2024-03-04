@@ -21,13 +21,13 @@ import grpc
 
 from framework import xds_url_map_testcase
 from framework.helpers import skips
+from framework.rpc import grpc_csds
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
 RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
@@ -147,7 +147,7 @@ class TestZeroPercentFaultInjection(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         filter_config = xds_config.rds["virtualHosts"][0]["routes"][0][
             "typedPerFilterConfig"
@@ -211,7 +211,7 @@ class TestNonMatchingFaultInjection(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         # The first route rule for UNARY_CALL is fault injected
         self.assertEqual(
@@ -275,7 +275,7 @@ class TestAlwaysDelay(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         filter_config = xds_config.rds["virtualHosts"][0]["routes"][0][
             "typedPerFilterConfig"
@@ -326,7 +326,7 @@ class TestAlwaysAbort(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         filter_config = xds_config.rds["virtualHosts"][0]["routes"][0][
             "typedPerFilterConfig"
@@ -373,7 +373,7 @@ class TestDelayHalf(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         filter_config = xds_config.rds["virtualHosts"][0]["routes"][0][
             "typedPerFilterConfig"
@@ -424,7 +424,7 @@ class TestAbortHalf(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 1)
         filter_config = xds_config.rds["virtualHosts"][0]["routes"][0][
             "typedPerFilterConfig"

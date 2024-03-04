@@ -15,10 +15,8 @@ import logging
 
 from absl import flags
 from absl.testing import absltest
-from google.protobuf import json_format
 
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import skips
 
 logger = logging.getLogger(__name__)
@@ -27,7 +25,6 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
-_DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
 _Lang = skips.Lang
 
 _TD_CONFIG_RETRY_WAIT_SEC = 2
@@ -100,12 +97,10 @@ class ApiListenerTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("13_test_server_received_rpcs_with_two_url_maps"):
             self.assertSuccessfulRpcs(test_client)
-            raw_config = test_client.csds.fetch_client_status(
+            dumped_config = test_client.csds.fetch_client_status_parsed(
                 log_level=logging.INFO
             )
-            dumped_config = _DumpedXdsConfig(
-                json_format.MessageToDict(raw_config)
-            )
+            self.assertIsNotNone(dumped_config)
             previous_route_config_version = dumped_config.rds_version
             logger.info(
                 (
