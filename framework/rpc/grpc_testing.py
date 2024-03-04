@@ -130,7 +130,7 @@ class XdsUpdateClientConfigureServiceClient(
         rpc_types: Sequence[str],
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         request = messages_pb2.ClientConfigureRequest()
         for rpc_type in rpc_types:
@@ -150,6 +150,9 @@ class XdsUpdateClientConfigureServiceClient(
                 )
         if app_timeout:
             request.timeout_sec = app_timeout
+        if timeout_sec is None:
+            timeout_sec = self.CONFIGURE_TIMEOUT_SEC
+
         # The response is empty.
         self.call_unary_with_deadline(
             rpc="Configure",
@@ -163,7 +166,7 @@ class XdsUpdateClientConfigureServiceClient(
         *,
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_UNARY_CALL,),
@@ -177,25 +180,10 @@ class XdsUpdateClientConfigureServiceClient(
         *,
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_EMPTY_CALL,),
-            metadata=metadata,
-            app_timeout=app_timeout,
-            timeout_sec=timeout_sec,
-        )
-
-    def configure_rpc_type(
-        self,
-        *,
-        rpc_type: str,
-        metadata: Optional[ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
-    ) -> None:
-        self.configure(
-            rpc_types=(rpc_type,),
             metadata=metadata,
             app_timeout=app_timeout,
             timeout_sec=timeout_sec,
