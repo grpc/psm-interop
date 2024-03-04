@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Final, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 import unittest
 
 from absl import flags
@@ -62,10 +62,6 @@ PathMatcher = xds_url_map_test_resources.PathMatcher
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 JsonType = Any
 _timedelta = datetime.timedelta
-
-# TODO(sergiitk): should not be here! Move all usages to grpc_testing.
-RpcTypeUnaryCall: Final[str] = grpc_testing.RPC_TYPE_UNARY_CALL
-RpcTypeEmptyCall: Final[str] = grpc_testing.RPC_TYPE_EMPTY_CALL
 
 
 def _split_camel(s: str, delimiter: str = "-") -> str:
