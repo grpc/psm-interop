@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Iterable, Mapping, Optional, Tuple, TypeAlias
+from typing import Any, Iterable, Mapping, Optional, Tuple
 import unittest
 
 from absl import flags
@@ -61,8 +61,6 @@ PathMatcher = xds_url_map_test_resources.PathMatcher
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 JsonType = Any
 _timedelta = datetime.timedelta
-# TODO(sergiitk): should not be here! Move all usages to grpc_csds.
-DumpedXdsConfig: TypeAlias = grpc_csds.DumpedXdsConfig
 
 # ProtoBuf translatable RpcType enums
 RpcTypeUnaryCall = "UNARY_CALL"
@@ -247,7 +245,9 @@ class XdsUrlMapTestCase(
         """
 
     @abc.abstractmethod
-    def xds_config_validate(self, xds_config: DumpedXdsConfig) -> None:
+    def xds_config_validate(
+        self, xds_config: grpc_csds.DumpedXdsConfig
+    ) -> None:
         """Validates received xDS config, if anything is wrong, raise.
 
         This stage only ends when the control plane failed to send a valid
@@ -373,17 +373,17 @@ class XdsUrlMapTestCase(
         # TODO(lidiz) find another way to store last seen xDS config
         # Cleanup state for this attempt
         # pylint: disable=attribute-defined-outside-init
-        self._xds_json_config = None
+        self._client_config_dict = None
         # Fetch client config
-        config = self.test_client.csds.fetch_client_status(
+        parsed = self.test_client.csds.fetch_client_status_parsed(
             log_level=logging.INFO
         )
-        self.assertIsNotNone(config)
+        self.assertIsNotNone(parsed)
         # Found client config, test it.
-        self._xds_json_config = json_format.MessageToDict(config)
+        self._client_config_dict = parsed.client_config_dict
         # pylint: enable=attribute-defined-outside-init
         # Execute the child class provided validation logic
-        self.xds_config_validate(DumpedXdsConfig(self._xds_json_config))
+        self.xds_config_validate(parsed)
 
     def run(self, result: unittest.TestResult = None) -> None:
         """Abort this test case if CSDS check is failed.
@@ -414,7 +414,7 @@ class XdsUrlMapTestCase(
             logging.info(
                 "latest xDS config:\n%s",
                 GcpResourceManager().td.compute.resource_pretty_format(
-                    self._xds_json_config
+                    self._client_config_dict
                 ),
             )
 
@@ -444,7 +444,11 @@ class XdsUrlMapTestCase(
         )
         return RpcDistributionStats(json_format.MessageToDict(lb_stats))
 
-    def assertNumEndpoints(self, xds_config: DumpedXdsConfig, k: int) -> None:
+    def assertNumEndpoints(
+        self,
+        xds_config: grpc_csds.DumpedXdsConfig,
+        k: int,
+    ) -> None:
         self.assertLen(
             xds_config.endpoints,
             k,
