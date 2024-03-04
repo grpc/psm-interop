@@ -195,6 +195,13 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Stop port forwarders if any.
         for pod_port_forwarder in self.pod_port_forwarders:
             pod_port_forwarder.close()
+
+        if self.pod_port_forwarders:
+            logger.info(
+                "Port forwarders in namespace %s stopped.",
+                self.k8s_namespace.name if self.k8s_namespace else "Unknown",
+            )
+
         self.pod_port_forwarders = []
 
         for pod_log_collector in self.pod_log_collectors:
@@ -825,11 +832,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int
     ) -> k8s.PortForwarder:
-        logger.info(
-            "LOCAL DEV MODE: Enabling port forwarding to %s:%s",
-            pod.status.pod_ip,
-            remote_port,
-        )
         port_forwarder = self.k8s_namespace.port_forward_pod(pod, remote_port)
         self.pod_port_forwarders.append(port_forwarder)
         return port_forwarder
