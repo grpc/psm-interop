@@ -19,14 +19,13 @@ from absl.testing import absltest
 
 from framework import xds_url_map_testcase
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,11 @@ _NUM_RPCS = 150
 _TEST_METADATA_KEY = "xds_md"
 _TEST_METADATA_VALUE_EMPTY = "empty_ytpme"
 _TEST_METADATA = (
-    (RpcTypeEmptyCall, _TEST_METADATA_KEY, _TEST_METADATA_VALUE_EMPTY),
+    (
+        grpc_testing.RPC_TYPE_EMPTY_CALL,
+        _TEST_METADATA_KEY,
+        _TEST_METADATA_VALUE_EMPTY,
+    ),
 )
 match_labels = [
     {"name": "TRAFFICDIRECTOR_NETWORK_NAME", "value": "default-vpc"}
@@ -122,7 +125,7 @@ class TestMetadataFilterMatchAll(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeEmptyCall],
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -184,7 +187,9 @@ class TestMetadataFilterMatchAny(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.unary_call_alternative_service_rpc_count
@@ -244,7 +249,9 @@ class TestMetadataFilterMatchAnyAndAll(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.unary_call_alternative_service_rpc_count
@@ -325,7 +332,7 @@ class TestMetadataFilterMatchMultipleRules(
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeEmptyCall],
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )

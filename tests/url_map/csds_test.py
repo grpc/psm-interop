@@ -20,14 +20,13 @@ from absl.testing import absltest
 from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
 _Lang = skips.Lang
 
@@ -69,7 +68,7 @@ class TestBasicCsds(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeUnaryCall, RpcTypeEmptyCall],
+            rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
             num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(_NUM_RPCS, rpc_distribution.num_oks)
