@@ -21,6 +21,7 @@ import grpc
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
+from framework.rpc import grpc_testing
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -121,7 +122,7 @@ class CustomLbTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 test_client,
                 expected_status=_EXPECTED_STATUS,
                 duration=datetime.timedelta(seconds=10),
-                method="UNARY_CALL",
+                method=grpc_testing.RPC_TYPE_UNARY_CALL,
             )
 
 
