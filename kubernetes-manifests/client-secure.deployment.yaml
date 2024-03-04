@@ -25,45 +25,45 @@ spec:
     spec:
       serviceAccountName: ${service_account_name}
       containers:
-      - name: ${deployment_name}
-        image: ${image_name}
-        imagePullPolicy: Always
-        startupProbe:
-          tcpSocket:
-            port: ${stats_port}
-          periodSeconds: 3
-          ## Extend the number of probes well beyond the duration of the test
-          ## driver waiting for the container to start.
-          failureThreshold: 1000
-        args:
-          - "--server=${server_target}"
-          - "--stats_port=${stats_port}"
-          - "--secure_mode=${secure_mode}"
-          - "--qps=${qps}"
-          - "--rpc=${rpc}"
-          - "--print_response=${print_response}"
-        ports:
-          - containerPort: ${stats_port}
-        env:
-          - name: GRPC_XDS_BOOTSTRAP
-            value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
-          - name: GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT
-            value: "true"
-          - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
-            value: "true"
-          - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
-            value: "true"
-        volumeMounts:
-          - mountPath: /tmp/grpc-xds/
-            name: grpc-td-conf
-            readOnly: true
-        resources:
-          limits:
-            cpu: 800m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 512Mi
+        - name: ${deployment_name}
+          image: ${image_name}
+          imagePullPolicy: Always
+          startupProbe:
+            tcpSocket:
+              port: ${stats_port}
+            periodSeconds: 3
+            ## Extend the number of probes well beyond the duration of the test
+            ## driver waiting for the container to start.
+            failureThreshold: 1000
+          args:
+            - "--server=${server_target}"
+            - "--stats_port=${stats_port}"
+            - "--secure_mode=${secure_mode}"
+            - "--qps=${qps}"
+            - "--rpc=${rpc}"
+            - "--print_response=${print_response}"
+          ports:
+            - containerPort: ${stats_port}
+          env:
+            - name: GRPC_XDS_BOOTSTRAP
+              value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
+            - name: GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT
+              value: "true"
+            - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
+              value: "true"
+          volumeMounts:
+            - mountPath: /tmp/grpc-xds/
+              name: grpc-td-conf
+              readOnly: true
+          resources:
+            limits:
+              cpu: 800m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 512Mi
       initContainers:
         - name: grpc-td-init
           image: ${td_bootstrap_image}
