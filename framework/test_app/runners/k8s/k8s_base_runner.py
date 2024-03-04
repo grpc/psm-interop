@@ -193,12 +193,14 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.maybe_stop_logging()
 
         # Stop port forwarders if any.
-        if self.pod_port_forwarders:
-            for pod_port_forwarder in self.pod_port_forwarders:
-                pod_port_forwarder.close()
+        for pod_port_forwarder in self.pod_port_forwarders:
+            pod_port_forwarder.close()
 
-            ns = self.k8s_namespace.name if self.k8s_namespace else "Unknown"
-            logger.info("Port forwarders in namespace %s stopped.", ns)
+        if self.pod_port_forwarders:
+            logger.info(
+                "Port forwarders in namespace %s stopped.",
+                self.k8s_namespace.name if self.k8s_namespace else "Unknown",
+            )
 
         self.pod_port_forwarders = []
 
