@@ -77,7 +77,7 @@ class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                     test_servers[0]
                 )
                 # Validate the number of received endpoints
-                parsed = test_client.csds.fetch_client_status(
+                parsed = test_client.csds.fetch_client_status_parsed(
                     log_level=logging.INFO
                 )
                 self.assertIsNotNone(parsed)

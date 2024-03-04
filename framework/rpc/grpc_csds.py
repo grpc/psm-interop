@@ -187,6 +187,6 @@ class CsdsClient(framework.rpc.grpc.GrpcClientHelper):
     def fetch_client_status_parsed(self, **kwargs) -> Optional[DumpedXdsConfig]:
         """Same as fetch_client_status, but also parses."""
         client_config = self.fetch_client_status(**kwargs)
-        if client_config is None:
-            return None
-        return DumpedXdsConfig.from_message(client_config)
+        if client_config:
+            return DumpedXdsConfig.from_message(client_config)
+        return None
