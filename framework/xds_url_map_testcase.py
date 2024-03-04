@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Iterable, Mapping, Optional, Tuple
+from typing import Any, Final, Iterable, Mapping, Optional, Tuple
 import unittest
 
 from absl import flags
@@ -34,6 +34,7 @@ from framework.helpers import retryers
 from framework.helpers import skips
 from framework.infrastructure import k8s
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_cases import base_testcase
@@ -62,9 +63,9 @@ _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 JsonType = Any
 _timedelta = datetime.timedelta
 
-# ProtoBuf translatable RpcType enums
-RpcTypeUnaryCall = "UNARY_CALL"
-RpcTypeEmptyCall = "EMPTY_CALL"
+# TODO(sergiitk): should not be here! Move all usages to grpc_testing.
+RpcTypeUnaryCall: Final[str] = grpc_testing.RPC_TYPE_UNARY_CALL
+RpcTypeEmptyCall: Final[str] = grpc_testing.RPC_TYPE_EMPTY_CALL
 
 
 def _split_camel(s: str, delimiter: str = "-") -> str:

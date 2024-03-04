@@ -16,7 +16,7 @@ This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 import logging
-from typing import Iterable, Optional, Tuple
+from typing import Final, Iterable, Optional, Tuple
 
 import grpc
 from grpc_health.v1 import health_pb2
@@ -38,6 +38,11 @@ LoadBalancerAccumulatedStatsResponse = (
 )
 MethodStats = messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
 RpcsByPeer = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+
+# Constants.
+# ProtoBuf translatable RpcType enums
+RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
+RPC_TYPE_EMPTY_CALL: Final[str] = "EMPTY_CALL"
 
 
 class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
