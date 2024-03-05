@@ -78,6 +78,7 @@ class RpcDistributionStats:
     empty_call_alternative_service_rpc_count: int
 
     def __init__(self, lb_stats_dict: LbStatsDict):
+        # TODO(sergiitk): Make raw private when all logic that uses it removed.
         self.raw = lb_stats_dict
 
         self.num_failures = lb_stats_dict.get("numFailures", 0)
