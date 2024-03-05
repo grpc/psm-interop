@@ -19,7 +19,6 @@ from absl.testing import absltest
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
@@ -30,7 +29,6 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 _REPLICA_COUNT = 3
 
@@ -80,14 +78,9 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
 
         with self.subTest("05_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
+            test_client.update_config.configure_unary(
                 metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(
@@ -118,14 +111,9 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
 
         with self.subTest("05_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
+            test_client.update_config.configure_unary(
                 metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(
@@ -156,14 +144,9 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             )
 
         with self.subTest("05_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
+            test_client.update_config.configure_unary(
                 metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(

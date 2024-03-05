@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Iterable, Mapping, Optional, Tuple
+from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 import unittest
 
 from absl import flags
@@ -34,6 +34,7 @@ from framework.helpers import retryers
 from framework.helpers import skips
 from framework.infrastructure import k8s
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_cases import base_testcase
@@ -61,10 +62,6 @@ PathMatcher = xds_url_map_test_resources.PathMatcher
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 JsonType = Any
 _timedelta = datetime.timedelta
-
-# ProtoBuf translatable RpcType enums
-RpcTypeUnaryCall = "UNARY_CALL"
-RpcTypeEmptyCall = "EMPTY_CALL"
 
 
 def _split_camel(s: str, delimiter: str = "-") -> str:
@@ -137,7 +134,7 @@ class RpcDistributionStats:
 class ExpectedResult:
     """Describes the expected result of assertRpcStatusCode method below."""
 
-    rpc_type: str = RpcTypeUnaryCall
+    rpc_type: str = grpc_testing.RPC_TYPE_UNARY_CALL
     status_code: grpc.StatusCode = grpc.StatusCode.OK
     ratio: float = 1
 
@@ -426,8 +423,8 @@ class XdsUrlMapTestCase(
         cls,
         test_client: XdsTestClient,
         *,
-        rpc_types: Iterable[str],
-        metadata: Optional[Iterable[Tuple[str, str, str]]] = None,
+        rpc_types: Sequence[str],
+        metadata: Optional[grpc_testing.ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
         num_rpcs: int,
     ) -> RpcDistributionStats:

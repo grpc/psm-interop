@@ -20,14 +20,13 @@ from absl.testing import absltest
 from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
 _Lang = skips.Lang
 
@@ -42,10 +41,18 @@ _TEST_METADATA_NUMERIC_KEY = "xds_md_numeric"
 _TEST_METADATA_NUMERIC_VALUE = "159"
 
 _TEST_METADATA = (
-    (RpcTypeUnaryCall, _TEST_METADATA_KEY, _TEST_METADATA_VALUE_UNARY),
-    (RpcTypeEmptyCall, _TEST_METADATA_KEY, _TEST_METADATA_VALUE_EMPTY),
     (
-        RpcTypeUnaryCall,
+        grpc_testing.RPC_TYPE_UNARY_CALL,
+        _TEST_METADATA_KEY,
+        _TEST_METADATA_VALUE_UNARY,
+    ),
+    (
+        grpc_testing.RPC_TYPE_EMPTY_CALL,
+        _TEST_METADATA_KEY,
+        _TEST_METADATA_VALUE_EMPTY,
+    ),
+    (
+        grpc_testing.RPC_TYPE_UNARY_CALL,
         _TEST_METADATA_NUMERIC_KEY,
         _TEST_METADATA_NUMERIC_VALUE,
     ),
@@ -106,7 +113,7 @@ class TestExactMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeEmptyCall],
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -164,7 +171,7 @@ class TestPrefixMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -221,7 +228,7 @@ class TestSuffixMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeEmptyCall],
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -278,7 +285,7 @@ class TestPresentMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -337,7 +344,7 @@ class TestInvertMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeUnaryCall, RpcTypeEmptyCall],
+            rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -407,7 +414,7 @@ class TestRangeMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeUnaryCall, RpcTypeEmptyCall],
+            rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )
@@ -475,7 +482,7 @@ class TestRegexMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeEmptyCall],
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
             metadata=_TEST_METADATA,
             num_rpcs=_NUM_RPCS,
         )

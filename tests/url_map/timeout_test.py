@@ -22,14 +22,13 @@ import grpc
 from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 ExpectedResult = xds_url_map_testcase.ExpectedResult
 XdsTestClient = client_app.XdsTestClient
 XdsUrlMapTestCase = xds_url_map_testcase.XdsUrlMapTestCase
@@ -37,6 +36,7 @@ XdsUrlMapTestCase = xds_url_map_testcase.XdsUrlMapTestCase
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_url_map_testcase)
 
+# Constants
 # The first batch of RPCs don't count towards the result of test case. They are
 # meant to prove the communication between driver and client is fine.
 _NUM_RPCS = 25
@@ -98,12 +98,12 @@ class TestTimeoutInRouteRule(_BaseXdsTimeOutTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeUnaryCall, RpcTypeEmptyCall],
+            rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
             # UnaryCall and EmptyCall both sleep-4.
             # UnaryCall timeouts, EmptyCall succeeds.
             metadata=(
-                (RpcTypeUnaryCall, "rpc-behavior", "sleep-4"),
-                (RpcTypeEmptyCall, "rpc-behavior", "sleep-4"),
+                (grpc_testing.RPC_TYPE_UNARY_CALL, "rpc-behavior", "sleep-4"),
+                (grpc_testing.RPC_TYPE_EMPTY_CALL, "rpc-behavior", "sleep-4"),
             ),
             num_rpcs=_NUM_RPCS,
         )
@@ -111,11 +111,12 @@ class TestTimeoutInRouteRule(_BaseXdsTimeOutTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.DEADLINE_EXCEEDED,
                 ),
                 ExpectedResult(
-                    rpc_type=RpcTypeEmptyCall, status_code=grpc.StatusCode.OK
+                    rpc_type=grpc_testing.RPC_TYPE_EMPTY_CALL,
+                    status_code=grpc.StatusCode.OK,
                 ),
             ),
             length=_LENGTH_OF_RPC_SENDING_SEC,
@@ -137,9 +138,11 @@ class TestTimeoutInApplication(_BaseXdsTimeOutTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             # UnaryCall only with sleep-2; timeout=1s; calls timeout.
-            metadata=((RpcTypeUnaryCall, "rpc-behavior", "sleep-2"),),
+            metadata=(
+                (grpc_testing.RPC_TYPE_UNARY_CALL, "rpc-behavior", "sleep-2"),
+            ),
             app_timeout=1,
             num_rpcs=_NUM_RPCS,
         )
@@ -147,7 +150,7 @@ class TestTimeoutInApplication(_BaseXdsTimeOutTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.DEADLINE_EXCEEDED,
                 ),
             ),
@@ -167,14 +170,15 @@ class TestTimeoutNotExceeded(_BaseXdsTimeOutTestCase):
         self.configure_and_send(
             test_client,
             # UnaryCall only with no sleep; calls succeed.
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             num_rpcs=_NUM_RPCS,
         )
         self.assertRpcStatusCode(
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall, status_code=grpc.StatusCode.OK
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
+                    status_code=grpc.StatusCode.OK,
                 ),
             ),
             length=_LENGTH_OF_RPC_SENDING_SEC,
