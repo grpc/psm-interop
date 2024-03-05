@@ -173,6 +173,8 @@ class PrettyLoadBalancerStats:
 
                 for key, uniq_val in uniq_vals.items():
                     result[peer][key] = list(uniq_val)
+        # Converting to a normal dict because dataclasses.asdict() doesn't work
+        # with collections.defaultdict(): https://bugs.python.org/issue35540.
         return dict(result)
 
     @classmethod
