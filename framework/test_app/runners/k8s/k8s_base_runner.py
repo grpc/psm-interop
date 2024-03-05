@@ -247,9 +247,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             for manifest in yml:
                 yield manifest
 
-    def _render_template(self, template_file: str, **kwargs):
-        template = self._template_lookup.get_template(template_file)
-        return template.render(**kwargs)
+    def _render_template(self, template_name: str, **template_vars):
+        template = self._template_lookup.get_template(template_name)
+        return template.render(**template_vars)
 
     @classmethod
     @property
