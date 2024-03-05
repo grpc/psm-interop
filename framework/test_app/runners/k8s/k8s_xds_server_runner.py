@@ -339,8 +339,11 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             )
             for pod_name, server_app in self.pods_to_servers.items():
                 try:
-                    server_app.send_prestop_hook_release()
+                    server_app.send_prestop_hook_release(
+                        timeout=datetime.timedelta(seconds=5)
+                    )
                 except grpc.RpcError as err:
+                    # TODO(sergiitk): don't log when stopping
                     logger.warning(
                         "Prestop hook release to %s failed: %r", pod_name, err
                     )

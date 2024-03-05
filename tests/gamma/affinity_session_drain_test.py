@@ -72,6 +72,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         )
         return super().initKubernetesServerRunner(
             deployment_args=deployment_args,
+            **kwargs,
         )
 
     @override

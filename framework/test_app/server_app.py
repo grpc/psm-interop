@@ -116,11 +116,11 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
             self.health_client.check_health(),
         )
 
-    def send_prestop_hook_release(self):
+    def send_prestop_hook_release(self, **kwargs):
         logger.debug(
             "[%s] >> Sending request to release the prestop hook", self.hostname
         )
-        self.hook_service_client.set_return_status()
+        self.hook_service_client.set_return_status(**kwargs)
 
     def set_xds_address(self, xds_host, xds_port: Optional[int] = None):
         self.xds_host, self.xds_port = xds_host, xds_port

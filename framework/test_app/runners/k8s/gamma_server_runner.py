@@ -18,8 +18,6 @@ import datetime
 import logging
 from typing import List, Optional
 
-from typing_extensions import override
-
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.test_app.runners.k8s import k8s_base_runner
@@ -293,7 +291,6 @@ class GammaServerRunner(KubernetesServerRunner):
             draining_timeout_sec=draining_timeout_sec,
         )
 
-    @override
     def cleanup(self, *, force=False, force_namespace=False):
         try:
             if self.route or force:

@@ -490,13 +490,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 servers,
                 num_rpcs,
             )
-        except retryers.RetryError:
-            logger.error(
-                "RPCs (num_rpcs=%i) did not go to exclusively the expected"
-                " servers %s before timeout %s (h:mm:ss)",
-                num_rpcs,
-                [server.hostname for server in servers],
-                retry_timeout,
+        except retryers.RetryError as retry_err:
+            retry_err.add_note(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to exclusively the"
+                f" expected servers {[server.hostname for server in servers]}"
+                f" before timeout {retry_timeout} (h:mm:ss)"
             )
             raise
 
