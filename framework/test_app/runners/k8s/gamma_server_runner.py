@@ -243,23 +243,24 @@ class GammaServerRunner(KubernetesServerRunner):
 
         return servers
 
-    def create_session_affinity_policy(self, template: str):
+    def create_session_affinity_policy(self, template: str, **template_vars):
         self.session_affinity_policy = self._create_session_affinity_policy(
             template,
             session_affinity_policy_name=self.SESSION_AFFINITY_POLICY_NAME,
             namespace_name=self.k8s_namespace.name,
-            route_name=self.route_name,
-            service_name=self.service_name,
+            **template_vars,
         )
 
     def create_session_affinity_policy_route(self):
         self.create_session_affinity_policy(
-            "gamma/session_affinity_policy_route.yaml"
+            "gamma/session_affinity_policy_route.yaml",
+            route_name=self.route_name,
         )
 
     def create_session_affinity_policy_service(self):
         self.create_session_affinity_policy(
-            "gamma/session_affinity_policy_service.yaml"
+            "gamma/session_affinity_policy_service.yaml",
+            service_name=self.service_name,
         )
 
     def create_session_affinity_filter(self):

@@ -74,6 +74,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Fields with default values.
     namespace_template: str = "namespace.yaml"
     reuse_namespace: bool = False
+    log_to_stdout: bool = False
 
     # Mutable state. Describes the current run.
     namespace: Optional[k8s.V1Namespace] = None
@@ -505,114 +506,158 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return deployment
 
-    def _create_gamma_route(self, template, **kwargs) -> k8s.GammaHttpRoute:
+    def _create_gamma_route(
+        self,
+        template: str,
+        *,
+        route_name: str,
+        namespace_name: str,
+        service_name: str,
+        test_port: int,
+        frontend_service_name: str,
+        **template_vars,
+    ) -> k8s.GammaHttpRoute:
         route = self._create_from_template(
             template,
             custom_object=True,
-            **kwargs,
+            namespace_name=namespace_name,
+            service_name=service_name,
+            test_port=test_port,
+            frontend_service_name=frontend_service_name,
+            **template_vars,
         )
         if not (
             isinstance(route, k8s.GammaHttpRoute) and route.kind == "HTTPRoute"
         ):
             raise _RunnerError(
-                f"Expected ResourceInstance[HTTPRoute] to be created from"
-                f" manifest {template}"
+                f"Expected HTTPRoute to be created from" f" manifest {template}"
             )
-        if route.metadata.name != kwargs["route_name"]:
+        if route.metadata.name != route_name:
             raise _RunnerError(
-                "ResourceInstance[HTTPRoute] created with unexpected name: "
-                f"{route.metadata.name}"
+                "HTTPRoute created with unexpected name:"
+                f" {route.metadata.name}"
             )
         logger.debug(
-            "ResourceInstance[HTTPRoute] %s created at %s",
+            "HTTPRoute %s created at %s",
             route.metadata.name,
             route.metadata.creation_timestamp,
         )
         return route
 
     def _create_session_affinity_policy(
-        self, template, **kwargs
+        self,
+        template: str,
+        *,
+        session_affinity_policy_name: str,
+        namespace_name: str,
+        **template_vars,
     ) -> k8s.GcpSessionAffinityPolicy:
-        saPolicy = self._create_from_template(
+        has_route_name = "route_name" in template_vars
+        has_service_name = "service_name" in template_vars
+        if has_route_name == has_service_name:
+            raise ValueError(
+                "Exactly one of 'route_name', 'service_name' must be set"
+            )
+
+        sa_policy = self._create_from_template(
             template,
             custom_object=True,
-            **kwargs,
+            session_affinity_policy_name=session_affinity_policy_name,
+            namespace_name=namespace_name,
+            **template_vars,
         )
         if not (
-            isinstance(saPolicy, k8s.GcpSessionAffinityPolicy)
-            and saPolicy.kind == "GCPSessionAffinityPolicy"
+            isinstance(sa_policy, k8s.GcpSessionAffinityPolicy)
+            and sa_policy.kind == "GCPSessionAffinityPolicy"
         ):
             raise _RunnerError(
-                f"Expected ResourceInstance[GCPSessionAffinityPolicy] to be"
+                f"Expected GCPSessionAffinityPolicy to be"
                 f" created from manifest {template}"
             )
-        if saPolicy.metadata.name != kwargs["session_affinity_policy_name"]:
+        if sa_policy.metadata.name != session_affinity_policy_name:
             raise _RunnerError(
-                "ResourceInstance[GCPSessionAffinityPolicy] created with"
-                f" unexpected name: {saPolicy.metadata.name}"
+                "GCPSessionAffinityPolicy created with"
+                f" unexpected name: {sa_policy.metadata.name}"
             )
         logger.debug(
-            "ResourceInstance[GCPSessionAffinityPolicy] %s created at %s",
-            saPolicy.metadata.name,
-            saPolicy.metadata.creation_timestamp,
+            "GCPSessionAffinityPolicy %s created at %s",
+            sa_policy.metadata.name,
+            sa_policy.metadata.creation_timestamp,
         )
-        return saPolicy
+        return sa_policy
 
     def _create_session_affinity_filter(
-        self, template, **kwargs
+        self,
+        template: str,
+        *,
+        session_affinity_filter_name: str,
+        namespace_name: str,
+        **template_vars,
     ) -> k8s.GcpSessionAffinityFilter:
-        saFilter = self._create_from_template(
+        sa_filter = self._create_from_template(
             template,
             custom_object=True,
-            **kwargs,
+            namespace_name=namespace_name,
+            session_affinity_filter_name=session_affinity_filter_name,
+            **template_vars,
         )
         if not (
-            isinstance(saFilter, k8s.GcpSessionAffinityFilter)
-            and saFilter.kind == "GCPSessionAffinityFilter"
+            isinstance(sa_filter, k8s.GcpSessionAffinityFilter)
+            and sa_filter.kind == "GCPSessionAffinityFilter"
         ):
             raise _RunnerError(
-                f"Expected ResourceInstance[GCPSessionAffinityFilter] to be"
+                f"Expected GCPSessionAffinityFilter to be"
                 f" created from manifest {template}"
             )
-        if saFilter.metadata.name != kwargs["session_affinity_filter_name"]:
+        if sa_filter.metadata.name != session_affinity_filter_name:
             raise _RunnerError(
-                "ResourceInstance[GCPSessionAffinityFilter] created with"
-                f" unexpected name: {saFilter.metadata.name}"
+                "GCPSessionAffinityFilter created with"
+                f" unexpected name: {sa_filter.metadata.name}"
             )
         logger.debug(
-            "ResourceInstance[GCPSessionAffinityFilter] %s created at %s",
-            saFilter.metadata.name,
-            saFilter.metadata.creation_timestamp,
+            "GCPSessionAffinityFilter %s created at %s",
+            sa_filter.metadata.name,
+            sa_filter.metadata.creation_timestamp,
         )
-        return saFilter
+        return sa_filter
 
     def _create_backend_policy(
-        self, template, **kwargs
+        self,
+        template: str,
+        *,
+        backend_policy_name: str,
+        namespace_name: str,
+        service_name: str,
+        **template_vars,
     ) -> k8s.GcpBackendPolicy:
-        be_policy = self._create_from_template(
+        # TODO(sergiitk): explicit vars.
+        backend_policy = self._create_from_template(
             template,
             custom_object=True,
-            **kwargs,
+            backend_policy_name=backend_policy_name,
+            namespace_name=namespace_name,
+            service_name=service_name,
+            **template_vars,
         )
         if not (
-            isinstance(be_policy, k8s.GcpBackendPolicy)
-            and be_policy.kind == "GCPBackendPolicy"
+            isinstance(backend_policy, k8s.GcpBackendPolicy)
+            and backend_policy.kind == "GCPBackendPolicy"
         ):
             raise _RunnerError(
-                f"Expected ResourceInstance[GCPBackendPolicy] to be"
-                f" created from manifest {template}"
+                "Expected GCPBackendPolicy to be created from manifest"
+                " {template}"
             )
-        if be_policy.metadata.name != kwargs["be_policy_name"]:
+        if backend_policy.metadata.name != backend_policy_name:
             raise _RunnerError(
-                "ResourceInstance[GCPBackendPolicy] created with"
-                f" unexpected name: {be_policy.metadata.name}"
+                "GCPBackendPolicy created with unexpected name:"
+                f" {backend_policy.metadata.name}"
             )
         logger.debug(
-            "ResourceInstance[GCPBackendPolicy] %s created at %s",
-            be_policy.metadata.name,
-            be_policy.metadata.creation_timestamp,
+            "GCPBackendPolicy %s created at %s",
+            backend_policy.metadata.name,
+            backend_policy.metadata.creation_timestamp,
         )
-        return be_policy
+        return backend_policy
 
     def _create_service(self, template, **kwargs) -> k8s.V1Service:
         service = self._create_from_template(template, **kwargs)
