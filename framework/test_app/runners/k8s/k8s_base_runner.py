@@ -42,7 +42,10 @@ logger = logging.getLogger(__name__)
 _RunnerError = base_runner.RunnerError
 _HighlighterYaml = framework.helpers.highlighter.HighlighterYaml
 _helper_datetime = framework.helpers.datetime
+# TODO(sergiitk): replace _datetime with dt.datetime everywhere
 _datetime = dt.datetime
+# TODO(sergiitk): replace _timedelta with dt.timedelta everywhere
+_timedelta = dt.timedelta
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1068,7 +1071,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         if not start_time:
             start_time = _datetime.now()
         if not end_time:
-            end_time = start_time + dt.timedelta(minutes=30)
+            end_time = start_time + _timedelta(minutes=30)
 
         logs_start = _helper_datetime.iso8601_utc_time(start_time)
         logs_end = _helper_datetime.iso8601_utc_time(end_time)

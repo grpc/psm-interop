@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Type aliases
 _ChannelzServiceClient = grpc_channelz.ChannelzServiceClient
+_XdsUpdateHealthServiceClient = grpc_testing.XdsUpdateHealthServiceClient
 _HealthClient = grpc_testing.HealthClient
 
 
@@ -69,11 +70,9 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         )
 
     @property
-    @functools.cache
-    def update_health_service_client(
-        self,
-    ) -> grpc_testing.XdsUpdateHealthServiceClient:
-        return grpc_testing.XdsUpdateHealthServiceClient(
+    @functools.lru_cache(None)
+    def update_health_service_client(self) -> _XdsUpdateHealthServiceClient:
+        return _XdsUpdateHealthServiceClient(
             self._make_channel(self.maintenance_port),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )

@@ -64,7 +64,6 @@ ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 LbStatsDict: TypeAlias = dict[Any]
 
 # Constants.
-_HOOK_SERVER_PORT: Final[int] = 8000
 # ProtoBuf translatable RpcType enums
 RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
 RPC_TYPE_EMPTY_CALL: Final[str] = "EMPTY_CALL"

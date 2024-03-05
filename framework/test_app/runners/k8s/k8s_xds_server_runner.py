@@ -15,7 +15,7 @@
 Run xDS Test Client on Kubernetes.
 """
 import dataclasses
-import datetime
+import datetime as dt
 import logging
 from typing import List, Optional
 
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass(frozen=True)
 class ServerDeploymentArgs:
     pre_stop_hook: bool = False
-    termination_grace_period: datetime.timedelta = datetime.timedelta()
+    termination_grace_period: dt.timedelta = dt.timedelta()
 
     def as_dict(self):
         return {
@@ -340,7 +340,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             for pod_name, server_app in self.pods_to_servers.items():
                 try:
                     server_app.send_prestop_hook_release(
-                        timeout=datetime.timedelta(seconds=5)
+                        timeout=dt.timedelta(seconds=5)
                     )
                 except grpc.RpcError as err:
                     # TODO(sergiitk): don't log when stopping

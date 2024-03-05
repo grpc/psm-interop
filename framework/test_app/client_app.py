@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 # Type aliases
 _timedelta = datetime.timedelta
 _LoadBalancerStatsServiceClient = grpc_testing.LoadBalancerStatsServiceClient
+_XdsUpdateClientConfigureServiceClient = (
+    grpc_testing.XdsUpdateClientConfigureServiceClient
+)
 _ChannelzServiceClient = grpc_channelz.ChannelzServiceClient
 _ChannelzChannel = grpc_channelz.Channel
 _ChannelzChannelData = grpc_channelz.ChannelData
@@ -81,11 +84,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         )
 
     @property
-    @functools.cache
-    def update_config(
-        self,
-    ) -> grpc_testing.XdsUpdateClientConfigureServiceClient:
-        return grpc_testing.XdsUpdateClientConfigureServiceClient(
+    @functools.lru_cache(None)
+    def update_config(self):
+        return _XdsUpdateClientConfigureServiceClient(
             self._make_channel(self.rpc_port),
             log_target=f"{self.hostname}:{self.rpc_port}",
         )

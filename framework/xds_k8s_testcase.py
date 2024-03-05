@@ -72,8 +72,9 @@ _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
 )
 _ChannelState = grpc_channelz.ChannelState
-# TODO(sergiitk): replace with dt.timedelta everywhere
+# TODO(sergiitk): replace datetime with dt.datetime everywhere
 datetime = dt
+# TODO(sergiitk): replace _timedelta with dt.timedelta everywhere
 _timedelta = datetime.timedelta
 ClientConfig = grpc_csds.ClientConfig
 RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata

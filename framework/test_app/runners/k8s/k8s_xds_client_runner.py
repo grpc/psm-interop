@@ -25,9 +25,6 @@ from framework.test_app.runners.k8s import k8s_base_runner
 logger = logging.getLogger(__name__)
 
 
-XdsTestClient = client_app.XdsTestClient
-
-
 class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     # Required fields.
     xds_server_uri: str
@@ -118,7 +115,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         enable_csm_observability: bool = False,
         request_payload_size: int = 0,
         response_payload_size: int = 0,
-    ) -> XdsTestClient:
+    ) -> client_app.XdsTestClient:
         logger.info(
             (
                 'Deploying xDS test client "%s" to k8s namespace %s: '
@@ -198,7 +195,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
 
     def _make_clients_for_deployment(
         self, replica_count: int = 1, *, server_target: str
-    ) -> list[XdsTestClient]:
+    ) -> list[client_app.XdsTestClient]:
         pod_names = self._wait_deployment_pod_count(
             self.deployment, replica_count
         )
@@ -220,14 +217,14 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
 
     def _xds_test_client_for_pod(
         self, pod: k8s.V1Pod, *, server_target: str
-    ) -> XdsTestClient:
+    ) -> client_app.XdsTestClient:
         if self.debug_use_port_forwarding:
             pf = self._start_port_forwarding_pod(pod, self.stats_port)
             rpc_port, rpc_host = pf.local_port, pf.local_address
         else:
             rpc_port, rpc_host = self.stats_port, None
 
-        return XdsTestClient(
+        return client_app.XdsTestClient(
             ip=pod.status.pod_ip,
             rpc_port=rpc_port,
             server_target=server_target,

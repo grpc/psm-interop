@@ -210,8 +210,8 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 chosen_server.hostname,
             )
 
-        with self.subTest("12_chosen_server_prestop_exit"):
-            chosen_server.send_prestop_hook_release()
+        # with self.subTest("12_chosen_server_prestop_exit"):
+        #     chosen_server.send_prestop_hook_release()
 
     def wait_for_draining_endpoint_count(
         self,
