@@ -130,8 +130,8 @@ class PrettyLoadBalancerStats:
     # The number of completed RPCs per method per each pear.
     # Format: a dictionary from the method name to RpcsByPeer (see above), f.e.:
     # {
-    #   "UNARY_CALL": {"host-a": 10, "host-b": 20},
-    #   "EMPTY_CALL": {"host-a": 42},
+    #   "UnaryCall": {"host-a": 10, "host-b": 20},
+    #   "EmptyCall": {"host-a": 42},
     # }
     rpcs_by_method: _RpcsByMethodPretty
 
@@ -173,6 +173,8 @@ class PrettyLoadBalancerStats:
 
                 for key, uniq_val in uniq_vals.items():
                     result[peer][key] = list(uniq_val)
+        # Converting to a normal dict because dataclasses.asdict() doesn't work
+        # with collections.defaultdict(): https://bugs.python.org/issue35540.
         return dict(result)
 
     @classmethod
@@ -195,10 +197,10 @@ def lb_stats_pretty(lb_stats: grpc_testing.LoadBalancerStatsResponse) -> str:
     Example:
       num_failures: 13
       rpcs_by_method:
-        UNARY_CALL:
+        UnaryCall:
           psm-grpc-server-a: 100
           psm-grpc-server-b: 42
-        EMPTY_CALL:
+        EmptyCall:
           psm-grpc-server-a: 200
       rpcs_by_peer:
         psm-grpc-server-a: 200

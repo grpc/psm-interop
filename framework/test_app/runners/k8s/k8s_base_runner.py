@@ -566,12 +566,24 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         return deployment
 
     def _create_gamma_route(
-        self, template: str, **template_vars
+        self,
+        template: str,
+        *,
+        route_name: str,
+        namespace_name: str,
+        service_name: str,
+        test_port: int,
+        frontend_service_name: str,
+        **template_vars,
     ) -> k8s.GammaHttpRoute:
-        route_name: str = template_vars["route_name"]
         route = self._create_from_template(
             template,
             custom_object=True,
+            route_name=route_name,
+            namespace_name=namespace_name,
+            service_name=service_name,
+            test_port=test_port,
+            frontend_service_name=frontend_service_name,
             **template_vars,
         )
         if not (
@@ -593,13 +605,25 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         return route
 
     def _create_session_affinity_policy(
-        self, template: str, **template_vars
+        self,
+        template: str,
+        *,
+        session_affinity_policy_name: str,
+        namespace_name: str,
+        **template_vars,
     ) -> k8s.GcpSessionAffinityPolicy:
-        # TODO(sergiitk): explicit vars.
-        sa_policy_name: str = template_vars["session_affinity_policy_name"]
+        has_route_name = "route_name" in template_vars
+        has_service_name = "service_name" in template_vars
+        if has_route_name == has_service_name:
+            raise ValueError(
+                "Exactly one of 'route_name', 'service_name' must be set"
+            )
+
         sa_policy = self._create_from_template(
             template,
             custom_object=True,
+            session_affinity_policy_name=session_affinity_policy_name,
+            namespace_name=namespace_name,
             **template_vars,
         )
         if not (
@@ -610,7 +634,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 f"Expected GCPSessionAffinityPolicy to be"
                 f" created from manifest {template}"
             )
-        if sa_policy.metadata.name != sa_policy_name:
+        if sa_policy.metadata.name != session_affinity_policy_name:
             raise _RunnerError(
                 "GCPSessionAffinityPolicy created with"
                 f" unexpected name: {sa_policy.metadata.name}"
@@ -623,13 +647,18 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         return sa_policy
 
     def _create_session_affinity_filter(
-        self, template: str, **template_vars
+        self,
+        template: str,
+        *,
+        session_affinity_filter_name: str,
+        namespace_name: str,
+        **template_vars,
     ) -> k8s.GcpSessionAffinityFilter:
-        # TODO(sergiitk): explicit vars.
-        sa_filter_name: str = template_vars["session_affinity_filter_name"]
         sa_filter = self._create_from_template(
             template,
             custom_object=True,
+            session_affinity_filter_name=session_affinity_filter_name,
+            namespace_name=namespace_name,
             **template_vars,
         )
         if not (
@@ -640,7 +669,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 f"Expected GCPSessionAffinityFilter to be"
                 f" created from manifest {template}"
             )
-        if sa_filter.metadata.name != sa_filter_name:
+        if sa_filter.metadata.name != session_affinity_filter_name:
             raise _RunnerError(
                 "GCPSessionAffinityFilter created with"
                 f" unexpected name: {sa_filter.metadata.name}"
@@ -653,13 +682,21 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         return sa_filter
 
     def _create_backend_policy(
-        self, template: str, **template_vars
+        self,
+        template: str,
+        *,
+        backend_policy_name: str,
+        namespace_name: str,
+        service_name: str,
+        **template_vars,
     ) -> k8s.GcpBackendPolicy:
         # TODO(sergiitk): explicit vars.
-        backend_policy_name: str = template_vars["backend_policy_name"]
         backend_policy = self._create_from_template(
             template,
             custom_object=True,
+            backend_policy_name=backend_policy_name,
+            namespace_name=namespace_name,
+            service_name=service_name,
             **template_vars,
         )
         if not (
