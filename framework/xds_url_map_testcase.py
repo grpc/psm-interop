@@ -24,7 +24,6 @@ import unittest
 
 from absl import flags
 from absl import logging
-from google.protobuf import json_format
 import grpc
 
 from framework import xds_k8s_testcase
@@ -61,9 +60,6 @@ HostRule = xds_url_map_test_resources.HostRule
 PathMatcher = xds_url_map_test_resources.PathMatcher
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _timedelta = datetime.timedelta
-
-# TODO(sergiitk): should not be here! Move all usages to grpc_testing.
-RpcDistributionStats = grpc_testing.RpcDistributionStats
 
 
 def _split_camel(s: str, delimiter: str = "-") -> str:
@@ -370,7 +366,7 @@ class XdsUrlMapTestCase(
         metadata: Optional[grpc_testing.ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
         num_rpcs: int,
-    ) -> RpcDistributionStats:
+    ) -> grpc_testing.RpcDistributionStats:
         test_client.update_config.configure(
             rpc_types=rpc_types, metadata=metadata, app_timeout=app_timeout
         )
@@ -382,7 +378,7 @@ class XdsUrlMapTestCase(
             test_client.hostname,
             helpers_grpc.lb_stats_pretty(lb_stats),
         )
-        return RpcDistributionStats(json_format.MessageToDict(lb_stats))
+        return grpc_testing.RpcDistributionStats.from_message(lb_stats)
 
     def assertNumEndpoints(
         self,
