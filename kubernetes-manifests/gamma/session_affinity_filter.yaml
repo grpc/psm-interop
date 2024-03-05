@@ -4,6 +4,8 @@ kind: GCPSessionAffinityFilter
 metadata:
   name: ${session_affinity_filter_name}
   namespace: ${namespace_name}
+  labels:
+    owner: xds-k8s-interop-test
 spec:
   statefulGeneratedCookie:
     cookieTtlSeconds: 50

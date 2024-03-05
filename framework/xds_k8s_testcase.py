@@ -233,8 +233,16 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
     @classmethod
     def _pretty_lb_stats(cls, lb_stats: _LoadBalancerStatsResponse) -> str:
-        stats_yaml = helpers_grpc.lb_stats_pretty(lb_stats)
-        return cls.yaml_highlighter.highlight(stats_yaml)
+        try:
+            stats_yaml = helpers_grpc.lb_stats_pretty(lb_stats)
+            return cls.yaml_highlighter.highlight(stats_yaml)
+        except Exception as e:  # noqa pylint: disable=broad-except
+            logger.warning(
+                "Error printing LoadBalancerStatsResponse %s",
+                lb_stats,
+                exc_info=e,
+            )
+            return str(lb_stats)
 
     @classmethod
     def tearDownClass(cls):
