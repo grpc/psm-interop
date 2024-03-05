@@ -18,7 +18,6 @@ from absl import flags
 from absl.testing import absltest
 
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_cases import session_affinity_util
@@ -28,7 +27,6 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 
 _REPLICA_COUNT = 3
 
@@ -113,14 +111,9 @@ class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             )
 
         with self.subTest("8_send_RPCs_with_cookie"):
-            test_client.update_config.configure(
-                rpc_types=(RpcTypeUnaryCall,),
+            test_client.update_config.configure_unary(
                 metadata=(
-                    (
-                        RpcTypeUnaryCall,
-                        "cookie",
-                        cookie,
-                    ),
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", cookie),
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(

@@ -21,13 +21,13 @@ import grpc
 from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
 XdsTestClient = client_app.XdsTestClient
 ExpectedResult = xds_url_map_testcase.ExpectedResult
 _Lang = skips.Lang
@@ -102,10 +102,10 @@ class TestRetryUpTo3AttemptsAndFail(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             metadata=[
                 (
-                    RpcTypeUnaryCall,
+                    grpc_testing.RPC_TYPE_UNARY_CALL,
                     _RPC_BEHAVIOR_HEADER_NAME,
                     "succeed-on-retry-attempt-4,error-code-14",
                 )
@@ -116,7 +116,7 @@ class TestRetryUpTo3AttemptsAndFail(xds_url_map_testcase.XdsUrlMapTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.UNAVAILABLE,
                     ratio=1,
                 ),
@@ -153,10 +153,10 @@ class TestRetryUpTo4AttemptsAndSucceed(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             metadata=[
                 (
-                    RpcTypeUnaryCall,
+                    grpc_testing.RPC_TYPE_UNARY_CALL,
                     _RPC_BEHAVIOR_HEADER_NAME,
                     "succeed-on-retry-attempt-4,error-code-14",
                 )
@@ -167,7 +167,7 @@ class TestRetryUpTo4AttemptsAndSucceed(xds_url_map_testcase.XdsUrlMapTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.OK,
                     ratio=1,
                 ),
