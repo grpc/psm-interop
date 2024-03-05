@@ -17,7 +17,7 @@ https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 from collections.abc import Sequence
 import logging
-from typing import Final, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import grpc
 from grpc_health.v1 import health_pb2
@@ -48,6 +48,9 @@ MetadataByPeer: TypeAlias = (
 # Rpc type name, key, value.
 ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 
+# LoadBalancerStatsResponse parsed as a dict.
+LbStatsDict: TypeAlias = dict[Any]
+
 # Constants.
 # ProtoBuf translatable RpcType enums
 RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
@@ -56,6 +59,65 @@ RPC_TYPES_BOTH_CALLS: Final[tuple[str, str]] = (
     RPC_TYPE_UNARY_CALL,
     RPC_TYPE_EMPTY_CALL,
 )
+
+
+class RpcDistributionStats:
+    """A convenience class to check RPC distribution.
+
+    Feel free to add more pre-compute fields.
+    """
+
+    num_failures: int
+    num_oks: int
+    default_service_rpc_count: int
+    alternative_service_rpc_count: int
+    unary_call_default_service_rpc_count: int
+    empty_call_default_service_rpc_count: int
+    unary_call_alternative_service_rpc_count: int
+    empty_call_alternative_service_rpc_count: int
+
+    def __init__(self, json_lb_stats: LbStatsDict):
+        self.num_failures = json_lb_stats.get("numFailures", 0)
+
+        self.num_peers = 0
+        self.num_oks = 0
+        self.default_service_rpc_count = 0
+        self.alternative_service_rpc_count = 0
+        self.unary_call_default_service_rpc_count = 0
+        self.empty_call_default_service_rpc_count = 0
+        self.unary_call_alternative_service_rpc_count = 0
+        self.empty_call_alternative_service_rpc_count = 0
+        self.raw = json_lb_stats
+
+        if "rpcsByPeer" in json_lb_stats:
+            self.num_peers = len(json_lb_stats["rpcsByPeer"])
+        if "rpcsByMethod" in json_lb_stats:
+            for rpc_type in json_lb_stats["rpcsByMethod"]:
+                for peer in json_lb_stats["rpcsByMethod"][rpc_type][
+                    "rpcsByPeer"
+                ]:
+                    count = json_lb_stats["rpcsByMethod"][rpc_type][
+                        "rpcsByPeer"
+                    ][peer]
+                    self.num_oks += count
+                    if rpc_type == "UnaryCall":
+                        if "alternative" in peer:
+                            self.unary_call_alternative_service_rpc_count = (
+                                count
+                            )
+                            self.alternative_service_rpc_count += count
+                        else:
+                            self.unary_call_default_service_rpc_count = count
+                            self.default_service_rpc_count += count
+                    else:
+                        if "alternative" in peer:
+                            self.empty_call_alternative_service_rpc_count = (
+                                count
+                            )
+                            self.alternative_service_rpc_count += count
+                        else:
+                            self.empty_call_default_service_rpc_count = count
+                            self.default_service_rpc_count += count
 
 
 class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
