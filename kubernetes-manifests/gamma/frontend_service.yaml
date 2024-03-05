@@ -4,6 +4,8 @@ kind: Service
 metadata:           
   name: ${service_name}
   namespace: ${namespace_name}
+  labels:
+    owner: xds-k8s-interop-test
 spec:                   
   ports:      
   - port: 8080
