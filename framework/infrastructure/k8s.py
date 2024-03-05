@@ -14,7 +14,6 @@
 # TODO(sergiitk): to k8s/ package, and get rid of k8s_internal, which is only
 #   added to get around circular dependencies caused by k8s.py clashing with
 #   k8s/__init__.py
-from collections.abc import Iterable
 import datetime
 import functools
 import json
@@ -1065,7 +1064,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def pretty_format_statuses(
         self,
-        k8s_objects: Iterable[Optional[object]],
+        k8s_objects: List[Optional[object]],
         *,
         highlight: bool = True,
     ) -> str:
