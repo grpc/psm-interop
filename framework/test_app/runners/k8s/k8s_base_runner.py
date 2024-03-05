@@ -519,6 +519,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         route = self._create_from_template(
             template,
             custom_object=True,
+            route_name=route_name,
             namespace_name=namespace_name,
             service_name=service_name,
             test_port=test_port,
@@ -596,8 +597,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         sa_filter = self._create_from_template(
             template,
             custom_object=True,
-            namespace_name=namespace_name,
             session_affinity_filter_name=session_affinity_filter_name,
+            namespace_name=namespace_name,
             **template_vars,
         )
         if not (
