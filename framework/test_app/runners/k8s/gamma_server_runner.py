@@ -16,7 +16,9 @@ Run xDS Test Client on Kubernetes using Gamma
 """
 import datetime
 import logging
-from typing import Final, List, Optional
+from typing import Final, Optional
+
+from typing_extensions import override
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
@@ -27,7 +29,6 @@ from framework.test_app.server_app import XdsTestServer
 logger = logging.getLogger(__name__)
 
 
-ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 
 
@@ -75,9 +76,10 @@ class GammaServerRunner(KubernetesServerRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        termination_grace_period_seconds: int = 0,
+        pre_stop_hook: bool = False,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
-        deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         # pylint: disable=too-many-locals
         super().__init__(
@@ -101,14 +103,16 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_template=namespace_template,
             debug_use_port_forwarding=debug_use_port_forwarding,
             enable_workload_identity=enable_workload_identity,
-            deployment_args=deployment_args,
         )
 
         self.frontend_service_name = frontend_service_name
         self.route_name = route_name or f"route-{deployment_name}"
+        self.termination_grace_period_seconds = termination_grace_period_seconds
+        self.pre_stop_hook = pre_stop_hook
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 
+    @override
     def run(  # pylint: disable=arguments-differ
         self,
         *,
@@ -121,7 +125,7 @@ class GammaServerRunner(KubernetesServerRunner):
         route_template: str = "gamma/route_http.yaml",
         enable_csm_observability: bool = False,
         generate_mesh_id: bool = False,
-    ) -> List[XdsTestServer]:
+    ) -> list[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
 
@@ -139,9 +143,6 @@ class GammaServerRunner(KubernetesServerRunner):
             replica_count,
         )
         k8s_base_runner.KubernetesBaseRunner.run(self)
-
-        # TODO(sergiitk): move to the object config, and remove from args.
-        self.log_to_stdout = log_to_stdout
 
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
@@ -206,11 +207,12 @@ class GammaServerRunner(KubernetesServerRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
+            termination_grace_period_seconds=self.termination_grace_period_seconds,
+            pre_stop_hook=self.pre_stop_hook,
             enable_csm_observability=enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
             csm_workload_name=self.csm_workload_name,
             csm_canonical_service_name=self.csm_canonical_service_name,
-            **self.deployment_args.as_dict(),
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled
@@ -228,6 +230,7 @@ class GammaServerRunner(KubernetesServerRunner):
             replica_count,
             test_port=test_port,
             maintenance_port=maintenance_port,
+            log_to_stdout=log_to_stdout,
             secure_mode=secure_mode,
         )
 
@@ -278,7 +281,7 @@ class GammaServerRunner(KubernetesServerRunner):
             service_name=self.service_name,
         )
 
-    # @override
+    @override
     def cleanup(self, *, force=False, force_namespace=False):
         try:
             if self.route or force:

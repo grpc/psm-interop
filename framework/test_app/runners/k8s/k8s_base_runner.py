@@ -74,7 +74,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Fields with default values.
     namespace_template: str = "namespace.yaml"
     reuse_namespace: bool = False
-    log_to_stdout: bool = False
 
     # Mutable state. Describes the current run.
     namespace: Optional[k8s.V1Namespace] = None
