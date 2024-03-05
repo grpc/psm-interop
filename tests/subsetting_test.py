@@ -18,10 +18,8 @@ from typing import List
 from absl import flags
 from absl import logging
 from absl.testing import absltest
-from google.protobuf import json_format
 
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -79,12 +77,10 @@ class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                     test_servers[0]
                 )
                 # Validate the number of received endpoints
-                config = test_client.csds.fetch_client_status(
+                parsed = test_client.csds.fetch_client_status_parsed(
                     log_level=logging.INFO
                 )
-                self.assertIsNotNone(config)
-                json_config = json_format.MessageToDict(config)
-                parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
+                self.assertIsNotNone(parsed)
                 logging.info(
                     "Client %d received endpoints (len=%s): %s",
                     i,

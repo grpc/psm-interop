@@ -17,8 +17,9 @@ https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 from collections.abc import Sequence
 import logging
-from typing import Final, Optional, cast
+from typing import Any, Final, Optional, cast
 
+from google.protobuf import json_format
 import grpc
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
@@ -30,11 +31,7 @@ from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 
 # Type aliases
-_LoadBalancerStatsRequest: TypeAlias = messages_pb2.LoadBalancerStatsRequest
 LoadBalancerStatsResponse: TypeAlias = messages_pb2.LoadBalancerStatsResponse
-_LoadBalancerAccumulatedStatsRequest: TypeAlias = (
-    messages_pb2.LoadBalancerAccumulatedStatsRequest
-)
 LoadBalancerAccumulatedStatsResponse: TypeAlias = (
     messages_pb2.LoadBalancerAccumulatedStatsResponse
 )
@@ -42,31 +39,84 @@ MethodStats: TypeAlias = (
     messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
 )
 RpcsByPeer: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
-RpcsByPeerMap: TypeAlias = (
-    "messages_pb2.LoadBalancerStatsResponse.RpcsByPeer.rpcs_by_peer"
-)
-RpcsByMethod: TypeAlias = (
-    "messages_pb2.LoadBalancerStatsResponse.rpcs_by_method"
-)
 
 # RPC Metadata
 RpcMetadata: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcMetadata
 MetadataByPeer: TypeAlias = (
     messages_pb2.LoadBalancerStatsResponse.MetadataByPeer
 )
-MetadatasByPeer: TypeAlias = (
-    "messages_pb2.LoadBalancerStatsResponse.metadatas_by_peer"
-)
-MetadataType: TypeAlias = messages_pb2.LoadBalancerStatsResponse.MetadataType
 # An argument to XdsUpdateClientConfigureService.Configure.
 # Rpc type name, key, value.
 ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 
+# LoadBalancerStatsResponse parsed as a dict.
+LbStatsDict: TypeAlias = dict[Any]
+
 # Constants.
-_HOOK_SERVER_PORT: Final[int] = 8000
 # ProtoBuf translatable RpcType enums
 RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
 RPC_TYPE_EMPTY_CALL: Final[str] = "EMPTY_CALL"
+RPC_TYPES_BOTH_CALLS: Final[tuple[str, str]] = (
+    RPC_TYPE_UNARY_CALL,
+    RPC_TYPE_EMPTY_CALL,
+)
+
+
+class RpcDistributionStats:
+    """A convenience class to check RPC distribution.
+
+    Feel free to add more pre-compute fields.
+    """
+
+    num_failures: int
+    num_oks: int
+    default_service_rpc_count: int
+    alternative_service_rpc_count: int
+    unary_call_default_service_rpc_count: int
+    empty_call_default_service_rpc_count: int
+    unary_call_alternative_service_rpc_count: int
+    empty_call_alternative_service_rpc_count: int
+
+    def __init__(self, lb_stats_dict: LbStatsDict):
+        # TODO(sergiitk): Make raw private when all logic that uses it removed.
+        self.raw = lb_stats_dict
+
+        self.num_failures = lb_stats_dict.get("numFailures", 0)
+        self.num_peers = len(lb_stats_dict.get("rpcsByPeer", []))
+        self.num_oks = 0
+        self.default_service_rpc_count = 0
+        self.alternative_service_rpc_count = 0
+        self.unary_call_default_service_rpc_count = 0
+        self.empty_call_default_service_rpc_count = 0
+        self.unary_call_alternative_service_rpc_count = 0
+        self.empty_call_alternative_service_rpc_count = 0
+        self._parse_rpcs_by_method(lb_stats_dict.get("rpcsByMethod", {}))
+
+    def _parse_rpcs_by_method(self, rpcs_by_method: dict[str, dict]):
+        for rpc_type, rpcs_by_peer in rpcs_by_method.items():
+            for peer, count in rpcs_by_peer["rpcsByPeer"].items():
+                self.num_oks += count
+
+                if rpc_type == "UnaryCall":
+                    if "alternative" in peer:
+                        self.unary_call_alternative_service_rpc_count = count
+                        self.alternative_service_rpc_count += count
+                    else:
+                        self.unary_call_default_service_rpc_count = count
+                        self.default_service_rpc_count += count
+                elif rpc_type == "EmptyCall":
+                    if "alternative" in peer:
+                        self.empty_call_alternative_service_rpc_count = count
+                        self.alternative_service_rpc_count += count
+                    else:
+                        self.empty_call_default_service_rpc_count = count
+                        self.default_service_rpc_count += count
+
+    @classmethod
+    def from_message(
+        cls, lb_stats: LoadBalancerStatsResponse
+    ) -> "RpcDistributionStats":
+        return RpcDistributionStats(json_format.MessageToDict(lb_stats))
 
 
 class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
@@ -95,7 +145,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
 
         stats = self.call_unary_with_deadline(
             rpc="GetClientStats",
-            req=_LoadBalancerStatsRequest(
+            req=messages_pb2.LoadBalancerStatsRequest(
                 num_rpcs=num_rpcs,
                 timeout_sec=timeout_sec,
                 metadata_keys=metadata_keys or None,
@@ -113,7 +163,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
 
         stats = self.call_unary_with_deadline(
             rpc="GetClientAccumulatedStats",
-            req=_LoadBalancerAccumulatedStatsRequest(),
+            req=messages_pb2.LoadBalancerAccumulatedStatsRequest(),
             deadline_sec=timeout_sec,
             log_level=logging.INFO,
         )
@@ -144,7 +194,7 @@ class XdsUpdateClientConfigureServiceClient(
         rpc_types: Sequence[str],
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         request = messages_pb2.ClientConfigureRequest()
         for rpc_type in rpc_types:
@@ -164,6 +214,9 @@ class XdsUpdateClientConfigureServiceClient(
                 )
         if app_timeout:
             request.timeout_sec = app_timeout
+        if timeout_sec is None:
+            timeout_sec = self.CONFIGURE_TIMEOUT_SEC
+
         # The response is empty.
         self.call_unary_with_deadline(
             rpc="Configure",
@@ -177,7 +230,7 @@ class XdsUpdateClientConfigureServiceClient(
         *,
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_UNARY_CALL,),
@@ -191,25 +244,10 @@ class XdsUpdateClientConfigureServiceClient(
         *,
         metadata: Optional[ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
+        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_EMPTY_CALL,),
-            metadata=metadata,
-            app_timeout=app_timeout,
-            timeout_sec=timeout_sec,
-        )
-
-    def configure_rpc_type(
-        self,
-        *,
-        rpc_type: str,
-        metadata: Optional[ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
-        timeout_sec: int = CONFIGURE_TIMEOUT_SEC,
-    ) -> None:
-        self.configure(
-            rpc_types=(rpc_type,),
             metadata=metadata,
             app_timeout=app_timeout,
             timeout_sec=timeout_sec,

@@ -17,13 +17,12 @@ from typing import List
 
 from absl import flags
 from absl.testing import absltest
-from google.protobuf import json_format
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_channelz
+from framework.rpc import grpc_testing
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -99,12 +98,10 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 metadata="EmptyCall:%s:123" % _TEST_AFFINITY_METADATA_KEY,
             )
             # Validate the number of received endpoints and affinity configs.
-            config = test_client.csds.fetch_client_status(
+            parsed = test_client.csds.fetch_client_status_parsed(
                 log_level=logging.INFO
             )
-            self.assertIsNotNone(config)
-            json_config = json_format.MessageToDict(config)
-            parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
+            self.assertIsNotNone(parsed)
             logging.info("Client received CSDS response: %s", parsed)
             self.assertLen(parsed.endpoints, _REPLICA_COUNT)
             self.assertEqual(
@@ -123,9 +120,8 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("10_first_100_affinity_rpcs_pick_same_backend"):
             rpc_stats = self.getClientRpcStats(test_client, _RPC_COUNT)
-            json_lb_stats = json_format.MessageToDict(rpc_stats)
-            rpc_distribution = xds_url_map_testcase.RpcDistributionStats(
-                json_lb_stats
+            rpc_distribution = grpc_testing.RpcDistributionStats.from_message(
+                rpc_stats
             )
             self.assertEqual(1, rpc_distribution.num_peers)
 
@@ -161,12 +157,10 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             parsed = None
             try:
                 while time.time() < deadline:
-                    config = test_client.csds.fetch_client_status(
+                    parsed = test_client.csds.fetch_client_status_parsed(
                         log_level=logging.INFO
                     )
-                    self.assertIsNotNone(config)
-                    json_config = json_format.MessageToDict(config)
-                    parsed = xds_url_map_testcase.DumpedXdsConfig(json_config)
+                    self.assertIsNotNone(parsed)
                     if len(parsed.endpoints) == _REPLICA_COUNT - 1:
                         break
                     logging.info(
@@ -186,9 +180,8 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("12_next_100_affinity_rpcs_pick_different_backend"):
             rpc_stats = self.getClientRpcStats(test_client, _RPC_COUNT)
-            json_lb_stats = json_format.MessageToDict(rpc_stats)
-            rpc_distribution = xds_url_map_testcase.RpcDistributionStats(
-                json_lb_stats
+            rpc_distribution = grpc_testing.RpcDistributionStats.from_message(
+                rpc_stats
             )
             self.assertEqual(1, rpc_distribution.num_peers)
             new_backend_inuse = list(rpc_distribution.raw["rpcsByPeer"].keys())[

@@ -232,6 +232,13 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Stop port forwarders if any.
         for pod_port_forwarder in self.pod_port_forwarders:
             pod_port_forwarder.close()
+
+        if self.pod_port_forwarders:
+            logger.info(
+                "Port forwarders in namespace %s stopped.",
+                self.k8s_namespace.name if self.k8s_namespace else "Unknown",
+            )
+
         self.pod_port_forwarders = []
 
         for pod_log_collector in self.pod_log_collectors:
@@ -284,9 +291,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             for manifest in yml:
                 yield manifest
 
-    def _render_template(self, template_file: str, **kwargs):
-        template = self._template_lookup.get_template(template_file)
-        return template.render(**kwargs)
+    def _render_template(self, template_name: str, **template_vars):
+        template = self._template_lookup.get_template(template_name)
+        return template.render(**template_vars)
 
     @classmethod
     @property

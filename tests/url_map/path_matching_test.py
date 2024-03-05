@@ -19,15 +19,14 @@ from absl.testing import absltest
 
 from framework import xds_url_map_testcase
 from framework.helpers import skips
+from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-DumpedXdsConfig = xds_url_map_testcase.DumpedXdsConfig
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
 _Lang = skips.Lang
 
@@ -64,7 +63,7 @@ class TestFullPathMatchEmptyCall(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["match"]["path"],
@@ -73,7 +72,9 @@ class TestFullPathMatchEmptyCall(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=[RpcTypeEmptyCall], num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.empty_call_alternative_service_rpc_count
@@ -101,7 +102,7 @@ class TestFullPathMatchUnaryCall(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["match"]["path"],
@@ -110,7 +111,9 @@ class TestFullPathMatchUnaryCall(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.unary_call_alternative_service_rpc_count
@@ -151,7 +154,7 @@ class TestTwoRoutesAndPrefixMatch(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["match"]["prefix"],
@@ -165,7 +168,7 @@ class TestTwoRoutesAndPrefixMatch(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
             test_client,
-            rpc_types=[RpcTypeUnaryCall, RpcTypeEmptyCall],
+            rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
             num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(0, rpc_distribution.num_failures)
@@ -202,7 +205,7 @@ class TestRegexMatch(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["match"][
@@ -213,7 +216,9 @@ class TestRegexMatch(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.unary_call_alternative_service_rpc_count
@@ -245,7 +250,7 @@ class TestCaseInsensitiveMatch(xds_url_map_testcase.XdsUrlMapTestCase):
         ]
         return host_rule, path_matcher
 
-    def xds_config_validate(self, xds_config: DumpedXdsConfig):
+    def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
         self.assertNumEndpoints(xds_config, 2)
         self.assertEqual(
             xds_config.rds["virtualHosts"][0]["routes"][0]["match"]["path"],
@@ -260,7 +265,9 @@ class TestCaseInsensitiveMatch(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         rpc_distribution = self.configure_and_send(
-            test_client, rpc_types=[RpcTypeEmptyCall], num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_EMPTY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertEqual(
             _NUM_RPCS, rpc_distribution.empty_call_alternative_service_rpc_count

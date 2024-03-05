@@ -19,16 +19,14 @@ from absl.testing import absltest
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
-from framework import xds_url_map_testcase
 from framework.helpers import skips
+from framework.rpc import grpc_testing
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 flags.mark_flag_as_required("server_image_canonical")
 
 # Type aliases
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _Lang = skips.Lang
@@ -123,13 +121,11 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("09_test_servers_received_rpcs_from_test_client"):
             self.assertRpcsEventuallyGoToGivenServers(test_client, test_servers)
 
-        rpc_types = (RpcTypeUnaryCall,)
         with self.subTest("10_chosen_server_removed_by_outlier_detection"):
-            test_client.update_config.configure(
-                rpc_types=rpc_types,
+            test_client.update_config.configure_unary(
                 metadata=(
                     (
-                        RpcTypeUnaryCall,
+                        grpc_testing.RPC_TYPE_UNARY_CALL,
                         "rpc-behavior",
                         f"hostname={test_servers[0].hostname} error-code-2",
                     ),
@@ -140,7 +136,8 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             )
 
         with self.subTest("11_ejected_server_returned_after_failures_stopped"):
-            test_client.update_config.configure(rpc_types=rpc_types)
+            # Reset error injection via metadata.
+            test_client.update_config.configure_unary()
             self.assertRpcsEventuallyGoToGivenServers(test_client, test_servers)
 
 
