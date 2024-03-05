@@ -16,6 +16,7 @@ This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 from collections.abc import Sequence
+import datetime as dt
 import logging
 from typing import Any, Final, Optional, cast
 
@@ -282,23 +283,39 @@ class XdsUpdateHealthServiceClient(framework.rpc.grpc.GrpcClientHelper):
             rpc="SetNotServing", req=empty_pb2.Empty(), log_level=logging.INFO
         )
 
-    def send_hook_request_start_server(self):
-        req = messages_pb2.HookRequest(
-            command=messages_pb2.HookRequest.HookRequestCommand.START,
-            server_port=_HOOK_SERVER_PORT,
-        )
+
+class HookServiceClient(framework.rpc.grpc.GrpcClientHelper):
+    STUB_CLASS: Final = test_pb2_grpc.HookServiceStub
+
+    # Override the default deadline: all requests expected to be short.
+    DEFAULT_RPC_DEADLINE: Final[dt.timedelta] = dt.timedelta(seconds=10)
+
+    def __init__(self, channel: grpc.Channel, log_target: Optional[str] = ""):
+        super().__init__(channel, self.STUB_CLASS, log_target=log_target)
+
+    def set_return_status(
+        self,
+        *,
+        timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
+    ) -> None:
+        request = messages_pb2.SetReturnStatusRequest()
         self.call_unary_with_deadline(
-            rpc="SendHookRequest", req=req, log_level=logging.INFO
+            rpc="SetReturnStatus",
+            req=request,
+            log_level=logging.INFO,
+            deadline_sec=int(timeout.total_seconds()),
         )
 
-    def send_hook_request_return(self):
-        req = messages_pb2.HookRequest(
-            command=messages_pb2.HookRequest.HookRequestCommand.RETURN,
-            grpc_code_to_return=0,
-            grpc_status_description="Successfully returning",
-        )
+    def clear_return_status(
+        self,
+        *,
+        timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
+    ) -> None:
         self.call_unary_with_deadline(
-            rpc="SendHookRequest", req=req, log_level=logging.INFO
+            rpc="ClearReturnStatus",
+            req=empty_pb2.Empty(),
+            log_level=logging.INFO,
+            deadline_sec=int(timeout.total_seconds()),
         )
 
 

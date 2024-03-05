@@ -19,8 +19,11 @@ import datetime
 import logging
 from typing import List, Optional
 
+from typing_extensions import override
+
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.rpc import grpc
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.server_app import XdsTestServer
 
@@ -66,8 +69,11 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     service_account_template: Optional[str] = None
     gcp_iam: Optional[gcp.iam.IamV1] = None
 
-    # Mutable state.
+    # Below is mutable state associated with the current run.
     service: Optional[k8s.V1Service] = None
+
+    # A map from pod names to the server app.
+    pods_to_servers: dict[str, XdsTestServer]
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -136,6 +142,15 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             # GCP IAM API used to grant allow workload service accounts
             # permission to use GCP service account identity.
             self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
+
+        # Mutable state associated with each run.
+        self._reset_state()
+
+    @override
+    def _reset_state(self):
+        super()._reset_state()
+        self.service = None
+        self.pods_to_servers = {}
 
     def run(  # pylint: disable=arguments-differ,too-many-branches
         self,
@@ -300,7 +315,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         else:
             rpc_port, rpc_host = maintenance_port, None
 
-        return XdsTestServer(
+        server = XdsTestServer(
             ip=pod.status.pod_ip,
             rpc_port=test_port,
             hostname=pod.metadata.name,
@@ -308,6 +323,29 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             secure_mode=secure_mode,
             rpc_host=rpc_host,
         )
+        self.pods_to_servers[pod.metadata.name] = server
+        return server
+
+    @override
+    def stop_pod_dependencies(self, *, log_drain_sec: int = 0):
+        if (
+            self.deployment_args.pre_stop_hook
+            and self.pods_to_servers
+            and self.k8s_namespace
+        ):
+            logger.info(
+                "Releasing prestop hook on server pods in namespace %s",
+                self.k8s_namespace.name,
+            )
+            for pod_name, server_app in self.pods_to_servers.items():
+                try:
+                    server_app.send_prestop_hook_release()
+                except grpc.RpcError as err:
+                    logger.warning(
+                        "Prestop hook release to %s failed: %r", pod_name, err
+                    )
+
+        super().stop_pod_dependencies(log_drain_sec=log_drain_sec)
 
     # pylint: disable=arguments-differ
     def cleanup(self, *, force=False, force_namespace=False):

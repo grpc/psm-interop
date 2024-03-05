@@ -44,6 +44,8 @@ REPLICA_COUNT: Final[int] = 3
 TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 WAIT_FOR_CSDS_DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=1)
+TRAFFIC_PIN_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=1)
+TRAFFIC_PIN_RETRY_WAIT: Final[dt.timedelta] = dt.timedelta(seconds=5)
 
 
 class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
@@ -96,10 +98,8 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             pod_names = tuple(self.server_runner.pods_started.keys())
             self.assertLen(pod_names, REPLICA_COUNT)
 
-        with self.subTest("02_create_ssa_policy"):
+        with self.subTest("02_create_ssa_policies"):
             self.server_runner.create_session_affinity_policy_route()
-
-        with self.subTest("03_create_backend_policy"):
             self.server_runner.create_backend_policy(
                 draining_timeout=DRAINING_TIMEOUT,
             )
@@ -112,10 +112,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         test_client: client_app.XdsTestClient
         chosen_server: server_app.XdsTestServer
 
-        with self.subTest("04_start_test_client"):
+        with self.subTest("03_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("05_confirm_all_servers_receive_traffic"):
+        with self.subTest("04_confirm_all_servers_receive_traffic"):
             # Note: the output of this call may or may not print out the
             # cookie. This is *not* any kind of signal, just depends on system
             # latency. This subtest does not use any cookies.
@@ -123,16 +123,15 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 test_client,
                 test_servers,
                 num_rpcs=120,  # Nice and even.
+                retry_timeout=TRAFFIC_PIN_TIMEOUT,
+                retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
             logger.info(
                 "Confirmed all servers received traffic: %s",
                 [server.hostname for server in test_servers],
             )
 
-        with self.subTest("sergii"):
-            self.wait_for_draining_endpoint_count(test_client, 1)
-
-        with self.subTest("06_retrieve_cookie"):
+        with self.subTest("05_retrieve_cookie"):
             cookie, chosen_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
@@ -140,7 +139,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 "Chosen server: %s, cookie: %s", chosen_server.hostname, cookie
             )
 
-        with self.subTest("07_only_chosen_server_receives_rpcs_with_cookie"):
+        with self.subTest("06_only_chosen_server_receives_rpcs_with_cookie"):
             logger.info("Configuring client to send cookie %s", cookie)
             test_client.update_config.configure_unary(
                 metadata=(
@@ -148,7 +147,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(
-                test_client, (chosen_server,)
+                test_client,
+                (chosen_server,),
+                retry_timeout=TRAFFIC_PIN_TIMEOUT,
+                retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
             logger.info("Confirmed all RPCs went to %s", chosen_server.hostname)
 
@@ -164,7 +166,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
 
         with self.subTest("09_chosen_server_receives_rpcs_while_draining"):
             self.assertRpcsEventuallyGoToGivenServers(
-                test_client, (chosen_server,)
+                test_client,
+                (chosen_server,),
+                retry_timeout=TRAFFIC_PIN_TIMEOUT,
+                retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
             logger.info(
                 "Confirmed all RPCs are still sent to the chosen server"
@@ -178,6 +183,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
 
             # Find another server
             # TODO(sergiitk): we should return a map cookie-server.
+            # TODO(sergiitk): confirm the new server is selected
             new_cookie, new_chosen_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
@@ -186,6 +192,25 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 new_chosen_server.hostname,
                 new_cookie,
             )
+
+        with self.subTest("11_new_chosen_server_receives_rpcs_with_cookie"):
+            logger.info("Configuring client to send cookie %s", cookie)
+            test_client.update_config.configure_unary(
+                metadata=(
+                    (grpc_testing.RPC_TYPE_UNARY_CALL, "cookie", new_cookie),
+                ),
+            )
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client, (new_chosen_server,)
+            )
+            logger.info(
+                "Confirmed all RPCs are still sent to the new chosen server"
+                " while it's in the DRAINING state: %s",
+                chosen_server.hostname,
+            )
+
+        with self.subTest("12_chosen_server_prestop_exit"):
+            chosen_server.send_prestop_hook_release()
 
     def wait_for_draining_endpoint_count(
         self,

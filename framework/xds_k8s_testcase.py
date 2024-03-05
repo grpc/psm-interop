@@ -14,7 +14,7 @@
 import abc
 from collections.abc import Sequence
 import contextlib
-import datetime
+import datetime as dt
 import enum
 import hashlib
 import logging
@@ -22,7 +22,7 @@ import re
 import signal
 import time
 from types import FrameType
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
 from absl import flags
 from absl.testing import absltest
@@ -72,6 +72,8 @@ _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
 )
 _ChannelState = grpc_channelz.ChannelState
+# TODO(sergiitk): replace with dt.timedelta everywhere
+datetime = dt
 _timedelta = datetime.timedelta
 ClientConfig = grpc_csds.ClientConfig
 RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
@@ -80,7 +82,9 @@ MetadataByPeer: list[str, RpcMetadata]
 _SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
 _SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
 
-_TD_CONFIG_MAX_WAIT_SEC = 600
+TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+# TODO(sergiitk): get rid of the seconds constant, use timedelta
+_TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
 
 def evaluate_test_config(
@@ -469,10 +473,14 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         test_client: XdsTestClient,
         servers: Sequence[XdsTestServer],
         num_rpcs: int = 100,
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=1),
     ):
+        # TODO(sergiitk): force num_rpcs to be a kwarg
         retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=1),
-            timeout=datetime.timedelta(seconds=_TD_CONFIG_MAX_WAIT_SEC),
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
             log_level=logging.INFO,
         )
         try:
@@ -482,12 +490,15 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 servers,
                 num_rpcs,
             )
-        except retryers.RetryError as retry_error:
-            logger.exception(
-                "Rpcs did not go to expected servers before timeout %s",
-                _TD_CONFIG_MAX_WAIT_SEC,
+        except retryers.RetryError:
+            logger.error(
+                "RPCs (num_rpcs=%i) did not go to exclusively the expected"
+                " servers %s before timeout %s (h:mm:ss)",
+                num_rpcs,
+                [server.hostname for server in servers],
+                retry_timeout,
             )
-            raise retry_error
+            raise
 
     def _assertRpcsEventuallyGoToGivenServers(
         self,

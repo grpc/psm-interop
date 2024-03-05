@@ -86,6 +86,16 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
+    @property
+    @functools.cache
+    def hook_service_client(
+        self,
+    ) -> grpc_testing.HookServiceClient:
+        return grpc_testing.HookServiceClient(
+            self._make_channel(self.maintenance_port),
+            log_target=f"{self.hostname}:{self.maintenance_port}",
+        )
+
     def set_serving(self):
         logger.info("[%s] >> Setting health status to SERVING", self.hostname)
         self.update_health_service_client.set_serving()
@@ -106,17 +116,11 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
             self.health_client.check_health(),
         )
 
-    def send_hook_request_start_server(self):
-        logger.info(
-            "[%s] >> Sending request to start hook server", self.hostname
+    def send_prestop_hook_release(self):
+        logger.debug(
+            "[%s] >> Sending request to release the prestop hook", self.hostname
         )
-        self.update_health_service_client.send_hook_request_start_server()
-
-    def send_hook_request_return(self):
-        logger.info(
-            "[%s] >> Sending request to return from hook server", self.hostname
-        )
-        self.update_health_service_client.send_hook_request_return()
+        self.hook_service_client.set_return_status()
 
     def set_xds_address(self, xds_host, xds_port: Optional[int] = None):
         self.xds_host, self.xds_port = xds_host, xds_port
