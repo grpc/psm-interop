@@ -22,14 +22,13 @@ import grpc
 from framework import xds_url_map_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_csds
+from framework.rpc import grpc_testing
 from framework.test_app import client_app
 
 # Type aliases
 HostRule = xds_url_map_testcase.HostRule
 PathMatcher = xds_url_map_testcase.PathMatcher
 GcpResourceManager = xds_url_map_testcase.GcpResourceManager
-RpcTypeUnaryCall = xds_url_map_testcase.RpcTypeUnaryCall
-RpcTypeEmptyCall = xds_url_map_testcase.RpcTypeEmptyCall
 XdsTestClient = client_app.XdsTestClient
 ExpectedResult = xds_url_map_testcase.ExpectedResult
 _Lang = skips.Lang
@@ -95,7 +94,7 @@ def _wait_until_backlog_cleared(
     while time.time() < deadline:
         stats = test_client.get_load_balancer_accumulated_stats()
         ok = True
-        for rpc_type in [RpcTypeUnaryCall, RpcTypeEmptyCall]:
+        for rpc_type in grpc_testing.RPC_TYPES_BOTH_CALLS:
             started = stats.num_rpcs_started_by_method.get(rpc_type, 0)
             completed = stats.num_rpcs_succeeded_by_method.get(
                 rpc_type, 0
@@ -169,13 +168,15 @@ class TestZeroPercentFaultInjection(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertRpcStatusCode(
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.OK,
                     ratio=1,
                 ),
@@ -248,7 +249,7 @@ class TestNonMatchingFaultInjection(xds_url_map_testcase.XdsUrlMapTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeEmptyCall,
+                    rpc_type=grpc_testing.RPC_TYPE_EMPTY_CALL,
                     status_code=grpc.StatusCode.OK,
                     ratio=1,
                 ),
@@ -291,7 +292,7 @@ class TestAlwaysDelay(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             num_rpcs=_NUM_RPCS,
             app_timeout=_DELAY_CASE_APPLICATION_TIMEOUT_SEC,
         )
@@ -300,7 +301,7 @@ class TestAlwaysDelay(xds_url_map_testcase.XdsUrlMapTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.DEADLINE_EXCEEDED,
                     ratio=1,
                 ),
@@ -341,13 +342,15 @@ class TestAlwaysAbort(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertRpcStatusCode(
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.UNAUTHENTICATED,
                     ratio=1,
                 ),
@@ -389,7 +392,7 @@ class TestDelayHalf(xds_url_map_testcase.XdsUrlMapTestCase):
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
             test_client,
-            rpc_types=(RpcTypeUnaryCall,),
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
             num_rpcs=_NUM_RPCS,
             app_timeout=_DELAY_CASE_APPLICATION_TIMEOUT_SEC,
         )
@@ -398,7 +401,7 @@ class TestDelayHalf(xds_url_map_testcase.XdsUrlMapTestCase):
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.DEADLINE_EXCEEDED,
                     ratio=0.5,
                 ),
@@ -439,13 +442,15 @@ class TestAbortHalf(xds_url_map_testcase.XdsUrlMapTestCase):
 
     def rpc_distribution_validate(self, test_client: XdsTestClient):
         self.configure_and_send(
-            test_client, rpc_types=(RpcTypeUnaryCall,), num_rpcs=_NUM_RPCS
+            test_client,
+            rpc_types=(grpc_testing.RPC_TYPE_UNARY_CALL,),
+            num_rpcs=_NUM_RPCS,
         )
         self.assertRpcStatusCode(
             test_client,
             expected=(
                 ExpectedResult(
-                    rpc_type=RpcTypeUnaryCall,
+                    rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                     status_code=grpc.StatusCode.UNAUTHENTICATED,
                     ratio=0.5,
                 ),
