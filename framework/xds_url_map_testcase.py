@@ -24,7 +24,6 @@ import unittest
 
 from absl import flags
 from absl import logging
-from google.protobuf import json_format
 import grpc
 
 from framework import xds_k8s_testcase
@@ -60,7 +59,6 @@ GcpResourceManager = xds_url_map_test_resources.GcpResourceManager
 HostRule = xds_url_map_test_resources.HostRule
 PathMatcher = xds_url_map_test_resources.PathMatcher
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
-JsonType = Any
 _timedelta = datetime.timedelta
 
 
@@ -69,65 +67,6 @@ def _split_camel(s: str, delimiter: str = "-") -> str:
     return "".join(
         delimiter + c.lower() if c.isupper() else c for c in s
     ).lstrip(delimiter)
-
-
-class RpcDistributionStats:
-    """A convenience class to check RPC distribution.
-
-    Feel free to add more pre-compute fields.
-    """
-
-    num_failures: int
-    num_oks: int
-    default_service_rpc_count: int
-    alternative_service_rpc_count: int
-    unary_call_default_service_rpc_count: int
-    empty_call_default_service_rpc_count: int
-    unary_call_alternative_service_rpc_count: int
-    empty_call_alternative_service_rpc_count: int
-
-    def __init__(self, json_lb_stats: JsonType):
-        self.num_failures = json_lb_stats.get("numFailures", 0)
-
-        self.num_peers = 0
-        self.num_oks = 0
-        self.default_service_rpc_count = 0
-        self.alternative_service_rpc_count = 0
-        self.unary_call_default_service_rpc_count = 0
-        self.empty_call_default_service_rpc_count = 0
-        self.unary_call_alternative_service_rpc_count = 0
-        self.empty_call_alternative_service_rpc_count = 0
-        self.raw = json_lb_stats
-
-        if "rpcsByPeer" in json_lb_stats:
-            self.num_peers = len(json_lb_stats["rpcsByPeer"])
-        if "rpcsByMethod" in json_lb_stats:
-            for rpc_type in json_lb_stats["rpcsByMethod"]:
-                for peer in json_lb_stats["rpcsByMethod"][rpc_type][
-                    "rpcsByPeer"
-                ]:
-                    count = json_lb_stats["rpcsByMethod"][rpc_type][
-                        "rpcsByPeer"
-                    ][peer]
-                    self.num_oks += count
-                    if rpc_type == "UnaryCall":
-                        if "alternative" in peer:
-                            self.unary_call_alternative_service_rpc_count = (
-                                count
-                            )
-                            self.alternative_service_rpc_count += count
-                        else:
-                            self.unary_call_default_service_rpc_count = count
-                            self.default_service_rpc_count += count
-                    else:
-                        if "alternative" in peer:
-                            self.empty_call_alternative_service_rpc_count = (
-                                count
-                            )
-                            self.alternative_service_rpc_count += count
-                        else:
-                            self.empty_call_default_service_rpc_count = count
-                            self.default_service_rpc_count += count
 
 
 @dataclass
@@ -427,7 +366,7 @@ class XdsUrlMapTestCase(
         metadata: Optional[grpc_testing.ConfigureMetadata] = None,
         app_timeout: Optional[int] = None,
         num_rpcs: int,
-    ) -> RpcDistributionStats:
+    ) -> grpc_testing.RpcDistributionStats:
         test_client.update_config.configure(
             rpc_types=rpc_types, metadata=metadata, app_timeout=app_timeout
         )
@@ -439,7 +378,7 @@ class XdsUrlMapTestCase(
             test_client.hostname,
             helpers_grpc.lb_stats_pretty(lb_stats),
         )
-        return RpcDistributionStats(json_format.MessageToDict(lb_stats))
+        return grpc_testing.RpcDistributionStats.from_message(lb_stats)
 
     def assertNumEndpoints(
         self,
