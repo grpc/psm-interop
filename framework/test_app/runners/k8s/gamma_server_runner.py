@@ -16,7 +16,7 @@ Run xDS Test Client on Kubernetes using Gamma
 """
 import datetime
 import logging
-from typing import List, Optional
+from typing import Final, List, Optional
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
@@ -35,8 +35,8 @@ class GammaServerRunner(KubernetesServerRunner):
     # Mutable state.
     route: Optional[k8s.GammaHttpRoute] = None
     frontend_service: Optional[k8s.V1Service] = None
-    sa_filter: Optional[k8s.GcpSessionAffinityFilter] = None
-    sa_policy: Optional[k8s.GcpSessionAffinityPolicy] = None
+    session_affinity_filter: Optional[k8s.GcpSessionAffinityFilter] = None
+    session_affinity_policy: Optional[k8s.GcpSessionAffinityPolicy] = None
     backend_policy: Optional[k8s.GcpBackendPolicy] = None
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
@@ -45,6 +45,10 @@ class GammaServerRunner(KubernetesServerRunner):
     frontend_service_name: str
     csm_workload_name: str
     csm_canonical_service_name: str
+
+    SESSION_AFFINITY_FILTER_NAME: Final[str] = "ssa-filter"
+    SESSION_AFFINITY_POLICY_NAME: Final[str] = "ssa-policy"
+    BACKEND_POLICY_NAME: Final[str] = "backend-policy"
 
     def __init__(
         self,
@@ -71,9 +75,6 @@ class GammaServerRunner(KubernetesServerRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        safilter_name: str = "ssa-filter",
-        sapolicy_name: str = "ssa-policy",
-        backend_policy_name: str = "backend-policy",
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
         deployment_args: Optional[ServerDeploymentArgs] = None,
@@ -105,9 +106,6 @@ class GammaServerRunner(KubernetesServerRunner):
 
         self.frontend_service_name = frontend_service_name
         self.route_name = route_name or f"route-{deployment_name}"
-        self.safilter_name = safilter_name
-        self.sapolicy_name = sapolicy_name
-        self.backend_policy_name = backend_policy_name
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 
@@ -246,9 +244,9 @@ class GammaServerRunner(KubernetesServerRunner):
         return servers
 
     def create_session_affinity_policy(self, template: str):
-        self.sa_policy = self._create_session_affinity_policy(
+        self.session_affinity_policy = self._create_session_affinity_policy(
             template,
-            session_affinity_policy_name=self.sapolicy_name,
+            session_affinity_policy_name=self.SESSION_AFFINITY_POLICY_NAME,
             namespace_name=self.k8s_namespace.name,
             route_name=self.route_name,
             service_name=self.service_name,
@@ -265,16 +263,16 @@ class GammaServerRunner(KubernetesServerRunner):
         )
 
     def create_session_affinity_filter(self):
-        self.sa_filter = self._create_session_affinity_filter(
+        self.session_affinity_filter = self._create_session_affinity_filter(
             "gamma/session_affinity_filter.yaml",
-            session_affinity_filter_name=self.safilter_name,
+            session_affinity_filter_name=self.SESSION_AFFINITY_FILTER_NAME,
             namespace_name=self.k8s_namespace.name,
         )
 
-    def createBackendPolicy(self):
-        self.be_policy = self._create_backend_policy(
+    def create_backend_policy(self):
+        self.backend_policy = self._create_backend_policy(
             "gamma/backend_policy.yaml",
-            backend_policy_name=self.backend_policy_name,
+            backend_policy_name=self.BACKEND_POLICY_NAME,
             namespace_name=self.k8s_namespace.name,
             service_name=self.service_name,
         )
@@ -298,16 +296,20 @@ class GammaServerRunner(KubernetesServerRunner):
                 self._delete_deployment(self.deployment_name)
                 self.deployment = None
 
-            if self.sa_policy or force:
-                self._delete_session_affinity_policy(self.sapolicy_name)
-                self.sa_policy = None
+            if self.session_affinity_policy or force:
+                self._delete_session_affinity_policy(
+                    self.SESSION_AFFINITY_POLICY_NAME
+                )
+                self.session_affinity_policy = None
 
-            if self.sa_filter or force:
-                self._delete_session_affinity_filter(self.safilter_name)
-                self.sa_filter = None
+            if self.session_affinity_filter or force:
+                self._delete_session_affinity_filter(
+                    self.SESSION_AFFINITY_FILTER_NAME
+                )
+                self.session_affinity_filter = None
 
             if self.backend_policy or force:
-                self._delete_backend_policy(self.backend_policy_name)
+                self._delete_backend_policy(self.BACKEND_POLICY_NAME)
                 self.backend_policy = None
 
             if self.enable_workload_identity and (
