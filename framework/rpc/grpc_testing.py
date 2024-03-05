@@ -39,12 +39,22 @@ MethodStats: TypeAlias = (
     messages_pb2.LoadBalancerAccumulatedStatsResponse.MethodStats
 )
 RpcsByPeer: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcsByPeer
+RpcsByPeerMap: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.RpcsByPeer.rpcs_by_peer"
+)
+RpcsByMethod: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.rpcs_by_method"
+)
 
 # RPC Metadata
 RpcMetadata: TypeAlias = messages_pb2.LoadBalancerStatsResponse.RpcMetadata
 MetadataByPeer: TypeAlias = (
     messages_pb2.LoadBalancerStatsResponse.MetadataByPeer
 )
+MetadatasByPeer: TypeAlias = (
+    "messages_pb2.LoadBalancerStatsResponse.metadatas_by_peer"
+)
+MetadataType: TypeAlias = messages_pb2.LoadBalancerStatsResponse.MetadataType
 # An argument to XdsUpdateClientConfigureService.Configure.
 # Rpc type name, key, value.
 ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
@@ -53,6 +63,7 @@ ConfigureMetadata: TypeAlias = Sequence[tuple[str, str, str]]
 LbStatsDict: TypeAlias = dict[Any]
 
 # Constants.
+_HOOK_SERVER_PORT: Final[int] = 8000
 # ProtoBuf translatable RpcType enums
 RPC_TYPE_UNARY_CALL: Final[str] = "UNARY_CALL"
 RPC_TYPE_EMPTY_CALL: Final[str] = "EMPTY_CALL"
@@ -177,10 +188,7 @@ class XdsUpdateClientConfigureServiceClient(
     CONFIGURE_TIMEOUT_SEC: Final[int] = 5
 
     def __init__(
-        self,
-        channel: grpc.Channel,
-        *,
-        log_target: Optional[str] = "",
+        self, channel: grpc.Channel, *, log_target: Optional[str] = ""
     ):
         super().__init__(
             channel,
