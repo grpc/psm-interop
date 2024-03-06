@@ -205,7 +205,7 @@ def _before_sleep_log(logger, log_level, exc_info=False):
 
         logger.log(
             log_level,
-            "Retrying %s in %s seconds as it %s %s.",
+            "Retrying %s in %s seconds as it %s %s",
             tenacity_utils.get_callback_name(retry_state.fn),
             getattr(retry_state.next_action, "sleep"),
             verb,

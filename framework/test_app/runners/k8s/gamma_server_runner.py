@@ -111,9 +111,6 @@ class GammaServerRunner(KubernetesServerRunner):
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 
-        # Todo: remove
-        self.reuse_namespace = True
-
     @override
     def run(  # pylint: disable=arguments-differ
         self,

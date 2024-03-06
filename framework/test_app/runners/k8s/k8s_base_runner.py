@@ -24,8 +24,10 @@ import logging
 import pathlib
 from typing import List, Optional
 
+import absl.logging
 import mako.lookup
 import mako.template
+from typing_extensions import LiteralString
 import yaml
 
 from framework.helpers import retryers
@@ -98,8 +100,13 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Note that this doesn't represent the current state of the pods, so
     # don't update pod definitions just because they loaded at a later time.
     pods_started: dict[str, k8s.V1Pod]
-    # When a pod is shut down due to a user-requested operation described above,
-    # delete it from pods_created, and move to pods_stopped.
+    # When a pod is being shut down due to a user-requested operation
+    # described above, delete it from pods_created, and move to pods_stopping.
+    pods_stopping: dict[str, k8s.V1Pod]
+    # When confirmed the pod has stopped, move it from pods_stopping to
+    # pods_stopped.
+    # Important! Not supported right now.
+    # TODO(sergiitk): Implement once refreshTestServers support added.
     pods_stopped: dict[str, k8s.V1Pod]
 
     # A map of pod names to grpc apps.
@@ -150,6 +157,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
         # Highlighter.
         self._highlighter = _HighlighterYaml()
+
+        # Todo: remove
+        self.reuse_namespace = True
 
     def run(self, **kwargs):
         del kwargs
@@ -219,6 +229,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.pod_port_forwarders = []
         self.pod_log_collectors = []
         self.pods_started = {}
+        self.pods_stopping = {}
         self.pods_stopped = {}
 
     def _cleanup_namespace(self, *, force=False):
@@ -494,35 +505,54 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return resource
 
-    def request_pod_deletion(
+    def delete_pod(
         self,
         name: str,
         *,
         grace_period: Optional[dt.timedelta] = None,
-    ):
-        """
-        Request a pod with the given name to be deleted asynchronously.
-
-        Unlike other delete methods, async deletes don't wait on the result
-        of the operation.
-        TODO(sergiitk): explain why raise
-        """
-        # TODO(sergiitk): log ns?
-        logger.info("Requesting pod deletion: %s", name)
-        # TODO(sergiitk): stop forwarding and stuff, register stop?
+        ignore_errors: bool = True,
+        wait_for_deletion: bool = True,
+    ) -> bool:
+        """Request a pod with the given name to be deleted."""
+        grace_period_log: str = (
+            ""
+            if grace_period is None
+            else f" with {grace_period} (h:mm:ss) grace period."
+        )
+        self._log("Deleting pod %s%s", name, grace_period_log)
         try:
-            self.k8s_namespace.delete_pod(
-                name,
-                grace_period_seconds=int(grace_period.total_seconds()),
-            )
+            self.k8s_namespace.delete_pod(name, grace_period=grace_period)
         except k8s.NotFound:
-            logger.warning("Pod requested for deletion not found: %s", name)
+            if ignore_errors:
+                logger.debug("Pod %s not deleted since it doesn't exist", name)
+                return False
+            # TODO(sergiitk): switch to add_note when migrated to py 3.11
+            logger.error("Pod requested for deletion not found: %s", name)
             raise
-        except retryers.RetryError:
-            logger.warning(
-                "Exhausted retries requesting pod deletion: %s", name
-            )
+        except retryers.RetryError as retry_err:
+            if ignore_errors:
+                logger.warning("Pod %s deletion failed: %s", name, retry_err)
+                return False
+            retry_err.add_note(f"Exhausted pod deletion retries: {name}")
             raise
+        finally:
+            self._pod_stopping_logic(name)
+
+        if wait_for_deletion:
+            wait_timeout: dt.timedelta = self.k8s_namespace.WAIT_SHORT_TIMEOUT
+            # When waiting with grace period, on,
+            if grace_period:
+                wait_timeout += grace_period
+            self.k8s_namespace.wait_for_pod_deleted(name, timeout=wait_timeout)
+            self._pod_stopped_logic(name)
+
+        self._log("Pod %s deleted%s", name, grace_period_log)
+        return True
+
+    @absl.logging.skip_log_prefix
+    def _log(self, msg: LiteralString, *args) -> None:
+        log_msg = f"[ns:{self.k8s_namespace.name}] {msg}"
+        logger.info(log_msg, *args)
 
     def _create_deployment(self, template, **kwargs) -> k8s.V1Deployment:
         # Not making deployment_name an explicit kwarg to be consistent with
@@ -952,15 +982,32 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return pod
 
-    def _pod_started_logic(self, pod: k8s.V1Pod):
+    def _pod_started_logic(self, pod: k8s.V1Pod) -> bool:
         self.pods_started[pod.metadata.name] = pod
         if self.should_collect_logs:
             self._start_logging_pod(pod, log_to_stdout=self.log_to_stdout)
 
-    def _pod_stopped_logic(self, name):
+        return True
+
+    def _pod_stopping_logic(self, name: str) -> bool:
+        if name not in self.pods_started:
+            return False
+
+        # Move from started to stopping
+        self.pods_stopping[name] = self.pods_started.pop(name)
+        return True
+
+    def _pod_stopped_logic(self, name: str) -> bool:
         if name in self.pods_started:
-            # Move from started to stopped
-            self.pods_stopped[name] = self.pods_started.pop(name)
+            pod = self.pods_started.pop(name)
+        elif name in self.pods_stopping:
+            pod = self.pods_stopping.pop(name)
+        else:
+            return False
+
+        self.pods_stopped[name] = pod
+        # todo: move port forwarding / logging logic here
+        return True
 
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int

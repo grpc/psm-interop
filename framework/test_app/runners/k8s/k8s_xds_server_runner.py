@@ -328,22 +328,43 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
 
     @override
     def stop_pod_dependencies(self, *, log_drain_sec: int = 0):
+        # Call pre-stop hook release if exists.
         if (
             self.deployment_args.pre_stop_hook
             and self.pods_to_servers
             and self.k8s_namespace
         ):
-            logger.info(
-                "Releasing prestop hook on server pods in namespace %s",
-                self.k8s_namespace.name,
+            self._log(
+                "Releasing pre-stop hook on known server pods of deployment %s,"
+                " deployment_id=%s",
+                self.deployment_name,
+                self.deployment_id,
             )
-            for pod_name, server_app in self.pods_to_servers.items():
+            # Handle "stopping" pods separately, as they may already be deleted.
+            for pod_name in self.pods_stopping:
                 try:
-                    server_app.send_prestop_hook_release(
-                        timeout=dt.timedelta(seconds=5)
+                    # Shorter timeout.
+                    self.pods_to_servers[pod_name].send_prestop_hook_release(
+                        timeout=dt.timedelta(seconds=5),
                     )
-                except grpc.RpcError as err:
-                    # TODO(sergiitk): don't log when stopping
+                except grpc.RpcError:
+                    self._log(
+                        "Pre-stop hook release not executed on pod marked"
+                        " for deletion: %s (this is normal)",
+                        pod_name,
+                    )
+                except KeyError:
+                    logger.warning(
+                        "Failed release pre-stop hook: server app not found"
+                        " for pod %s",
+                        pod_name,
+                    )
+
+            # Handle "started" pods.
+            for pod_name in self.pods_started:
+                try:
+                    self.pods_to_servers[pod_name].send_prestop_hook_release()
+                except (KeyError, grpc.RpcError) as err:
                     logger.warning(
                         "Prestop hook release to %s failed: %r", pod_name, err
                     )

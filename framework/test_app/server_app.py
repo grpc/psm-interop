@@ -117,7 +117,8 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
 
     def send_prestop_hook_release(self, **kwargs):
         logger.debug(
-            "[%s] >> Sending request to release the prestop hook", self.hostname
+            "[%s] >> Sending request to release the pre-stop hook",
+            self.hostname,
         )
         self.hook_service_client.set_return_status(**kwargs)
 

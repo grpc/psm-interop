@@ -156,11 +156,12 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             logger.info("Confirmed all RPCs went to %s", chosen_server.hostname)
 
         with self.subTest("07_stopping_chosen_server"):
-            self.server_runner.request_pod_deletion(
+            self.server_runner.delete_pod(
                 chosen_server.hostname,
                 grace_period=TERMINATION_GRACE_PERIOD,
+                ignore_errors=False,
+                wait_for_deletion=False,
             )
-            self.server_runner._pod_stopped_logic(chosen_server.hostname)
 
         with self.subTest("08_test_client_csds_shows_chosen_server_draining"):
             self.wait_for_draining_endpoint_count(test_client, 1)
@@ -194,6 +195,9 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 new_cookie,
             )
 
+        with self.subTest("12_chosen_server_prestop_exit"):
+            chosen_server.send_prestop_hook_release()
+
         with self.subTest("11_new_chosen_server_receives_rpcs_with_cookie"):
             logger.info("Configuring client to send cookie %s", cookie)
             test_client.update_config.configure_unary(
@@ -209,9 +213,6 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 " while it's in the DRAINING state: %s",
                 chosen_server.hostname,
             )
-
-        # with self.subTest("12_chosen_server_prestop_exit"):
-        #     chosen_server.send_prestop_hook_release()
 
     def wait_for_draining_endpoint_count(
         self,
