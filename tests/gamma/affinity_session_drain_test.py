@@ -91,11 +91,11 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     def test_session_drain(self):
         test_servers: list[server_app.XdsTestServer]
         # Pod names correspond to test_server hostnames.
-        pod_names: tuple[str]
+        initial_pods: frozenset[str]
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
-            pod_names = tuple(self.server_runner.pods_started.keys())
-            self.assertLen(pod_names, REPLICA_COUNT)
+            initial_pods = frozenset(self.server_runner.pods_started.keys())
+            self.assertLen(initial_pods, REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policies"):
             self.server_runner.create_session_affinity_policy_route()
@@ -161,7 +161,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         with self.subTest("08_test_client_csds_shows_chosen_server_draining"):
             self.assertDrainingEndpointsCount(test_client, 1)
 
-        with self.subTest("09_chosen_server_receives_rpcs_while_draining"):
+        with self.subTest("09_pinned_traffic_stays_on_draining_server"):
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client,
                 (chosen_server,),
@@ -169,27 +169,45 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
             logger.info(
-                "Confirmed all RPCs are still sent to the chosen server"
-                " while it's in the DRAINING state: %s",
+                "Confirmed all RPCs with Cookie header are still sent to the"
+                " chosen server while it's in the DRAINING state: %s",
                 chosen_name,
             )
 
-        with self.subTest("10_chosen_server_release_prestop"):
+        with self.subTest("10_new_traffic_not_sent_to_draining_server"):
+            logger.info("Configuring client to send no cookies")
+            test_client.update_config.configure_unary()
+            # Note: we may need a retryer here if found to be flaky.
+            lb_stats = self.getClientRpcStats(test_client, num_rpcs=120)
+            peers = set(lb_stats.rpcs_by_peer.keys())
+            self.assertNotIn(
+                chosen_name,
+                peers,
+                f"Draining server {chosen_name} received new traffic.",
+            )
+            not_draining = initial_pods - set(chosen_name)
+            self.assertContainsSubset(
+                not_draining,
+                peers,
+                f"Initial servers {not_draining} did not receive new traffic",
+            )
+
+        with self.subTest("11_chosen_server_release_prestop"):
             logger.info("Releasing prestop hook on, %s", chosen_name)
             chosen_server.release_prestop_hook()
 
-        with self.subTest("11_confirm_chosen_server_stopped"):
+        with self.subTest("12_confirm_chosen_server_stopped"):
             logger.info("Waiting on the chosen server to be deleted")
             self.server_runner.k8s_namespace.wait_for_pod_deleted(chosen_name)
-            stats = self.getClientRpcStats(test_client=test_client, num_rpcs=30)
+            lb_stats = self.getClientRpcStats(test_client, num_rpcs=30)
             # Shouldn't happen.
             self.assertNotIn(
                 chosen_name,
-                set(stats.rpcs_by_peer.keys()),
+                set(lb_stats.rpcs_by_peer.keys()),
                 f"Chosen server {chosen_name} received traffic after deletion",
             )
 
-        with self.subTest("11_get_new_cookie_and_new_server"):
+        with self.subTest("13_get_new_cookie_and_new_server"):
             # Find another server
             result = self.assertSsaCookieAssigned(test_client, test_servers)
             new_cookie: Final[str] = result[0]
@@ -204,7 +222,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 "New chosen server: %s, cookie: %s", new_name, new_cookie
             )
 
-        with self.subTest("12_new_chosen_server_receives_rpcs_with_cookie"):
+        with self.subTest("14_new_chosen_server_receives_rpcs_with_cookie"):
             logger.info("Configuring client to send cookie %s", cookie)
             test_client.update_config.configure_unary(
                 metadata=(
