@@ -611,6 +611,42 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             )
             raise retry_error
 
+    def assertDrainingEndpointsCount(
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=1),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint(s) in DRAINING state."
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed(log_level=log_level)
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.draining_endpoints,
+                    expected_count,
+                    f"Expected {expected_count} EDS endpoints to be DRAINING",
+                )
+
     def assertFailedRpcs(
         self, test_client: XdsTestClient, num_rpcs: Optional[int] = 100
     ):
