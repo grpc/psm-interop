@@ -213,6 +213,9 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 f"Chosen server {chosen_name} received traffic after deletion",
             )
 
+        # TODO(sergiitk): refresh server list when implemented. Handle new pod
+        #   port forwarding, logging. Handle deleted pod stop logic.
+
         with self.subTest("13_get_new_cookie_and_new_server"):
             # Find another server
             result = self.assertSsaCookieAssigned(test_client, test_servers)

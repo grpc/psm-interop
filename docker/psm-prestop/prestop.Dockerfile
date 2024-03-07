@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO(sergiitk): Implement automated build, publish.
+
 FROM alpine:latest as grpcurl
 
 WORKDIR /tmp/grpcurl/
