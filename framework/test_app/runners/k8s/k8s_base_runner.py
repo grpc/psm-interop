@@ -158,9 +158,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Highlighter.
         self._highlighter = _HighlighterYaml()
 
-        # Todo: remove
-        self.reuse_namespace = True
-
     def run(self, **kwargs):
         del kwargs
         if not self.time_stopped and self.time_start_requested:
@@ -272,12 +269,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         if not self.k8s_namespace or not deployment:
             return 0
         total_restart: int = 0
-        # TODO(sergiitk): bug: this only counts deployment_id associated
-        #  with the last run().
-        pods: List[k8s.V1Pod] = self.k8s_namespace.list_deployment_pods(
-            deployment
-        )
-        for pod in pods:
+        # TODO(sergiitk): Bug: this only counts deployment_id associated
+        #  with the last run(), as well as ignores terminated pods.
+        for pod in self.list_deployment_pods():
             if pod.status.container_statuses:
                 total_restart += sum(
                     status.restart_count
@@ -397,7 +391,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 f"Expected ResourceInstance[PodMonitoring] to be created from"
                 f" manifest {template}"
             )
-        # TODO(sergiitk): same check as in other.
+        # TODO(sergiitk): same checks amd messages as in other CSM resources.
         logger.debug(
             "PodMonitoring %s created at %s",
             pod_monitoring.metadata.name,
@@ -1006,7 +1000,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             return False
 
         self.pods_stopped[name] = pod
-        # todo: move port forwarding / logging logic here
+        # TODO(sergiitk): move port forwarding / logging logic here
         return True
 
     def _start_port_forwarding_pod(

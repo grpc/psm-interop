@@ -39,9 +39,6 @@ CheckResultFn = Callable[[Any], bool]
 _ExceptionClasses = Tuple[Type[Exception], ...]
 
 
-# TODO(sergiitk): idea: add with_note so no need to catch retry error anymore.
-
-
 def _build_retry_conditions(
     *,
     retry_on_exceptions: Optional[_ExceptionClasses] = None,

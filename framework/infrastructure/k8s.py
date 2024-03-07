@@ -273,14 +273,15 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     _name: str
 
     NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
-    # Assuming none of the timeouts more than a day.
+    # TODO(sergiitk): get rid of _SEC variables, only use timedelta
+    # timedelta.seconds: assumes none of the timeouts more than a day.
     DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
     DELETE_GRACE_PERIOD_SEC: Final[int] = DELETE_GRACE_PERIOD.seconds
     WAIT_SHORT_TIMEOUT: Final[_timedelta] = _timedelta(minutes=1)
     WAIT_SHORT_TIMEOUT_SEC: Final[int] = WAIT_SHORT_TIMEOUT.seconds
     WAIT_SHORT_SLEEP: Final[_timedelta] = _timedelta(seconds=1)
     WAIT_SHORT_SLEEP_SEC: Final[int] = WAIT_SHORT_SLEEP.seconds
-    # TODO(sergiitk): timedelta repr for the reset
+    # TODO(sergiitk): timedelta form for the rest
     WAIT_MEDIUM_TIMEOUT_SEC: int = 5 * 60
     WAIT_MEDIUM_SLEEP_SEC: int = 10
     WAIT_LONG_TIMEOUT_SEC: int = 10 * 60

@@ -54,9 +54,9 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     @override
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
-            # HookService is only added in CPP ....
             # TODO(sergiitk): Clarify the version.
-            return config.version_gte("v1.61.x")
+            # HookService is only added in CPP ....
+            return config.version_gte("v1.62.x")
         return False
 
     @override
