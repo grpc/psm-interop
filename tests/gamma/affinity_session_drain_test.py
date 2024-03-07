@@ -91,10 +91,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     def test_session_drain(self):
         test_servers: list[server_app.XdsTestServer]
         # Pod names correspond to test_server hostnames.
-        initial_pods: frozenset[str]
+        initial_pods: set[str]
         with self.subTest("01_run_test_server"):
             test_servers = self.startTestServers(replica_count=REPLICA_COUNT)
-            initial_pods = frozenset(self.server_runner.pods_started.keys())
+            initial_pods = set(self.server_runner.pods_started.keys())
             self.assertLen(initial_pods, REPLICA_COUNT)
 
         with self.subTest("02_create_ssa_policies"):
@@ -185,11 +185,17 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 peers,
                 f"Draining server {chosen_name} received new traffic.",
             )
-            not_draining = initial_pods - set(chosen_name)
+            not_draining = initial_pods - {chosen_name}
             self.assertContainsSubset(
                 not_draining,
                 peers,
                 f"Initial servers {not_draining} did not receive new traffic",
+            )
+            logger.info(
+                "Confirmed draining server %s received no new traffic,"
+                " while %s did",
+                chosen_name,
+                not_draining,
             )
 
         with self.subTest("11_chosen_server_release_prestop"):
