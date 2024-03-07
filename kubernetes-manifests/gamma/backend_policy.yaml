@@ -12,6 +12,8 @@ spec:
     kind: Service
     name: ${service_name}
   default:
+    % if draining_timeout_sec:
     connectionDraining:
-      drainingTimeoutSec: 600
+      drainingTimeoutSec: ${draining_timeout_sec}
+    % endif
 ...

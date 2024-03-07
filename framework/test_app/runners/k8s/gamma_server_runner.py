@@ -29,6 +29,7 @@ from framework.test_app.server_app import XdsTestServer
 logger = logging.getLogger(__name__)
 
 
+ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 
 
@@ -77,11 +78,10 @@ class GammaServerRunner(KubernetesServerRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        termination_grace_period_seconds: int = 0,
-        pre_stop_hook: bool = False,
         enable_csm_observability: bool = False,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
+        deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         # pylint: disable=too-many-locals
         super().__init__(
@@ -105,12 +105,11 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_template=namespace_template,
             debug_use_port_forwarding=debug_use_port_forwarding,
             enable_workload_identity=enable_workload_identity,
+            deployment_args=deployment_args,
         )
 
         self.frontend_service_name = frontend_service_name
         self.route_name = route_name or f"route-{deployment_name}"
-        self.termination_grace_period_seconds = termination_grace_period_seconds
-        self.pre_stop_hook = pre_stop_hook
         self.enable_csm_observability = enable_csm_observability
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
@@ -145,6 +144,9 @@ class GammaServerRunner(KubernetesServerRunner):
             replica_count,
         )
         k8s_base_runner.KubernetesBaseRunner.run(self)
+
+        # TODO(sergiitk): move to the object config, and remove from args.
+        self.log_to_stdout = log_to_stdout
 
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
@@ -209,12 +211,11 @@ class GammaServerRunner(KubernetesServerRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
-            termination_grace_period_seconds=self.termination_grace_period_seconds,
-            pre_stop_hook=self.pre_stop_hook,
             enable_csm_observability=self.enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
             csm_workload_name=self.csm_workload_name,
             csm_canonical_service_name=self.csm_canonical_service_name,
+            **self.deployment_args.as_dict(),
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled
@@ -233,7 +234,6 @@ class GammaServerRunner(KubernetesServerRunner):
             replica_count,
             test_port=test_port,
             maintenance_port=maintenance_port,
-            log_to_stdout=log_to_stdout,
             secure_mode=secure_mode,
         )
 
@@ -276,12 +276,21 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_name=self.k8s_namespace.name,
         )
 
-    def create_backend_policy(self):
+    def create_backend_policy(
+        self,
+        *,
+        draining_timeout: Optional[datetime.timedelta] = None,
+    ):
+        draining_timeout_sec: int = 0
+        if draining_timeout:
+            draining_timeout_sec = int(draining_timeout.total_seconds())
+
         self.backend_policy = self._create_backend_policy(
             "gamma/backend_policy.yaml",
             backend_policy_name=self.BACKEND_POLICY_NAME,
             namespace_name=self.k8s_namespace.name,
             service_name=self.service_name,
+            draining_timeout_sec=draining_timeout_sec,
         )
 
     def _xds_test_server_for_pod(

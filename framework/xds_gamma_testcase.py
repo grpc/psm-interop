@@ -13,7 +13,9 @@
 # limitations under the License.
 import datetime
 import logging
-from typing import List, Optional
+from typing import List
+
+from typing_extensions import override
 
 from framework.infrastructure import k8s
 import framework.infrastructure.traffic_director_gamma as td_gamma
@@ -35,8 +37,6 @@ logger = logging.getLogger(__name__)
 class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     server_runner: GammaServerRunner
     frontend_service_name: str
-    pre_stop_hook: Optional[bool] = None
-    termination_grace_period_seconds: int = 0
 
     def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
@@ -49,9 +49,6 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         # Calls XdsKubernetesBaseTestCase.setUp():
         super(xds_k8s_testcase.IsolatedXdsKubernetesTestCase, self).setUp()
         # pylint: enable=bad-super-call
-
-        if self.pre_stop_hook is None:
-            self.pre_stop_hook = False
 
         # Random suffix per test.
         self.createRandomSuffix()
@@ -78,10 +75,12 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.client_runner = self.initKubernetesClientRunner()
 
         # Cleanup.
+        # TODO(sergiitk): do we need this?
         self.force_cleanup = True
         self.force_cleanup_namespace = True
 
     # TODO(sergiitk): [GAMMA] Make a TD-manager-less base test case
+    @override
     def initTrafficDirectorManager(
         self,
     ) -> td_gamma.TrafficDirectorGammaManager:
@@ -110,11 +109,10 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
-            termination_grace_period_seconds=self.termination_grace_period_seconds,
-            pre_stop_hook=self.pre_stop_hook,
             **kwargs,
         )
 
+    @override
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
@@ -141,6 +139,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             **kwargs,
         )
 
+    @override
     def startTestServers(
         self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:

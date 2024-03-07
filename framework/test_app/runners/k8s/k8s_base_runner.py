@@ -15,16 +15,19 @@
 Common functionality for running xDS Test Client and Server on Kubernetes.
 """
 from abc import ABCMeta
+import collections
 import contextlib
 import dataclasses
-import datetime
+import datetime as dt
 import functools
 import logging
 import pathlib
 from typing import List, Optional
 
+import absl.logging
 import mako.lookup
 import mako.template
+from typing_extensions import LiteralString
 import yaml
 
 from framework.helpers import retryers
@@ -41,8 +44,10 @@ logger = logging.getLogger(__name__)
 _RunnerError = base_runner.RunnerError
 _HighlighterYaml = framework.helpers.highlighter.HighlighterYaml
 _helper_datetime = framework.helpers.datetime
-_datetime = datetime.datetime
-_timedelta = datetime.timedelta
+# TODO(sergiitk): replace _datetime with dt.datetime everywhere
+_datetime = dt.datetime
+# TODO(sergiitk): replace _timedelta with dt.timedelta everywhere
+_timedelta = dt.timedelta
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,7 +58,21 @@ class RunHistory:
     time_stopped: _datetime
 
 
+# TODO(sergiitk): Wow this class is dirty. Tracking managed object state mixed
+#   with k8s API wrappers, yaml parsing, mako templating and other weird stuff.
+#   Public methods are impossible to find among all the _private().
+#   This monster must be broken apart, or it'll eat us first.
 class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
+    """
+    Runs instances of xDS Test Client and xDS Test Client on Kubernetes.
+
+    An abstract class with functionality common to client, server kubernetes
+    runners, and their variants.
+
+    Multithreading note: objects of this class (and any child classes)
+    support single-thread synchronous operations only.
+    """
+
     # Pylint wants abstract classes to override abstract methods.
     # pylint: disable=abstract-method
 
@@ -61,8 +80,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     TEMPLATE_DIR_NAME = "kubernetes-manifests"
     TEMPLATE_DIR_RELATIVE_PATH = f"../../../../{TEMPLATE_DIR_NAME}"
     ROLE_WORKLOAD_IDENTITY_USER = "roles/iam.workloadIdentityUser"
-    pod_port_forwarders: List[k8s.PortForwarder]
-    pod_log_collectors: List[k8s.PodLogCollector]
 
     # Required fields.
     k8s_namespace: k8s.KubernetesNamespace
@@ -75,17 +92,45 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Fields with default values.
     namespace_template: str = "namespace.yaml"
     reuse_namespace: bool = False
+    log_to_stdout: bool = False
 
-    # Mutable state. Describes the current run.
+    # The history of all runs performed by this runner.
+    # Persisted across multiple runs.
+    run_history: collections.deque[RunHistory]
+
+    # Below is mutable state associated with the current run.
     namespace: Optional[k8s.V1Namespace] = None
     deployment: Optional[k8s.V1Deployment] = None
     deployment_id: Optional[str] = None
     service_account: Optional[k8s.V1ServiceAccount] = None
+
+    # A map of pod names to pod objects as they were at the moment
+    # of deployment creation.
+    # All user-requested operations that modify the deployment directly (such as
+    # scaling, manual pod deletion, etc.) must update this mapping.
+    # Note that this doesn't represent the current state of the pods, so
+    # don't update pod definitions just because they loaded at a later time.
+    pods_started: dict[str, k8s.V1Pod]
+    # When a pod is being shut down due to a user-requested operation
+    # described above, delete it from pods_started, and move to pods_stopping.
+    pods_stopping: dict[str, k8s.V1Pod]
+    # When confirmed a pod has stopped, move it from pods_stopping to
+    # pods_stopped.
+    # TODO(sergiitk): Implement once refreshTestServers support added.
+    # Important! Not supported right now.
+    pods_stopped: dict[str, k8s.V1Pod]
+
+    # A map of pod names to grpc apps.
+    # pods_grpc_app: dict[str, framework.rpc.grpc.GrpcApp]
+
+    # Auxiliary resources created for the current run.
+    pod_port_forwarders: list[k8s.PortForwarder]
+    pod_log_collectors: list[k8s.PodLogCollector]
+
+    # Current run metadata.
     time_start_requested: Optional[_datetime] = None
     time_start_completed: Optional[_datetime] = None
     time_stopped: Optional[_datetime] = None
-    # The history of all runs performed by this runner.
-    run_history: List[RunHistory]
 
     def __init__(
         self,
@@ -115,10 +160,11 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             self.namespace_template = namespace_template
         self.reuse_namespace = reuse_namespace
 
-        # Mutable state
-        self.run_history = []
-        self.pod_port_forwarders = []
-        self.pod_log_collectors = []
+        # Persistent across many runs.
+        self.run_history = collections.deque()
+
+        # Mutable state associated with each run.
+        self._reset_state()
 
         # Highlighter.
         self._highlighter = _HighlighterYaml()
@@ -164,18 +210,23 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
     def _reset_state(self):
         """Reset the mutable state of the previous run."""
-        if self.pod_port_forwarders:
-            logger.warning(
-                "Port forwarders weren't cleaned up from the past run: %s",
-                len(self.pod_port_forwarders),
-            )
+        try:
+            if self.pod_port_forwarders:
+                logger.warning(
+                    "Port forwarders not cleaned from the past run: %s",
+                    len(self.pod_port_forwarders),
+                )
 
-        if self.pod_log_collectors:
-            logger.warning(
-                "Pod log collectors weren't cleaned up from the past run: %s",
-                len(self.pod_log_collectors),
-            )
+            if self.pod_log_collectors:
+                logger.warning(
+                    "Pod log collectors not cleaned from the past run: %s",
+                    len(self.pod_log_collectors),
+                )
+        except AttributeError:
+            # Properties may not be defined when called from constructor.
+            pass
 
+        # Reset the mutable state associated with the current run.
         self.namespace = None
         self.deployment = None
         self.deployment_id = None
@@ -185,6 +236,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.time_stopped = None
         self.pod_port_forwarders = []
         self.pod_log_collectors = []
+        self.pods_started = {}
+        self.pods_stopping = {}
+        self.pods_stopped = {}
 
     def _cleanup_namespace(self, *, force=False):
         if (self.namespace and not self.reuse_namespace) or force:
@@ -226,14 +280,20 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         if not self.k8s_namespace or not deployment:
             return 0
         total_restart: int = 0
-        pods: List[k8s.V1Pod] = self.k8s_namespace.list_deployment_pods(
-            deployment
-        )
-        for pod in pods:
-            total_restart += sum(
-                status.restart_count for status in pod.status.container_statuses
-            )
+        # TODO(sergiitk): Bug: this only counts deployment_id associated
+        #  with the last run(), as well as ignores terminated pods.
+        for pod in self.list_deployment_pods():
+            if pod.status.container_statuses:
+                total_restart += sum(
+                    status.restart_count
+                    for status in pod.status.container_statuses
+                )
         return total_restart
+
+    def list_deployment_pods(self) -> list[k8s.V1Pod]:
+        if not self.deployment_id:
+            return []
+        return self.k8s_namespace.list_deployment_pods(self.deployment)
 
     @classmethod
     def _manifests_from_yaml_file(cls, yaml_file):
@@ -307,11 +367,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("%s %s created", k8s_object.kind, k8s_object.metadata.name)
         return k8s_object
 
-    def _reuse_deployment(self, deployment_name) -> k8s.V1Deployment:
-        deployment = self.k8s_namespace.get_deployment(deployment_name)
-        # TODO(sergiitk): check if good or must be recreated
-        return deployment
-
     def _reuse_service(self, service_name) -> k8s.V1Service:
         service = self.k8s_namespace.get_service(service_name)
         logger.info("Reusing service: %s", service_name)
@@ -349,6 +404,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 f"Expected ResourceInstance[PodMonitoring] to be created from"
                 f" manifest {template}"
             )
+        # TODO(sergiitk): same checks amd messages as in other CSM resources.
         logger.debug(
             "PodMonitoring %s created at %s",
             pod_monitoring.metadata.name,
@@ -456,13 +512,54 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return resource
 
-    def delete_pod_async(self, pod_name: str):
-        logger.info(
-            "Initiating deletion of pod %s in namespace %s",
-            pod_name,
-            self.k8s_namespace.name,
+    def delete_pod(
+        self,
+        name: str,
+        *,
+        grace_period: Optional[dt.timedelta] = None,
+        ignore_errors: bool = True,
+        wait_for_deletion: bool = True,
+    ) -> bool:
+        """Request a pod with the given name to be deleted."""
+        grace_period_log: str = (
+            ""
+            if grace_period is None
+            else f" with {grace_period} (h:mm:ss) grace period."
         )
-        self.k8s_namespace.delete_pod_async(pod_name)
+        self._log("Deleting pod %s%s", name, grace_period_log)
+        try:
+            self.k8s_namespace.delete_pod(name, grace_period=grace_period)
+        except k8s.NotFound:
+            if ignore_errors:
+                logger.debug("Pod %s not deleted since it doesn't exist", name)
+                return False
+            # TODO(sergiitk): switch to add_note when migrated to py 3.11
+            logger.error("Pod requested for deletion not found: %s", name)
+            raise
+        except retryers.RetryError as retry_err:
+            if ignore_errors:
+                logger.warning("Pod %s deletion failed: %s", name, retry_err)
+                return False
+            retry_err.add_note(f"Exhausted pod deletion retries: {name}")
+            raise
+        finally:
+            self._pod_stopping_logic(name)
+
+        if wait_for_deletion:
+            wait_timeout: dt.timedelta = self.k8s_namespace.WAIT_SHORT_TIMEOUT
+            # When waiting with grace period, on,
+            if grace_period:
+                wait_timeout += grace_period
+            self.k8s_namespace.wait_for_pod_deleted(name, timeout=wait_timeout)
+            self._pod_stopped_logic(name)
+
+        self._log("Pod %s deleted%s", name, grace_period_log)
+        return True
+
+    @absl.logging.skip_log_prefix
+    def _log(self, msg: LiteralString, *args) -> None:
+        log_msg = f"[ns/{self.k8s_namespace.name}] {msg}"
+        absl.logging.info(log_msg, *args)
 
     def _create_deployment(self, template, **kwargs) -> k8s.V1Deployment:
         # Not making deployment_name an explicit kwarg to be consistent with
@@ -891,6 +988,33 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             "Pod %s ready, IP: %s", pod.metadata.name, pod.status.pod_ip
         )
         return pod
+
+    def _pod_started_logic(self, pod: k8s.V1Pod) -> bool:
+        self.pods_started[pod.metadata.name] = pod
+        if self.should_collect_logs:
+            self._start_logging_pod(pod, log_to_stdout=self.log_to_stdout)
+
+        return True
+
+    def _pod_stopping_logic(self, name: str) -> bool:
+        if name not in self.pods_started:
+            return False
+
+        # Move from started to stopping
+        self.pods_stopping[name] = self.pods_started.pop(name)
+        return True
+
+    def _pod_stopped_logic(self, name: str) -> bool:
+        if name in self.pods_started:
+            pod = self.pods_started.pop(name)
+        elif name in self.pods_stopping:
+            pod = self.pods_stopping.pop(name)
+        else:
+            return False
+
+        self.pods_stopped[name] = pod
+        # TODO(sergiitk): move port forwarding / logging logic here
+        return True
 
     def _start_port_forwarding_pod(
         self, pod: k8s.V1Pod, remote_port: int

@@ -20,7 +20,7 @@ import json
 import logging
 import pathlib
 import threading
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Final, List, Optional, Tuple
 import warnings
 
 from kubernetes import client
@@ -273,9 +273,15 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     _name: str
 
     NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
-    DELETE_GRACE_PERIOD_SEC: int = 5
-    WAIT_SHORT_TIMEOUT_SEC: int = 60
-    WAIT_SHORT_SLEEP_SEC: int = 1
+    # TODO(sergiitk): get rid of _SEC variables, only use timedelta
+    # timedelta.seconds: assumes none of the timeouts more than a day.
+    DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
+    DELETE_GRACE_PERIOD_SEC: Final[int] = DELETE_GRACE_PERIOD.seconds
+    WAIT_SHORT_TIMEOUT: Final[_timedelta] = _timedelta(minutes=1)
+    WAIT_SHORT_TIMEOUT_SEC: Final[int] = WAIT_SHORT_TIMEOUT.seconds
+    WAIT_SHORT_SLEEP: Final[_timedelta] = _timedelta(seconds=1)
+    WAIT_SHORT_SLEEP_SEC: Final[int] = WAIT_SHORT_SLEEP.seconds
+    # TODO(sergiitk): timedelta form for the rest
     WAIT_MEDIUM_TIMEOUT_SEC: int = 5 * 60
     WAIT_MEDIUM_SLEEP_SEC: int = 10
     WAIT_LONG_TIMEOUT_SEC: int = 10 * 60
@@ -689,22 +695,41 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             grace_period_seconds=grace_period_seconds,
         )
 
-    def delete_pod_async(
+    def delete_pod(
         self,
         name: str,
-        grace_period_seconds=DELETE_GRACE_PERIOD_SEC,
+        *,
+        grace_period: Optional[_timedelta] = DELETE_GRACE_PERIOD,
     ) -> None:
-        # TODO(sergiitk): Do we need async? Won't it break error handling?
+        delete_options = client.V1DeleteOptions(propagation_policy="Foreground")
+
+        # Checking for None because 0 is valid grace period value, meaning
+        # immediate deletion. While not setting the field indicates the
+        # grace period defaults to k8s's setting (usually 30s).
+        if grace_period is not None:
+            delete_options.grace_period_seconds = int(
+                grace_period.total_seconds()
+            )
+
         self._execute(
             self._api.core.delete_namespaced_pod,
             name=name,
             namespace=self.name,
-            body=client.V1DeleteOptions(
-                propagation_policy="Foreground",
-                grace_period_seconds=grace_period_seconds,
-            ),
-            async_req=True,
+            body=delete_options,
         )
+
+    def wait_for_pod_deleted(
+        self,
+        name: str,
+        timeout: _timedelta = WAIT_SHORT_TIMEOUT,
+        retry_wait: _timedelta = WAIT_SHORT_SLEEP,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=timeout,
+            check_result=lambda pod: pod is None,
+        )
+        retryer(self.get_pod, name)
 
     def get(self) -> V1Namespace:
         return self._get_resource(self._api.core.read_namespace, self.name)
@@ -1098,6 +1123,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
                 f" {_helper_datetime.ago(metadata.creation_timestamp)}"
             )
         if metadata and metadata.deletion_timestamp:
+            # TODO(sergiitk): Handle the case with deletion_timestamp is in
+            #  the future, (e.g. waiting on prestop while in grace period).
             result.append(
                 f"Deletion requested: {metadata.deletion_timestamp};"
                 f" {_helper_datetime.ago(metadata.deletion_timestamp)}"

@@ -15,6 +15,7 @@
 This contains helpers for gRPC services defined in
 https://github.com/envoyproxy/envoy/blob/main/api/envoy/service/status/v3/csds.proto
 """
+import datetime as dt
 import json
 import logging
 import re
@@ -158,23 +159,26 @@ class DumpedXdsConfig(dict):
 
 
 class CsdsClient(framework.rpc.grpc.GrpcClientHelper):
-    stub: csds_pb2_grpc.ClientStatusDiscoveryServiceStub
+    STUB_CLASS: Final = csds_pb2_grpc.ClientStatusDiscoveryServiceStub
+    DEFAULT_RPC_DEADLINE: Final[dt.timedelta] = dt.timedelta(seconds=30)
 
     def __init__(
         self, channel: grpc.Channel, *, log_target: Optional[str] = ""
-    ):
-        super().__init__(
-            channel,
-            csds_pb2_grpc.ClientStatusDiscoveryServiceStub,
-            log_target=log_target,
-        )
+    ) -> None:
+        super().__init__(channel, self.STUB_CLASS, log_target=log_target)
 
-    def fetch_client_status(self, **kwargs) -> Optional[ClientConfig]:
+    def fetch_client_status(
+        self,
+        *,
+        timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
+        log_level: int = logging.INFO,
+    ) -> Optional[ClientConfig]:
         """Fetches the active xDS configurations."""
         response: ClientStatusResponse = self.call_unary_with_deadline(
             rpc="FetchClientStatus",
             req=_ClientStatusRequest(),
-            **kwargs,
+            log_level=log_level,
+            deadline_sec=int(timeout.total_seconds()),
         )
         response = cast(ClientStatusResponse, response)
         if len(response.config) != 1:

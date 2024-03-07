@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import abc
+from collections.abc import Sequence
 import contextlib
-import datetime
+import datetime as dt
 import enum
 import hashlib
 import logging
@@ -21,7 +22,7 @@ import re
 import signal
 import time
 from types import FrameType
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
 from absl import flags
 from absl.testing import absltest
@@ -71,6 +72,9 @@ _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
 )
 _ChannelState = grpc_channelz.ChannelState
+# TODO(sergiitk): replace datetime with dt.datetime everywhere
+datetime = dt
+# TODO(sergiitk): replace _timedelta with dt.timedelta everywhere
 _timedelta = datetime.timedelta
 ClientConfig = grpc_csds.ClientConfig
 RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
@@ -79,7 +83,9 @@ MetadataByPeer: list[str, RpcMetadata]
 _SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
 _SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
 
-_TD_CONFIG_MAX_WAIT_SEC = 600
+TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+# TODO(sergiitk): get rid of the seconds constant, use timedelta
+_TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
 
 def evaluate_test_config(
@@ -466,32 +472,34 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     def assertRpcsEventuallyGoToGivenServers(
         self,
         test_client: XdsTestClient,
-        servers: List[XdsTestServer],
+        servers: Sequence[XdsTestServer],
         num_rpcs: int = 100,
-    ):
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=1),
+    ) -> None:
+        # TODO(sergiitk): force num_rpcs to be a kwarg
         retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=1),
-            timeout=datetime.timedelta(seconds=_TD_CONFIG_MAX_WAIT_SEC),
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
             log_level=logging.INFO,
+            error_note=(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to exclusively the"
+                f" expected servers {[server.hostname for server in servers]}"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
         )
-        try:
-            retryer(
-                self._assertRpcsEventuallyGoToGivenServers,
-                test_client,
-                servers,
-                num_rpcs,
-            )
-        except retryers.RetryError as retry_error:
-            logger.exception(
-                "Rpcs did not go to expected servers before timeout %s",
-                _TD_CONFIG_MAX_WAIT_SEC,
-            )
-            raise retry_error
+        retryer(
+            self._assertRpcsEventuallyGoToGivenServers,
+            test_client,
+            servers,
+            num_rpcs,
+        )
 
     def _assertRpcsEventuallyGoToGivenServers(
         self,
         test_client: XdsTestClient,
-        servers: List[XdsTestServer],
+        servers: Sequence[XdsTestServer],
         num_rpcs: int,
     ):
         server_hostnames = [server.hostname for server in servers]
@@ -599,6 +607,42 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 dumped_config,
             )
             raise retry_error
+
+    def assertDrainingEndpointsCount(
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=1),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint(s) in DRAINING state."
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed(log_level=log_level)
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.draining_endpoints,
+                    expected_count,
+                    f"Expected {expected_count} EDS endpoints to be DRAINING",
+                )
 
     def assertFailedRpcs(
         self, test_client: XdsTestClient, num_rpcs: Optional[int] = 100

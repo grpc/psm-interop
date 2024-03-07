@@ -14,15 +14,34 @@
 """
 Run xDS Test Client on Kubernetes.
 """
+import dataclasses
+import datetime as dt
 import logging
 from typing import List, Optional
 
+from typing_extensions import override
+
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.rpc import grpc
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.server_app import XdsTestServer
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass(frozen=True)
+class ServerDeploymentArgs:
+    pre_stop_hook: bool = False
+    termination_grace_period: dt.timedelta = dt.timedelta()
+
+    def as_dict(self):
+        return {
+            "pre_stop_hook": self.pre_stop_hook,
+            "termination_grace_period_seconds": int(
+                self.termination_grace_period.total_seconds()
+            ),
+        }
 
 
 class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
@@ -42,13 +61,19 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     xds_server_uri: str
     network: str
 
+    # Server Deployment args
+    deployment_args: ServerDeploymentArgs
+
     # Optional fields.
     service_account_name: Optional[str] = None
     service_account_template: Optional[str] = None
     gcp_iam: Optional[gcp.iam.IamV1] = None
 
-    # Mutable state.
+    # Below is mutable state associated with the current run.
     service: Optional[k8s.V1Service] = None
+
+    # A map from pod names to the server app.
+    pods_to_servers: dict[str, XdsTestServer]
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -73,6 +98,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         super().__init__(
             k8s_namespace,
@@ -92,6 +118,12 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self.reuse_service = reuse_service
         self.enable_workload_identity = enable_workload_identity
         self.debug_use_port_forwarding = debug_use_port_forwarding
+
+        # Server deployment arguments.
+        if not deployment_args:
+            deployment_args = ServerDeploymentArgs()
+        self.deployment_args = deployment_args
+
         # GCP Network Endpoint Group.
         self.gcp_neg_name = neg_name or (
             f"{self.k8s_namespace.name}-{self.service_name}"
@@ -110,6 +142,15 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             # GCP IAM API used to grant allow workload service accounts
             # permission to use GCP service account identity.
             self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
+
+        # Mutable state associated with each run.
+        self._reset_state()
+
+    @override
+    def _reset_state(self):
+        super()._reset_state()
+        self.service = None
+        self.pods_to_servers = {}
 
     def run(  # pylint: disable=arguments-differ,too-many-branches
         self,
@@ -156,6 +197,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             replica_count,
         )
         super().run()
+
+        # TODO(sergiitk): move to the object config, and remove from args.
+        self.log_to_stdout = log_to_stdout
 
         # Reuse existing if requested, create a new deployment when missing.
         # Useful for debugging to avoid NEG loosing relation to deleted service.
@@ -204,13 +248,13 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
+            **self.deployment_args.as_dict(),
         )
 
         return self._make_servers_for_deployment(
             replica_count,
             test_port=test_port,
             maintenance_port=maintenance_port,
-            log_to_stdout=log_to_stdout,
             secure_mode=secure_mode,
         )
 
@@ -220,18 +264,14 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         *,
         test_port: int,
         maintenance_port: int,
-        log_to_stdout: bool,
         secure_mode: bool = False,
     ) -> List[XdsTestServer]:
         pod_names = self._wait_deployment_pod_count(
             self.deployment, replica_count
         )
-        pods = []
         for pod_name in pod_names:
             pod = self._wait_pod_started(pod_name)
-            pods.append(pod)
-            if self.should_collect_logs:
-                self._start_logging_pod(pod, log_to_stdout=log_to_stdout)
+            self._pod_started_logic(pod)
 
         # Verify the deployment reports all pods started as well.
         self._wait_deployment_with_available_replicas(
@@ -240,7 +280,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self._start_completed()
 
         servers: List[XdsTestServer] = []
-        for pod in pods:
+        for pod in self.pods_started.values():
             servers.append(
                 self._xds_test_server_for_pod(
                     pod,
@@ -276,7 +316,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         else:
             rpc_port, rpc_host = maintenance_port, None
 
-        return XdsTestServer(
+        server = XdsTestServer(
             ip=pod.status.pod_ip,
             rpc_port=test_port,
             hostname=pod.metadata.name,
@@ -285,6 +325,53 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             rpc_host=rpc_host,
             monitoring_port=monitoring_port,
         )
+        self.pods_to_servers[pod.metadata.name] = server
+        return server
+
+    @override
+    def stop_pod_dependencies(self, *, log_drain_sec: int = 0):
+        # Call pre-stop hook release if exists.
+        if (
+            self.deployment_args.pre_stop_hook
+            and self.pods_to_servers
+            and self.k8s_namespace
+        ):
+            self._log(
+                "Releasing pre-stop hook on known server pods of deployment %s,"
+                " deployment_id=%s",
+                self.deployment_name,
+                self.deployment_id,
+            )
+            # Handle "stopping" pods separately, as they may already be deleted.
+            for pod_name in self.pods_stopping:
+                try:
+                    # Shorter timeout.
+                    self.pods_to_servers[pod_name].release_prestop_hook(
+                        timeout=dt.timedelta(seconds=5),
+                    )
+                except grpc.RpcError:
+                    self._log(
+                        "Pre-stop hook release not executed on pod marked"
+                        " for deletion: %s (this is normal)",
+                        pod_name,
+                    )
+                except KeyError:
+                    logger.warning(
+                        "Failed release pre-stop hook: server app not found"
+                        " for pod %s",
+                        pod_name,
+                    )
+
+            # Handle "started" pods.
+            for pod_name in self.pods_started:
+                try:
+                    self.pods_to_servers[pod_name].release_prestop_hook()
+                except (KeyError, grpc.RpcError) as err:
+                    logger.warning(
+                        "Prestop hook release to %s failed: %r", pod_name, err
+                    )
+
+        super().stop_pod_dependencies(log_drain_sec=log_drain_sec)
 
     # pylint: disable=arguments-differ
     def cleanup(self, *, force=False, force_namespace=False):
