@@ -477,27 +477,24 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         *,
         retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
         retry_wait: dt.timedelta = dt.timedelta(seconds=1),
-    ):
+    ) -> None:
         # TODO(sergiitk): force num_rpcs to be a kwarg
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
             timeout=retry_timeout,
             log_level=logging.INFO,
-        )
-        try:
-            retryer(
-                self._assertRpcsEventuallyGoToGivenServers,
-                test_client,
-                servers,
-                num_rpcs,
-            )
-        except retryers.RetryError as retry_err:
-            retry_err.add_note(
+            error_note=(
                 f"RPCs (num_rpcs={num_rpcs}) did not go to exclusively the"
                 f" expected servers {[server.hostname for server in servers]}"
                 f" before timeout {retry_timeout} (h:mm:ss)"
-            )
-            raise
+            ),
+        )
+        retryer(
+            self._assertRpcsEventuallyGoToGivenServers,
+            test_client,
+            servers,
+            num_rpcs,
+        )
 
     def _assertRpcsEventuallyGoToGivenServers(
         self,
