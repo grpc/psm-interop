@@ -21,6 +21,7 @@ PRESTOP_MOUNT_PATH = '/tmp/prestop-hook'
 ## Init container provisions the shared volume with grpcurl and protos.
       ## initContainers:
         - name: prestop-hook-init
+          ## TODO(sergiitk): parametrize prestop hook image
           image: gcr.io/grpc-testing/xds-interop/prestop-hook:v0.0.4
           imagePullPolicy: Always
           args: ["${PRESTOP_MOUNT_PATH}"]
@@ -43,7 +44,7 @@ PRESTOP_MOUNT_PATH = '/tmp/prestop-hook'
 </%def>
 <%def name="volume()" filter="trim">
 ## Definition for the volume shared between prestop-hook-init init container
-## and the main conainer.
+## and the main container.
       ## volumes:
         - name: prestop-hook-volume
           emptyDir:
