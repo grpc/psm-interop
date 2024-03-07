@@ -63,6 +63,16 @@ class RunHistory:
 #   Public methods are impossible to find among all the _private().
 #   This monster must be broken apart, or it'll eat us first.
 class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
+    """
+    Runs instances of xDS Test Client and xDS Test Client on Kubernetes.
+
+    An abstract class with functionality common to client, server kubernetes
+    runners, and their variants.
+
+    Multithreading note: objects of this class (and any child classes)
+    support single-thread synchronous operations only.
+    """
+
     # Pylint wants abstract classes to override abstract methods.
     # pylint: disable=abstract-method
 
@@ -101,12 +111,12 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # don't update pod definitions just because they loaded at a later time.
     pods_started: dict[str, k8s.V1Pod]
     # When a pod is being shut down due to a user-requested operation
-    # described above, delete it from pods_created, and move to pods_stopping.
+    # described above, delete it from pods_started, and move to pods_stopping.
     pods_stopping: dict[str, k8s.V1Pod]
-    # When confirmed the pod has stopped, move it from pods_stopping to
+    # When confirmed a pod has stopped, move it from pods_stopping to
     # pods_stopped.
-    # Important! Not supported right now.
     # TODO(sergiitk): Implement once refreshTestServers support added.
+    # Important! Not supported right now.
     pods_stopped: dict[str, k8s.V1Pod]
 
     # A map of pod names to grpc apps.
