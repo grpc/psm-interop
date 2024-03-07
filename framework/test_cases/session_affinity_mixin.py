@@ -75,18 +75,14 @@ class SessionAffinityMixin(testcase_mixins.XdsKubernetesBaseTestCaseMixin):
             wait_max=dt.timedelta(seconds=25),
             timeout=timeout,
             log_level=logging.INFO,
-        )
-        try:
-            return retryer(
-                self._retrieve_cookie_and_server, test_client, test_servers
-            )
-        except retryers.RetryError:
-            logging.error(
+            error_note=(
                 "Rpcs did not go to expected servers before"
-                " timeout %s (h:mm:ss)",
-                _SET_COOKIE_MAX_WAIT,
-            )
-            raise
+                f" timeout {_SET_COOKIE_MAX_WAIT} (h:mm:ss)"
+            ),
+        )
+        return retryer(
+            self._retrieve_cookie_and_server, test_client, test_servers
+        )
 
     def _retrieve_cookie_and_server(
         self: _SessionAffinityMixinType,

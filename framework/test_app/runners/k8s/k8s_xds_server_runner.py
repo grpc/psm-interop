@@ -344,7 +344,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             for pod_name in self.pods_stopping:
                 try:
                     # Shorter timeout.
-                    self.pods_to_servers[pod_name].send_prestop_hook_release(
+                    self.pods_to_servers[pod_name].release_prestop_hook(
                         timeout=dt.timedelta(seconds=5),
                     )
                 except grpc.RpcError:
@@ -363,7 +363,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             # Handle "started" pods.
             for pod_name in self.pods_started:
                 try:
-                    self.pods_to_servers[pod_name].send_prestop_hook_release()
+                    self.pods_to_servers[pod_name].release_prestop_hook()
                 except (KeyError, grpc.RpcError) as err:
                     logger.warning(
                         "Prestop hook release to %s failed: %r", pod_name, err

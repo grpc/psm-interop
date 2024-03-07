@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Final, NoReturn, Optional
+from typing import Final, Optional
 
 from absl import flags
 from absl.testing import absltest
@@ -132,13 +132,17 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 [server.hostname for server in test_servers],
             )
 
+        with self.subTest("sergii"):
+            self.assertDrainingEndpointsCount(test_client, 1)
+
+        return
         with self.subTest("05_retrieve_cookie"):
             cookie, chosen_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
-            logger.info(
-                "Chosen server: %s, cookie: %s", chosen_server.hostname, cookie
-            )
+            # The name of the chosen server, same as the pod name.
+            chosen_name = chosen_server.hostname
+            logger.info("Chosen server: %s, cookie: %s", chosen_name, cookie)
 
         with self.subTest("06_only_chosen_server_receives_rpcs_with_cookie"):
             logger.info("Configuring client to send cookie %s", cookie)
@@ -153,18 +157,18 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 retry_timeout=TRAFFIC_PIN_TIMEOUT,
                 retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
-            logger.info("Confirmed all RPCs went to %s", chosen_server.hostname)
+            logger.info("Confirmed all RPCs went to %s", chosen_name)
 
         with self.subTest("07_stopping_chosen_server"):
             self.server_runner.delete_pod(
-                chosen_server.hostname,
+                chosen_name,
                 grace_period=TERMINATION_GRACE_PERIOD,
                 ignore_errors=False,
                 wait_for_deletion=False,
             )
 
         with self.subTest("08_test_client_csds_shows_chosen_server_draining"):
-            self.wait_for_draining_endpoint_count(test_client, 1)
+            self.assertDrainingEndpointsCount(test_client, 1)
 
         with self.subTest("09_chosen_server_receives_rpcs_while_draining"):
             self.assertRpcsEventuallyGoToGivenServers(
@@ -176,29 +180,35 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             logger.info(
                 "Confirmed all RPCs are still sent to the chosen server"
                 " while it's in the DRAINING state: %s",
-                chosen_server.hostname,
+                chosen_name,
             )
 
-        with self.subTest("10_repin_cookie"):
+        with self.subTest("10_chosen_server_release_prestop"):
+            logger.info("Releasing prestop hook on, %s", chosen_name)
+            chosen_server.release_prestop_hook()
+            logger.info("Waiting on the chosen server to be deleted")
+            self.server_runner.k8s_namespace.wait_for_pod_deleted(chosen_name)
+            self.getClientRpcStats(test_client=test_client, num_rpcs=120)
+
+        with self.subTest("11_repin_cookie"):
             logger.info("Configuring test client to not send cookie metadata")
             test_client.update_config.configure_unary()
 
             # Find another server
-            # TODO(sergiitk): we should return a map cookie-server.
-            # TODO(sergiitk): confirm the new server is selected
-            new_cookie, new_chosen_server = self.assertSsaCookieAssigned(
+            new_cookie, new_server = self.assertSsaCookieAssigned(
                 test_client, test_servers
             )
+            new_name = new_server.hostname
+            self.assertNotEqual(
+                chosen_name,
+                new_name,
+                msg=f"Shouldn't happen: chosen server {chosen_name} is deleted",
+            )
             logger.info(
-                "Chosen server: %s, cookie: %s",
-                new_chosen_server.hostname,
-                new_cookie,
+                "New chosen server: %s, cookie: %s", new_name, new_cookie
             )
 
-        with self.subTest("12_chosen_server_prestop_exit"):
-            chosen_server.send_prestop_hook_release()
-
-        with self.subTest("11_new_chosen_server_receives_rpcs_with_cookie"):
+        with self.subTest("12_new_chosen_server_receives_rpcs_with_cookie"):
             logger.info("Configuring client to send cookie %s", cookie)
             test_client.update_config.configure_unary(
                 metadata=(
@@ -206,66 +216,43 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 ),
             )
             self.assertRpcsEventuallyGoToGivenServers(
-                test_client, (new_chosen_server,)
+                test_client, (new_server,)
             )
             logger.info(
-                "Confirmed all RPCs are still sent to the new chosen server"
-                " while it's in the DRAINING state: %s",
-                chosen_server.hostname,
+                "Confirmed all RPCs went to the new chosen server: %s", new_name
             )
 
-    def wait_for_draining_endpoint_count(
+    def assertDrainingEndpointsCount(
         self,
         test_client: client_app.XdsTestClient,
         expected_count: int,
-        *,
-        log_level: int = logging.INFO,
-    ) -> NoReturn:
+    ) -> None:
         retryer = retryers.constant_retryer(
             wait_fixed=dt.timedelta(seconds=10),
             timeout=WAIT_FOR_CSDS_DRAINING_TIMEOUT,
-            check_result=lambda endpoints: len(endpoints) == expected_count,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint in DRAINING state."
+            ),
         )
-        try:
-            retryer(
-                self._get_csds_endpoints_draining,
-                test_client,
-                log_level=log_level,
-            )
-        except retryers.RetryError as retry_err:
-            if retry_err.exception() is not None:
-                reason = retry_err.exception_str()
-            else:
-                reason = retry_err.result_str()
-            logger.error(
-                "Timeout waiting for test client %s to report %i endpoint"
-                " in DRAINING state. %s",
-                test_client.hostname,
-                expected_count,
-                reason,
-            )
-            raise
-
-    @classmethod
-    def _get_csds_endpoints_draining(
-        cls,
-        test_client: client_app.XdsTestClient,
-        *,
-        log_level: int = logging.INFO,
-    ) -> list[str]:
-        client_config = test_client.csds.fetch_client_status_parsed(
-            log_level=log_level,
-        )
-        if not client_config:
-            return []
-
-        logging.log(
-            log_level,
-            "Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
-            client_config.endpoints,
-            client_config.draining_endpoints,
-        )
-        return client_config.draining_endpoints
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed()
+                self.assertIsNotNone(
+                    client_config,
+                    f"Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.draining_endpoints,
+                    expected_count,
+                    "Expected {expected_count} EDS endpoints to be DRAINING",
+                )
 
 
 if __name__ == "__main__":

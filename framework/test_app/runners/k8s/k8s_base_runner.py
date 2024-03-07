@@ -551,8 +551,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
     @absl.logging.skip_log_prefix
     def _log(self, msg: LiteralString, *args) -> None:
-        log_msg = f"[ns:{self.k8s_namespace.name}] {msg}"
-        logger.info(log_msg, *args)
+        log_msg = f"[ns/{self.k8s_namespace.name}] {msg}"
+        absl.logging.info(log_msg, *args)
 
     def _create_deployment(self, template, **kwargs) -> k8s.V1Deployment:
         # Not making deployment_name an explicit kwarg to be consistent with

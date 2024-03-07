@@ -107,6 +107,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
+    def get_csds_parsed(self, **kwargs) -> Optional[grpc_csds.DumpedXdsConfig]:
+        return self.csds.fetch_client_status_parsed(**kwargs)
+
     def get_load_balancer_stats(
         self,
         *,
