@@ -16,6 +16,7 @@ This contains helpers for gRPC services defined in
 https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 """
 from collections.abc import Sequence
+import datetime as dt
 import logging
 from typing import Any, Final, Optional, cast
 
@@ -279,6 +280,41 @@ class XdsUpdateHealthServiceClient(framework.rpc.grpc.GrpcClientHelper):
     def set_not_serving(self):
         self.call_unary_with_deadline(
             rpc="SetNotServing", req=empty_pb2.Empty(), log_level=logging.INFO
+        )
+
+
+class HookServiceClient(framework.rpc.grpc.GrpcClientHelper):
+    STUB_CLASS: Final = test_pb2_grpc.HookServiceStub
+
+    # Override the default deadline: all requests expected to be short.
+    DEFAULT_RPC_DEADLINE: Final[dt.timedelta] = dt.timedelta(seconds=10)
+
+    def __init__(self, channel: grpc.Channel, log_target: Optional[str] = ""):
+        super().__init__(channel, self.STUB_CLASS, log_target=log_target)
+
+    def set_return_status(
+        self,
+        *,
+        timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
+    ) -> None:
+        request = messages_pb2.SetReturnStatusRequest()
+        self.call_unary_with_deadline(
+            rpc="SetReturnStatus",
+            req=request,
+            log_level=logging.INFO,
+            deadline_sec=int(timeout.total_seconds()),
+        )
+
+    def clear_return_status(
+        self,
+        *,
+        timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
+    ) -> None:
+        self.call_unary_with_deadline(
+            rpc="ClearReturnStatus",
+            req=empty_pb2.Empty(),
+            log_level=logging.INFO,
+            deadline_sec=int(timeout.total_seconds()),
         )
 
 

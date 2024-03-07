@@ -1,0 +1,52 @@
+<%!
+PRESTOP_MOUNT_PATH = '/tmp/prestop-hook'
+%>
+<%def name="main_lifecycle()" filter="trim">
+## Main container's lifecycle with the preStop which blocks until
+## grpc.testing.HookService/SetReturnStatus is called.
+        ## - container
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - "${PRESTOP_MOUNT_PATH}/grpcurl"
+                  - "-vv"
+                  - "--plaintext"
+                  - "--import-path=${PRESTOP_MOUNT_PATH}"
+                  - "--proto=${PRESTOP_MOUNT_PATH}/protos/grpc/testing/test.proto"
+                  - "localhost:${maintenance_port}"
+                  - "grpc.testing.HookService/Hook"
+</%def>
+<%def name="init_container()" filter="trim">
+## Init container provisions the shared volume with grpcurl and protos.
+      ## initContainers:
+        - name: prestop-hook-init
+          ## TODO(sergiitk): parametrize prestop hook image
+          image: gcr.io/grpc-testing/xds-interop/prestop-hook:v0.0.6
+          imagePullPolicy: Always
+          args: ["${PRESTOP_MOUNT_PATH}"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          volumeMounts:
+            ${volume_mount()}
+</%def>
+<%def name="volume_mount()" filter="trim">
+## Mount point for the shared volume.
+      ## containers:
+          ## volumeMounts:
+            - name: prestop-hook-volume
+              mountPath: ${PRESTOP_MOUNT_PATH}
+</%def>
+<%def name="volume()" filter="trim">
+## Definition for the volume shared between prestop-hook-init init container
+## and the main container.
+      ## volumes:
+        - name: prestop-hook-volume
+          emptyDir:
+            medium: Memory
+</%def>

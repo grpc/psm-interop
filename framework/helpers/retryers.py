@@ -67,6 +67,7 @@ def exponential_retryer_with_timeout(
     check_result: Optional[CheckResultFn] = None,
     logger: Optional[logging.Logger] = None,
     log_level: Optional[int] = logging.DEBUG,
+    error_note: str = "",
 ) -> Retrying:
     if logger is None:
         logger = retryers_logger
@@ -77,7 +78,7 @@ def exponential_retryer_with_timeout(
         retry_on_exceptions=retry_on_exceptions, check_result=check_result
     )
     retry_error_callback = _on_error_callback(
-        timeout=timeout, check_result=check_result
+        timeout=timeout, check_result=check_result, error_note=error_note
     )
     return Retrying(
         retry=tenacity.retry_any(*retry_conditions),
@@ -99,6 +100,7 @@ def constant_retryer(
     check_result: Optional[CheckResultFn] = None,
     logger: Optional[logging.Logger] = None,
     log_level: Optional[int] = logging.DEBUG,
+    error_note: str = "",
 ) -> Retrying:
     if logger is None:
         logger = retryers_logger
@@ -116,7 +118,10 @@ def constant_retryer(
         retry_on_exceptions=retry_on_exceptions, check_result=check_result
     )
     retry_error_callback = _on_error_callback(
-        timeout=timeout, attempts=attempts, check_result=check_result
+        timeout=timeout,
+        attempts=attempts,
+        check_result=check_result,
+        error_note=error_note,
     )
     return Retrying(
         retry=tenacity.retry_any(*retry_conditions),
@@ -132,6 +137,7 @@ def _on_error_callback(
     timeout: Optional[timedelta] = None,
     attempts: int = 0,
     check_result: Optional[CheckResultFn] = None,
+    error_note: str = "",
 ):
     """A helper to propagate the initial state to the RetryError, so that
     it can assemble a helpful message containing timeout/number of attempts.
@@ -143,6 +149,7 @@ def _on_error_callback(
             timeout=timeout,
             attempts=attempts,
             check_result=check_result,
+            note=error_note,
         )
 
     return error_handler
@@ -205,7 +212,7 @@ def _before_sleep_log(logger, log_level, exc_info=False):
 
         logger.log(
             log_level,
-            "Retrying %s in %s seconds as it %s %s.",
+            "Retrying %s in %s seconds as it %s %s",
             tenacity_utils.get_callback_name(retry_state.fn),
             getattr(retry_state.next_action, "sleep"),
             verb,
@@ -230,12 +237,18 @@ class RetryError(tenacity.RetryError):
         timeout: Optional[timedelta] = None,
         attempts: int = 0,
         check_result: Optional[CheckResultFn] = None,
+        note: str = "",
     ):
         last_attempt: tenacity.Future = retry_state.outcome
         super().__init__(last_attempt)
 
-        callback_name = tenacity_utils.get_callback_name(retry_state.fn)
-        self.message = f"Retry error calling {callback_name}:"
+        self.message = f"Retry error"
+        if retry_state.fn is None:
+            # Context manager
+            self.message += f":"
+        else:
+            callback_name = tenacity_utils.get_callback_name(retry_state.fn)
+            self.message += f" calling {callback_name}:"
         if timeout:
             self.message += f" timeout {timeout} (h:mm:ss) exceeded"
             if attempts:
@@ -251,6 +264,9 @@ class RetryError(tenacity.RetryError):
         elif check_result:
             self.message += " Check result callback returned False."
 
+        if note:
+            self.add_note(note)
+
     def result(self, *, default=None):
         return (
             self.last_attempt.result()
@@ -264,6 +280,20 @@ class RetryError(tenacity.RetryError):
             if self.last_attempt.failed
             else default
         )
+
+    def exception_str(self) -> str:
+        return f"Error: {self._exception_str(self.exception())}"
+
+    def result_str(self) -> str:
+        result = self.result()
+        return f"Result: {result}" if result is not None else "No result"
+
+    def reason_str(self):
+        return self.exception_str() if self.exception() else self.result_str()
+
+    @classmethod
+    def _exception_str(cls, err: Optional[BaseException]) -> str:
+        return f"{type(err).__name__}: {err}" if err else "???"
 
     # TODO(sergiitk): Remove in py3.11, this will be built-in. See PEP 678.
     def add_note(self, note: str):

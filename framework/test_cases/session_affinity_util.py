@@ -16,6 +16,8 @@
 These utilities must be shared between test environments that configure SSA
 via Kubernetes CRDs and environments that configure SSA directly through the
 networkservices.googleapis.com API.
+
+TODO(sergiitk): remove in favor of session_affinity_mixin.py
 """
 
 import datetime
