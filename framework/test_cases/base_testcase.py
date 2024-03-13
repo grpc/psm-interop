@@ -42,12 +42,15 @@ class BaseTestCase(absltest.TestCase):
         if test_errors or test_failures:
             total_errors = len(test_errors) + len(test_failures)
             logging.error(
-                "----- PSM Test Case FAILED: %s%s -----",
-                self.test_name,
-                f" | Errors count: {total_errors}" if total_errors > 1 else "",
+                "----- PSM Test Case FAILED: %s -----", self.test_name
             )
             self._log_test_errors(test_errors, is_unexpected=True)
             self._log_test_errors(test_failures)
+            logging.info(
+                "----- PSM Test Case %s Error Count: %s -----",
+                self.test_name,
+                total_errors,
+            )
         elif test_unexpected_successes:
             logging.error(
                 "----- PSM Test Case UNEXPECTEDLY SUCCEEDED: %s -----\n",
@@ -142,9 +145,9 @@ class BaseTestCase(absltest.TestCase):
         logging.error(
             "(%(fail_type)s) PSM Interop Test Failed: %(test_id)s"
             "\n^^^^^"
-            "\n[%(test_id)s] PSM Failed Test Traceback BEGIN"
+            "\n# [%(test_id)s] PSM Failed Test Traceback BEGIN"
             "\n%(error)s"
-            "[%(test_id)s] PSM Failed Test Traceback END\n",
+            "# [%(test_id)s] PSM Failed Test Traceback END\n",
             {
                 "test_id": test_name,
                 "fail_type": fail_type,
