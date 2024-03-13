@@ -68,7 +68,8 @@ class PodLogCollector(threading.Thread):
 
     def run(self):
         logger.info(
-            "Starting log collection thread %i for %s",
+            "[ns/%s] Starting log collection thread %i for %s",
+            self.namespace_name,
             self.ident,
             self.pod_name,
         )
@@ -98,6 +99,8 @@ class PodLogCollector(threading.Thread):
             )
             self._out_stream.close()
             self._out_stream = None
+        if not self.drain_event.is_set():
+            logger.debug("Stopped: %s", self)
         self.drain_event.set()
 
     def _stream_log(self):
@@ -119,6 +122,14 @@ class PodLogCollector(threading.Thread):
             self.stop_event.wait(timeout=self.error_backoff_sec)
 
     def _restart_stream(self):
+        if self._watcher is None:
+            # Only write on the first stream start to indicate when we
+            # started attempting to establish the watch.
+            self._write(
+                f"[ns/{self.namespace_name}] Starting pod logs watcher"
+                f" for {self.pod_name}"
+            )
+
         self._watcher = watch.Watch()
         for msg in self._watcher.stream(
             self._read_pod_log_fn,
@@ -140,3 +151,11 @@ class PodLogCollector(threading.Thread):
             self.flush()
         if self.log_to_stdout:
             logger.info(msg)
+
+    def __str__(self):
+        return (
+            f"PodLogCollector(ident='{self.ident}',"
+            f" namespace='{self.namespace_name}',"
+            f" pod_name='{self.pod_name}',"
+            f" log_path='{self.log_path}')"
+        )
