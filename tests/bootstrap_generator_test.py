@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime
 import logging
-from typing import List
+from typing import Final, Sequence
 
 from absl import flags
 from absl.testing import absltest
@@ -36,6 +36,10 @@ KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _timedelta = datetime.timedelta
 
+# Constants
+GCR_PROD: Final[str] = "gcr.io/trafficdirector-prod/td-grpc-bootstrap"
+GCR_TESTING: Final[str] = "gcr.io/grpc-testing/td-grpc-bootstrap"
+
 
 # Returns a list of bootstrap generator versions to be tested along with their
 # image names.
@@ -45,32 +49,14 @@ _timedelta = datetime.timedelta
 #
 # TODO: Update bootstrap generator release instructions to add an entry here,
 # after the release is published.
-def bootstrap_version_testcases() -> List:
+def bootstrap_version_testcases() -> Sequence[dict[str, str]]:
     return (
-        dict(
-            version="v0.16.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:2bf1b5ed00f852ffea8d24759c6fa673acc9ef10",
-        ),
-        dict(
-            version="v0.15.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:7d8d90477792e2e1bfe3a3da20b3dc9ef01d326c",
-        ),
-        dict(
-            version="v0.14.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:d6baaf7b0e0c63054ac4d9bedc09021ff261d599",
-        ),
-        dict(
-            version="v0.13.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:203db6ce70452996f4183c30dd4c5ecaada168b0",
-        ),
-        dict(
-            version="v0.12.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:8765051ef3b742bc5cd20f16de078ae7547f2ba2",
-        ),
-        dict(
-            version="v0.11.0",
-            image="gcr.io/grpc-testing/td-grpc-bootstrap:b96f7a73314668aee83cbf86ab1e40135a0542fc",
-        ),
+        dict(version="v0.16.0", image=f"{GCR_PROD}:v0.16.0"),
+        dict(version="v0.15.0", image=f"{GCR_PROD}:v0.15.0"),
+        dict(version="v0.14.0", image=f"{GCR_PROD}:v0.14.0"),
+        dict(version="v0.13.0", image=f"{GCR_PROD}:v0.13.0"),
+        dict(version="v0.12.0", image=f"{GCR_PROD}:v0.12.0"),
+        dict(version="v0.11.0", image=f"{GCR_PROD}:v0.11.0"),
         # v0.10.0 uses v2 xDS transport protocol by default. TD only supports v3
         # and we can force the bootstrap generator to emit config with v3
         # support by setting the --include-v3-features-experimental flag to
