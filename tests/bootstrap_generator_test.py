@@ -51,12 +51,12 @@ GCR_TESTING: Final[str] = "gcr.io/grpc-testing/td-grpc-bootstrap"
 # after the release is published.
 def bootstrap_version_testcases() -> Sequence[dict[str, str]]:
     return (
-        dict(version="v0.16.0", image=f"{GCR_PROD}:v0.16.0"),
-        dict(version="v0.15.0", image=f"{GCR_PROD}:v0.15.0"),
-        dict(version="v0.14.0", image=f"{GCR_PROD}:v0.14.0"),
-        dict(version="v0.13.0", image=f"{GCR_PROD}:v0.13.0"),
-        dict(version="v0.12.0", image=f"{GCR_PROD}:v0.12.0"),
-        dict(version="v0.11.0", image=f"{GCR_PROD}:v0.11.0"),
+        dict(version="v0.16.0", image=f"{GCR_PROD}:0.16.0"),
+        dict(version="v0.15.0", image=f"{GCR_PROD}:0.15.0"),
+        dict(version="v0.14.0", image=f"{GCR_PROD}:0.14.0"),
+        dict(version="v0.13.0", image=f"{GCR_PROD}:0.13.0"),
+        dict(version="v0.12.0", image=f"{GCR_PROD}:0.12.0"),
+        dict(version="v0.11.0", image=f"{GCR_PROD}:0.11.0"),
         # v0.10.0 uses v2 xDS transport protocol by default. TD only supports v3
         # and we can force the bootstrap generator to emit config with v3
         # support by setting the --include-v3-features-experimental flag to
