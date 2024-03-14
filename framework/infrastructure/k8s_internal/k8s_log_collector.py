@@ -15,6 +15,7 @@ import logging
 import os
 import pathlib
 import threading
+import datetime as dt
 from typing import Any, Callable, Optional, TextIO
 
 from kubernetes import client
@@ -93,7 +94,7 @@ class PodLogCollector(threading.Thread):
             self._watcher.stop()
             self._watcher = None
         if self._out_stream is not None:
-            self._write(
+            self._write_with_ts(
                 f"Finished log collection for pod {self.pod_name}",
                 force_flush=True,
             )
@@ -107,8 +108,8 @@ class PodLogCollector(threading.Thread):
         try:
             self._restart_stream()
         except client.ApiException as e:
-            self._write(f"Exception fetching logs: {e}")
-            self._write(
+            self._write_with_ts(f"Exception fetching logs: {e}")
+            self._write_with_ts(
                 (
                     f"Restarting log fetching in {self.error_backoff_sec} sec. "
                     "Will attempt to read from the beginning, but log "
@@ -125,7 +126,7 @@ class PodLogCollector(threading.Thread):
         if self._watcher is None:
             # Only write on the first stream start to indicate when we
             # started attempting to establish the watch.
-            self._write(
+            self._write_with_ts(
                 f"[ns/{self.namespace_name}] Starting pod logs watcher"
                 f" for {self.pod_name}"
             )
@@ -151,6 +152,10 @@ class PodLogCollector(threading.Thread):
             self.flush()
         if self.log_to_stdout:
             logger.info(msg)
+
+    def _write_with_ts(self, msg: str, force_flush: bool = False):
+        ts = dt.datetime.now(tz=dt.timezone.utc).isoformat()
+        self._write(f"{ts} {msg}", force_flush)
 
     def __str__(self):
         return (
