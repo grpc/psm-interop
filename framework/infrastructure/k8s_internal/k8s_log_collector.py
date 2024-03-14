@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime as dt
 import logging
 import os
 import pathlib
 import threading
-import datetime as dt
 from typing import Any, Callable, Optional, TextIO
 
 from kubernetes import client
