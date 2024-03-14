@@ -95,7 +95,8 @@ class PodLogCollector(threading.Thread):
             self._watcher = None
         if self._out_stream is not None:
             self._write_with_ts(
-                f"Finished log collection for pod {self.pod_name}",
+                f"[ns/{self.namespace_name}] Finished log collection"
+                f" for pod {self.pod_name}",
                 force_flush=True,
             )
             self._out_stream.close()
