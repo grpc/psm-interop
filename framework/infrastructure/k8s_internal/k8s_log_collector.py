@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime as dt
 import logging
 import os
 import pathlib
@@ -68,7 +69,8 @@ class PodLogCollector(threading.Thread):
 
     def run(self):
         logger.info(
-            "Starting log collection thread %i for %s",
+            "[ns/%s] Starting log collection thread %i for %s",
+            self.namespace_name,
             self.ident,
             self.pod_name,
         )
@@ -92,20 +94,23 @@ class PodLogCollector(threading.Thread):
             self._watcher.stop()
             self._watcher = None
         if self._out_stream is not None:
-            self._write(
-                f"Finished log collection for pod {self.pod_name}",
+            self._write_with_ts(
+                f"[ns/{self.namespace_name}] Finished log collection"
+                f" for pod {self.pod_name}",
                 force_flush=True,
             )
             self._out_stream.close()
             self._out_stream = None
+        if not self.drain_event.is_set():
+            logger.debug("Stopped: %s", self)
         self.drain_event.set()
 
     def _stream_log(self):
         try:
             self._restart_stream()
         except client.ApiException as e:
-            self._write(f"Exception fetching logs: {e}")
-            self._write(
+            self._write_with_ts(f"Exception fetching logs: {e}")
+            self._write_with_ts(
                 (
                     f"Restarting log fetching in {self.error_backoff_sec} sec. "
                     "Will attempt to read from the beginning, but log "
@@ -119,6 +124,14 @@ class PodLogCollector(threading.Thread):
             self.stop_event.wait(timeout=self.error_backoff_sec)
 
     def _restart_stream(self):
+        if self._watcher is None:
+            # Only write on the first stream start to indicate when we
+            # started attempting to establish the watch.
+            self._write_with_ts(
+                f"[ns/{self.namespace_name}] Starting pod logs watcher"
+                f" for {self.pod_name}"
+            )
+
         self._watcher = watch.Watch()
         for msg in self._watcher.stream(
             self._read_pod_log_fn,
@@ -140,3 +153,15 @@ class PodLogCollector(threading.Thread):
             self.flush()
         if self.log_to_stdout:
             logger.info(msg)
+
+    def _write_with_ts(self, msg: str, force_flush: bool = False):
+        ts = dt.datetime.now(tz=dt.timezone.utc).isoformat()
+        self._write(f"{ts} {msg}", force_flush)
+
+    def __str__(self):
+        return (
+            f"PodLogCollector(ident='{self.ident}',"
+            f" namespace='{self.namespace_name}',"
+            f" pod_name='{self.pod_name}',"
+            f" log_path='{self.log_path}')"
+        )

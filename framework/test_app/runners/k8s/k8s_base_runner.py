@@ -27,7 +27,7 @@ from typing import List, Optional
 import absl.logging
 import mako.lookup
 import mako.template
-from typing_extensions import LiteralString
+from typing_extensions import LiteralString, override
 import yaml
 
 from framework.helpers import retryers
@@ -208,8 +208,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             )
             self.run_history.append(run_history)
 
+    @override
     def _reset_state(self):
-        """Reset the mutable state of the previous run."""
+        super()._reset_state()
         try:
             if self.pod_port_forwarders:
                 logger.warning(
