@@ -752,6 +752,8 @@ class IsolatedXdsKubernetesTestCase(
         raise NotImplementedError
 
     def tearDown(self):
+        super().tearDown()
+
         logger.info("----- TestMethod %s teardown -----", self.test_name)
         logger.debug("Getting pods restart times")
         client_restarts: int = 0
