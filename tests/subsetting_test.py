@@ -87,7 +87,12 @@ class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                     len(parsed.endpoints),
                     parsed.endpoints,
                 )
-                self.assertLen(parsed.endpoints, _SUBSET_SIZE)
+                self.assertLen(
+                    parsed.endpoints,
+                    _SUBSET_SIZE,
+                    "CSDS endpoint length does not match the subset size:"
+                    f" expected={_SUBSET_SIZE}, got={len(parsed.endpoints)}",
+                )
                 # Record RPC stats
                 lb_stats = self.getClientRpcStats(
                     test_client, _NUM_BACKENDS * 25
