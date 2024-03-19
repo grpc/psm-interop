@@ -130,7 +130,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
         return (
             channel
             for channel in self.list_channels(**kwargs)
-            if channel.data.target == target
+            if target in channel.data.target
         )
 
     def find_server_listening_on_port(
