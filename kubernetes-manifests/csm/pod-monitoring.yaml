@@ -11,5 +11,5 @@ spec:
     matchLabels:
       deployment_id: ${deployment_id}
   endpoints:
-  - port: 9464
+  - port: ${pod_monitoring_port}
     interval: 10s

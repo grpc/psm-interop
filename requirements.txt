@@ -16,4 +16,5 @@ packaging~=23.1
 Pygments~=2.9
 python-dateutil~=2.8
 protobuf~=4.24
+requests~=2.31.0
 xds-protos==1.58.0rc1

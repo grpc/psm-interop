@@ -67,6 +67,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         hostname: str,
         rpc_host: Optional[str] = None,
         maintenance_port: Optional[int] = None,
+        monitoring_port: Optional[int] = None,
     ):
         super().__init__(rpc_host=(rpc_host or ip))
         self.ip = ip
@@ -74,6 +75,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self.server_target = server_target
         self.maintenance_port = maintenance_port or rpc_port
         self.hostname = hostname
+        self.monitoring_port = monitoring_port
 
     @property
     @functools.lru_cache(None)
