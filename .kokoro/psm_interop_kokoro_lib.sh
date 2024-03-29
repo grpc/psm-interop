@@ -53,11 +53,7 @@ activate_gke_cluster() {
       ;;
     GKE_CLUSTER_PSM_CSM)
       GKE_CLUSTER_NAME="psm-interop-csm"
-      GKE_CLUSTER_ZONE="us-east7-c"
-      ;;
-    GKE_CLUSTER_PSM_CSM_REGIONAL)
-      GKE_CLUSTER_NAME="psm-interop-csm"
-      GKE_CLUSTER_REGION="us-central1-a"
+      GKE_CLUSTER_REGION="us-central1"
       ;;
     GKE_CLUSTER_PSM_GAMMA)
       GKE_CLUSTER_NAME="psm-interop-gamma"
@@ -102,7 +98,8 @@ activate_secondary_gke_cluster() {
       exit 1
       ;;
   esac
-  echo "Activated secondary GKE cluster: GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME} GKE_CLUSTER_ZONE=${GKE_CLUSTER_ZONE}"
+  echo -n "Activated secondary GKE cluster: SECONDARY_GKE_CLUSTER_NAME=${SECONDARY_GKE_CLUSTER_NAME}"
+  echo " SECONDARY_GKE_CLUSTER_ZONE=${SECONDARY_GKE_CLUSTER_ZONE}"
 }
 
 #######################################
