@@ -35,6 +35,7 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
 #   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
+#   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
 # Arguments:
 #   The cluster identifier
 # Outputs:
@@ -54,6 +55,10 @@ activate_gke_cluster() {
       GKE_CLUSTER_NAME="psm-interop-csm"
       GKE_CLUSTER_ZONE="us-east7-c"
       ;;
+    GKE_CLUSTER_PSM_CSM_REGIONAL)
+      GKE_CLUSTER_NAME="psm-interop-csm"
+      GKE_CLUSTER_REGION="us-central1-a"
+      ;;
     GKE_CLUSTER_PSM_GAMMA)
       GKE_CLUSTER_NAME="psm-interop-gamma"
       GKE_CLUSTER_ZONE="us-central1-a"
@@ -67,7 +72,12 @@ activate_gke_cluster() {
       exit 1
       ;;
   esac
-  echo "Activated GKE cluster: GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME} GKE_CLUSTER_ZONE=${GKE_CLUSTER_ZONE}"
+  echo -n "Activated GKE cluster: GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME} "
+  if [[ -n "${GKE_CLUSTER_REGION}" ]]; then
+    echo "GKE_CLUSTER_REGION=${GKE_CLUSTER_REGION}"
+  else
+    echo "GKE_CLUSTER_ZONE=${GKE_CLUSTER_ZONE}"
+  fi
 }
 
 #######################################
@@ -179,13 +189,19 @@ gcloud_gcr_list_image_tags() {
 #   Writes authorization info $HOME/.kube/config
 #######################################
 gcloud_get_cluster_credentials() {
+  # Secondary cluster, when set.
   if [[ -n "${SECONDARY_GKE_CLUSTER_NAME}" && -n "${SECONDARY_GKE_CLUSTER_ZONE}" ]]; then
     gcloud container clusters get-credentials "${SECONDARY_GKE_CLUSTER_NAME}" --zone "${SECONDARY_GKE_CLUSTER_ZONE}"
     readonly SECONDARY_KUBE_CONTEXT="$(kubectl config current-context)"
   else
     readonly SECONDARY_KUBE_CONTEXT=""
   fi
-  gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" --zone "${GKE_CLUSTER_ZONE}"
+  # Primary cluster.
+  if [[ -n "${GKE_CLUSTER_REGION}" ]]; then
+    gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" --region "${GKE_CLUSTER_REGION}"
+  else
+    gcloud container clusters get-credentials "${GKE_CLUSTER_NAME}" --zone "${GKE_CLUSTER_ZONE}"
+  fi
   readonly KUBE_CONTEXT="$(kubectl config current-context)"
 }
 
