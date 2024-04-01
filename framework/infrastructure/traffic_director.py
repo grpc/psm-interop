@@ -724,6 +724,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             allowed_ports,
         )
 
+        # A separate fw rule is needed because mixing IPv4 and IPv6 in the same
+        # rule is not allowed.
         if xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value:
             self.firewall_rule_ipv6 = self._create_firewall_rule(
                 self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6),
