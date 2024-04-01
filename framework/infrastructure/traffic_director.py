@@ -66,6 +66,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     FORWARDING_RULE_NAME = "forwarding-rule"
     ALTERNATIVE_FORWARDING_RULE_NAME = "forwarding-rule-alt"
     FIREWALL_RULE_NAME = "allow-health-checks"
+    FIREWALL_RULE_NAME_IPV6 = "allow-health-checks-ipv6"
 
     def __init__(
         self,
@@ -99,6 +100,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.url_map: Optional[GcpResource] = None
         self.alternative_url_map: Optional[GcpResource] = None
         self.firewall_rule: Optional[GcpResource] = None
+        self.firewall_rule_ipv6: Optional[GcpResource] = None
         self.target_proxy: Optional[GcpResource] = None
         # TODO(sergiitk): remove this flag once target proxy resource loaded
         self.target_proxy_is_http: bool = False
@@ -163,6 +165,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_alternative_backend_service(force=force)
         self.delete_affinity_backend_service(force=force)
         self.delete_health_check(force=force)
+        self.delete_firewall_rule(force=force)
 
     @functools.lru_cache(None)
     def make_resource_name(self, name: str) -> str:
@@ -715,32 +718,63 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.alternative_forwarding_rule = None
 
     def create_firewall_rule(self, allowed_ports: List[str]):
-        name = self.make_resource_name(self.FIREWALL_RULE_NAME)
-        logging.info(
-            'Creating firewall rule "%s" in network "%s" with allowed ports %s',
-            name,
-            self.network,
-            allowed_ports,
-        )
-        resource = self.compute.create_firewall_rule(
-            name,
-            self.network_url,
+        self.firewall_rule = self._create_firewall_rule(
+            self.make_resource_name(self.FIREWALL_RULE_NAME),
             xds_flags.FIREWALL_SOURCE_RANGE.value,
             allowed_ports,
         )
-        self.firewall_rule = resource
+
+        if xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value:
+            self.firewall_rule_ipv6 = self._create_firewall_rule(
+                self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6),
+                xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value,
+                allowed_ports,
+            )
+
+    def _create_firewall_rule(
+        self, name, source_range, allowed_ports: List[str]
+    ):
+        logging.info(
+            'Creating firewall rule "%s" in network "%s" from %s'
+            " with allowed ports %s",
+            name,
+            self.network,
+            source_range,
+            allowed_ports,
+        )
+        return self.compute.create_firewall_rule(
+            name,
+            self.network_url,
+            source_range,
+            allowed_ports,
+        )
 
     def delete_firewall_rule(self, force=False):
         """The firewall rule won't be automatically removed."""
-        if force:
-            name = self.make_resource_name(self.FIREWALL_RULE_NAME)
-        elif self.firewall_rule:
+        name, name_ipv6 = "", ""
+
+        if self.firewall_rule:
             name = self.firewall_rule.name
-        else:
-            return
+        if self.firewall_rule_ipv6:
+            name_ipv6 = self.firewall_rule.name
+
+        if not name and force:
+            name = self.make_resource_name(self.FIREWALL_RULE_NAME)
+        if not name_ipv6 and force:
+            name_ipv6 = self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6)
+
+        try:
+            if name:
+                self._delete_firewall_rule(name)
+                self.firewall_rule = None
+        finally:
+            if name_ipv6:
+                self._delete_firewall_rule(name_ipv6)
+                self.firewall_rule_ipv6 = None
+
+    def _delete_firewall_rule(self, name):
         logger.info('Deleting Firewall Rule "%s"', name)
         self.compute.delete_firewall_rule(name)
-        self.firewall_rule = None
 
 
 class TrafficDirectorAppNetManager(TrafficDirectorManager):

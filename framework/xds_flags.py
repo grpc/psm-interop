@@ -64,9 +64,14 @@ FIREWALL_SOURCE_RANGE = flags.DEFINE_list(
     default=["35.191.0.0/16", "130.211.0.0/22"],
     help="Update the source range of the firewall rule.",
 )
+FIREWALL_SOURCE_RANGE_IPV6 = flags.DEFINE_list(
+    "firewall_source_range_ipv6",
+    default=["2600:2d00:1:b029::/64"],
+    help="Update the IPv6 source range of the firewall rule.",
+)
 FIREWALL_ALLOWED_PORTS = flags.DEFINE_list(
     "firewall_allowed_ports",
-    default=["8080-8100"],
+    default=["8000-8100"],
     help="Update the allowed ports of the firewall rule.",
 )
 
