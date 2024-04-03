@@ -53,7 +53,10 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
+        if (
+            config.client_lang == _Lang.CPP
+            or config.client_lang == _Lang.PYTHON
+        ) and config.server_lang == _Lang.CPP:
             return config.version_gte("v1.62.x")
         return False
 
