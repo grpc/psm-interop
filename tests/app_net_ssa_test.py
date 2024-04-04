@@ -40,7 +40,10 @@ _REPLICA_COUNT: Final[int] = 3
 class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang is _Lang.CPP:
+        if (
+            config.client_lang is _Lang.CPP
+            or config.client_lang is _Lang.PYTHON
+        ):
             return config.version_gte("v1.62.x")
         return False
 
