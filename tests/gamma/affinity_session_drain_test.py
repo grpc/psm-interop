@@ -20,6 +20,7 @@ from absl.testing import absltest
 from typing_extensions import TypeAlias, override
 
 from framework import xds_gamma_testcase
+from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_testing
@@ -50,13 +51,18 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     xds_gamma_testcase.GammaXdsKubernetesTestCase,
     session_affinity_mixin.SessionAffinityMixin,
 ):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Force the python client to use the reference server image (C++)
+        # because the python server doesn't yet support session drain test.
+        if cls.lang_spec.client_lang == _Lang.PYTHON:
+            cls.server_image = xds_k8s_flags.CSM_SERVER_IMAGE_CANONICAL.value
+
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
-        if (
-            config.client_lang == _Lang.CPP
-            or config.client_lang == _Lang.PYTHON
-        ) and config.server_lang == _Lang.CPP:
+        if config.client_lang in _Lang.CPP | _Lang.PYTHON:
             return config.version_gte("v1.62.x")
         return False
 
