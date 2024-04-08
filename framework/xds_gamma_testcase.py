@@ -15,8 +15,10 @@ import datetime
 import logging
 from typing import List
 
+from absl import flags
 from typing_extensions import override
 
+from framework import xds_k8s_flags
 from framework.infrastructure import k8s
 import framework.infrastructure.traffic_director_gamma as td_gamma
 from framework.test_app import client_app
@@ -31,12 +33,20 @@ XdsTestClient = client_app.XdsTestClient
 XdsTestServer = server_app.XdsTestServer
 
 logger = logging.getLogger(__name__)
+flags.adopt_module_key_flags(xds_k8s_flags)
 
 
 # TODO(sergiitk): [GAMMA] Move into framework/test_cases
 class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     server_runner: GammaServerRunner
     frontend_service_name: str
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.csm_server_image_canonical = (
+            xds_k8s_flags.CSM_SERVER_IMAGE_CANONICAL.value
+        )
 
     def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
