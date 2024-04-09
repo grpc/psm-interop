@@ -22,7 +22,7 @@ PRESTOP_MOUNT_PATH = '/tmp/prestop-hook'
       ## initContainers:
         - name: prestop-hook-init
           ## TODO(sergiitk): parametrize prestop hook image
-          image: gcr.io/grpc-testing/xds-interop/prestop-hook:v0.0.6
+          image: us-docker.pkg.dev/grpc-testing/psm-interop/prestop-hook:v0.0.6
           imagePullPolicy: Always
           args: ["${PRESTOP_MOUNT_PATH}"]
           resources:
