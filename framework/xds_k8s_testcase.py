@@ -691,6 +691,84 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 msg=f"Backend {backend} did not receive a single RPC",
             )
 
+    def assertClientEventuallyReachesSteadyState(
+        self,
+        test_client: XdsTestClient,
+        rpc_type: str,
+        num_rpcs: int,
+        threshold_percent: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=20),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=2),
+        steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
+    ):
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client ${test_client.hostname} to"
+                f"report {num_rpcs} pending calls +/-{threshold_percent}%"
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                self._checkRpcsInFlight(
+                    test_client, rpc_type, num_rpcs, threshold_percent
+                )
+        time.sleep(steady_state_delay.total_seconds())
+        self._checkRpcsInFlight(
+            test_client, rpc_type, num_rpcs, threshold_percent
+        )
+
+    def _checkRpcsInFlight(
+        self,
+        test_client: XdsTestClient,
+        rpc_type: str,
+        num_rpcs: int,
+        threshold_percent: int,
+    ):
+        if threshold_percent < 0 or threshold_percent > 100:
+            raise ValueError(
+                "Value error: Threshold should be between 0 to 100"
+            )
+        threshold_fraction = threshold_percent / 100.0
+        stats = test_client.get_load_balancer_accumulated_stats()
+        logging.info(
+            "[%s] << Received LoadBalancerAccumulatedStatsResponse:\n%s",
+            test_client.hostname,
+            self._pretty_accumulated_stats(stats),
+        )
+        rpcs_started = stats.num_rpcs_started_by_method[rpc_type]
+        rpcs_succeeded = stats.num_rpcs_succeeded_by_method[rpc_type]
+        rpcs_failed = stats.num_rpcs_failed_by_method[rpc_type]
+        rpcs_in_flight = rpcs_started - rpcs_succeeded - rpcs_failed
+        logging.info(
+            "[%s] << %s RPCs in flight: %d, expecting %d +/-%d%%",
+            test_client.hostname,
+            rpc_type,
+            rpcs_in_flight,
+            num_rpcs,
+            threshold_percent,
+        )
+        if rpcs_in_flight < (num_rpcs * (1 - threshold_fraction)):
+            raise AssertionError(
+                "actual(%d) < expected(%d - %d%%)"
+                % (
+                    rpcs_in_flight,
+                    num_rpcs,
+                    threshold_percent,
+                )
+            )
+        elif rpcs_in_flight > (num_rpcs * (1 + threshold_fraction)):
+            raise AssertionError(
+                "actual(%d) > expected(%d + %d%%)"
+                % (
+                    rpcs_in_flight,
+                    num_rpcs,
+                    threshold_percent,
+                )
+            )
+
 
 class IsolatedXdsKubernetesTestCase(
     XdsKubernetesBaseTestCase, metaclass=abc.ABCMeta

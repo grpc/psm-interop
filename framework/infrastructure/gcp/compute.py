@@ -189,6 +189,7 @@ class ComputeV1(
         backend_service,
         backends,
         max_rate_per_endpoint: Optional[int] = None,
+        circuit_breaker: Optional[Any] = None,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5
@@ -203,7 +204,7 @@ class ComputeV1(
 
         self._patch_resource(
             collection=self.api.backendServices(),
-            body={"backends": backend_list},
+            body={"backends": backend_list, "circuitBreakers": circuit_breaker},
             backendService=backend_service.name,
         )
 
