@@ -60,6 +60,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     td_bootstrap_image: str
     xds_server_uri: str
     network: str
+    enable_csm_observability: bool
+    csm_workload_name: str
+    csm_canonical_service_name: str
 
     # Server Deployment args
     deployment_args: ServerDeploymentArgs
@@ -98,6 +101,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        enable_csm_observability: bool = False,
+        csm_workload_name: str = "",
+        csm_canonical_service_name: str = "",
         deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         super().__init__(
@@ -142,6 +148,10 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             # GCP IAM API used to grant allow workload service accounts
             # permission to use GCP service account identity.
             self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
+
+        self.enable_csm_observability = enable_csm_observability
+        self.csm_workload_name = csm_workload_name
+        self.csm_canonical_service_name = csm_canonical_service_name
 
         # Mutable state associated with each run.
         self._reset_state()
@@ -248,8 +258,23 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
+            enable_csm_observability=self.enable_csm_observability,
+            csm_workload_name=self.csm_workload_name,
+            csm_canonical_service_name=self.csm_canonical_service_name,
             **self.deployment_args.as_dict(),
         )
+
+        # Create a PodMonitoring resource if CSM Observability is enabled
+        # This is GMP (Google Managed Prometheus)
+        if self.enable_csm_observability:
+            self.pod_monitoring_name = f"{self.deployment_id}-gmp"
+            self.pod_monitoring = self._create_pod_monitoring(
+                "csm/pod-monitoring.yaml",
+                namespace_name=self.k8s_namespace.name,
+                deployment_id=self.deployment_id,
+                pod_monitoring_name=self.pod_monitoring_name,
+                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
+            )
 
         return self._make_servers_for_deployment(
             replica_count,
@@ -313,8 +338,15 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         if self.debug_use_port_forwarding:
             pf = self._start_port_forwarding_pod(pod, maintenance_port)
             rpc_port, rpc_host = pf.local_port, pf.local_address
+            if self.enable_csm_observability:
+                pf = self._start_port_forwarding_pod(
+                    pod, self.DEFAULT_MONITORING_PORT
+                )
+                monitoring_port = pf.local_port
         else:
             rpc_port, rpc_host = maintenance_port, None
+            if self.enable_csm_observability:
+                monitoring_port = self.DEFAULT_MONITORING_PORT
 
         server = XdsTestServer(
             ip=pod.status.pod_ip,

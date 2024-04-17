@@ -45,9 +45,6 @@ class GammaServerRunner(KubernetesServerRunner):
 
     route_name: str
     frontend_service_name: str
-    enable_csm_observability: bool
-    csm_workload_name: str
-    csm_canonical_service_name: str
 
     SESSION_AFFINITY_FILTER_NAME: Final[str] = "ssa-filter"
     SESSION_AFFINITY_POLICY_NAME: Final[str] = "ssa-policy"
@@ -105,14 +102,14 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_template=namespace_template,
             debug_use_port_forwarding=debug_use_port_forwarding,
             enable_workload_identity=enable_workload_identity,
+            enable_csm_observability=enable_csm_observability,
+            csm_workload_name=csm_workload_name,
+            csm_canonical_service_name=csm_canonical_service_name,
             deployment_args=deployment_args,
         )
 
         self.frontend_service_name = frontend_service_name
         self.route_name = route_name or f"route-{deployment_name}"
-        self.enable_csm_observability = enable_csm_observability
-        self.csm_workload_name = csm_workload_name
-        self.csm_canonical_service_name = csm_canonical_service_name
 
     @override
     def run(  # pylint: disable=arguments-differ
