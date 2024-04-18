@@ -63,6 +63,8 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     enable_csm_observability: bool
     csm_workload_name: str
     csm_canonical_service_name: str
+    pod_monitoring: Optional[k8s.PodMonitoring] = None
+    pod_monitoring_name: Optional[str] = None
 
     # Server Deployment args
     deployment_args: ServerDeploymentArgs

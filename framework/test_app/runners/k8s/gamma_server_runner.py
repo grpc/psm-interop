@@ -40,8 +40,6 @@ class GammaServerRunner(KubernetesServerRunner):
     session_affinity_filter: Optional[k8s.GcpSessionAffinityFilter] = None
     session_affinity_policy: Optional[k8s.GcpSessionAffinityPolicy] = None
     backend_policy: Optional[k8s.GcpBackendPolicy] = None
-    pod_monitoring: Optional[k8s.PodMonitoring] = None
-    pod_monitoring_name: Optional[str] = None
 
     route_name: str
     frontend_service_name: str

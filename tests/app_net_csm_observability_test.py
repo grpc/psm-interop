@@ -216,7 +216,9 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
 
         with self.subTest("1_run_test_server"):
             start_secs = int(time.time())
-            test_server: _XdsTestServer = self.startTestServers(replica_count=1)[0]
+            test_server: _XdsTestServer = self.startTestServers(
+                replica_count=1
+            )[0]
 
         with self.subTest("5_setup_server_backends"):
             self.setupServerBackends()
@@ -327,8 +329,8 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                 "csm_remote_workload_namespace_name": self.server_namespace,
                 "csm_remote_workload_project_id": self.project,
                 "csm_remote_workload_type": "gcp_kubernetes_engine",
-                "csm_service_name": ANY, # TODO(yashykt)
-                "csm_service_namespace_name": ANY, # TODO(yashykt)
+                "csm_service_name": ANY,  # TODO(yashykt)
+                "csm_service_namespace_name": ANY,  # TODO(yashykt)
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_status": "OK",
