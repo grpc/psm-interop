@@ -329,7 +329,7 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                 "csm_remote_workload_namespace_name": self.server_namespace,
                 "csm_remote_workload_project_id": self.project,
                 "csm_remote_workload_type": "gcp_kubernetes_engine",
-                "csm_service_name": ANY,  # TODO(yashykt)
+                "csm_service_name": self.td.backend_service.name,
                 "csm_service_namespace_name": "unknown",
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "grpc_method": GRPC_METHOD_NAME,
