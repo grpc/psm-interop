@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# TODO(sergiitk): move to grpc/grpc when implementing support of other languages
 set -eo pipefail
 
 # Constants
@@ -24,8 +23,7 @@ readonly TEST_DRIVER_BRANCH="${TEST_DRIVER_BRANCH:-main}"
 readonly TEST_DRIVER_PATH=""
 readonly TEST_DRIVER_PROTOS_PATH="protos/grpc/testing"
 readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
-# For compatibility with FORCE_IMAGE_BUILD defined in buildscripts.
-# TODO(sergiitk): can be defined as FORCE_IMAGE_BUILD when all buildscripts are updated.
+# TODO(sergiitk): can be defined as readonly FORCE_IMAGE_BUILD when removed from buildscripts.
 readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
 
 # GKE cluster identifiers.
@@ -110,6 +108,30 @@ psm::security::run() {
   psm::run_tests
 }
 
+# --- URL Map TESTS ---
+
+#######################################
+# Returns the list of tests in URL Map test suite.
+# Globals:
+#   TESTS: An array of tests LB tests.
+# Outputs:
+#   Sets variable TESTS.
+#   Prints TESTS to stdout.
+#######################################
+psm::url_map::get_tests() {
+  TESTS=("url_map")
+  echo "URL Map test suite:"
+  printf -- "- %s\n" "${TESTS[@]}"
+}
+
+psm::url_map::run() {
+  activate_gke_cluster GKE_CLUSTER_PSM_BASIC
+  psm::setup_test_driver
+  psm::build_docker_images_if_needed
+  psm::url_map::get_tests
+  psm::run_tests
+}
+
 # --- Common test run ---
 
 #######################################
@@ -140,6 +162,9 @@ psm::run() {
       ;;
     security)
       psm::security::run
+      ;;
+    url_map)
+      psm::url_map::run
       ;;
     *)
       echo "Unknown Test Suite: ${1}"
