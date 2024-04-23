@@ -38,6 +38,8 @@ class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     @classmethod
     @override
     def setUpClass(cls):
+        # TODO(sergiitk): use when absl updated to 1.3.0+, also set
+        #  flags.set_default(xds_flags.COMPUTE_API_VERSION, 'v1alpha')
         super().setUpClass()
         cls.compute_api_version = "v1alpha"
 

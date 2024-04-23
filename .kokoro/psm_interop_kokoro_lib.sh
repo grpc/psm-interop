@@ -67,7 +67,7 @@ psm::get_lb_tests() {
       )
   fi
 
-  echo "Running LB suite tests:"
+  echo "LB test suite:"
   printf "%s\n" "${TESTS[@]}"
 }
 
