@@ -194,19 +194,17 @@ psm::run_tests() {
 }
 
 psm::setup_test_driver() {
-  local script_dir
-  script_dir="$(dirname "$0")"
   set -x
-  echo "Sourcing ${script_dir}/psm-interop-build.sh"
-  if [[ -f "${script_dir}/psm-interop-build.sh" ]]; then
-    source "${script_dir}/psm-interop-build.sh"
+  echo "Sourcing ${BUILD_SCRIPT_DIR}/psm-interop-build.sh"
+  if [[ -f "${BUILD_SCRIPT_DIR}/psm-interop-build.sh" ]]; then
+    source "${BUILD_SCRIPT_DIR}/psm-interop-build.sh"
   fi
   set +x
 
   if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
     kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
   else
-    local_setup_test_driver "${script_dir}"
+    local_setup_test_driver "${BUILD_SCRIPT_DIR}"
   fi
 
 }
