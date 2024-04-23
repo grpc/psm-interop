@@ -194,16 +194,17 @@ psm::run_tests() {
 }
 
 psm::setup_test_driver() {
+  local build_docker_script="${BUILD_SCRIPT_DIR}/psm-interop-build-${GRPC_LANGUAGE}.sh"
+  echo "Looking for docker image build script ${build_docker_script}"
+  if [[ -f "${build_docker_script}" ]]; then
+    echo "Sourcing docker image build script: ${build_docker_script}"
+    source "${build_docker_script}"
+  fi
+  
   if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
     kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
   else
     local_setup_test_driver "${BUILD_SCRIPT_DIR}"
-  fi
-
-  local build_docker_script="${BUILD_SCRIPT_DIR}/psm-interop-build-${GRPC_LANGUAGE}.sh"
-  if [[ -f "${build_docker_script}" ]]; then
-    echo "Sourcing ${build_docker_script}"
-    source "${build_docker_script}"
   fi
 }
 
