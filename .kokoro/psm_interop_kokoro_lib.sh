@@ -71,10 +71,8 @@ psm::lb::get_tests() {
       )
   fi
 
-  # Prevent buildscripts from appending to the list of tests.
-  declare -r TESTS
   echo "LB test suite:"
-  printf "%s\n" "${TESTS[@]}"
+  printf -- "- %s\n" "${TESTS[@]}"
 }
 
 psm::lb::run() {
