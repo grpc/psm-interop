@@ -24,6 +24,9 @@ readonly TEST_DRIVER_BRANCH="${TEST_DRIVER_BRANCH:-main}"
 readonly TEST_DRIVER_PATH=""
 readonly TEST_DRIVER_PROTOS_PATH="protos/grpc/testing"
 readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
+# For compatibility with FORCE_IMAGE_BUILD defined in buildscripts.
+# TODO(sergiitk): can be defined as FORCE_IMAGE_BUILD when all buildscripts are updated.
+readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
 
 # GKE cluster identifiers.
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
@@ -32,6 +35,8 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 
 # TODO(sergiitk): all methods should be using "psm::" package name,
 #   see https://google.github.io/styleguide/shellguide.html#function-names
+
+# --- LB TESTS ---
 
 #######################################
 # Returns the list of tests in LN test suite.
@@ -43,10 +48,9 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 #   Sets variable TESTS.
 #   Prints TESTS to stdout.
 #######################################
-psm::get_lb_tests() {
-  # readarray -t myArray < "$1"
-
-  declare -a TESTS
+psm::lb::get_tests() {
+  # TODO(sergiitk): load from env var?
+  declare -ag TESTS
   TESTS=(
     "affinity_test"
     "api_listener_test"
@@ -67,8 +71,116 @@ psm::get_lb_tests() {
       )
   fi
 
+  # Prevent buildscripts from appending to the list of tests.
+  declare -r TESTS
   echo "LB test suite:"
   printf "%s\n" "${TESTS[@]}"
+}
+
+psm::lb::run() {
+  activate_gke_cluster GKE_CLUSTER_PSM_LB
+  activate_secondary_gke_cluster GKE_CLUSTER_PSM_LB
+  psm::setup_test_driver
+  psm::build_docker_images_if_needed
+  psm::lb::get_tests
+  psm::run_tests
+}
+
+# --- Common test run ---
+
+#######################################
+# TBD
+# Globals:
+#   KOKORO_ARTIFACTS_DIR
+#   GITHUB_REPOSITORY_NAME
+#   SRC_DIR: Populated with absolute path to the source repo
+#   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
+#                         the test driver
+#   TEST_DRIVER_FULL_DIR: Populated with the path to the test driver source code
+#   TEST_DRIVER_FLAGFILE: Populated with relative path to test driver flagfile
+#   TEST_XML_OUTPUT_DIR: Populated with the path to test xUnit XML report
+#   GIT_ORIGIN_URL: Populated with the origin URL of git repo used for the build
+#   GIT_COMMIT: Populated with the SHA-1 of git commit being built
+#   GIT_COMMIT_SHORT: Populated with the short SHA-1 of git commit being built
+#   KUBE_CONTEXT: Populated with name of kubectl context with GKE cluster access
+# Arguments:
+#   None
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#######################################
+psm::run() {
+  psm::set_docker_images "${GRPC_LANGUAGE}"
+  case $1 in
+    lb)
+      psm::lb::run
+      ;;
+    *)
+      echo "Unknown Test Suite: ${1}"
+      exit 1
+      ;;
+  esac
+}
+
+psm::set_docker_images() {
+  case $1 in
+    java)
+      SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
+      CLIENT_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
+      ;;
+    *)
+      echo "Unknown Language: ${1}"
+      exit 1
+      ;;
+  esac
+  declare -r SERVER_IMAGE_NAME
+  declare -r CLIENT_IMAGE_NAME
+}
+
+psm::run_tests() {
+  cd "${TEST_DRIVER_FULL_DIR}"
+  local failed_tests=0
+  for test_name in "${TESTS[@]}"; do
+    run_test "${test_name}" || (( ++failed_tests ))
+  done
+  echo "Failed test suites: ${failed_tests}"
+}
+
+psm::setup_test_driver() {
+  if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
+    kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
+  else
+    local_setup_test_driver "$(dirname "$0")"
+  fi
+}
+
+#######################################
+# Builds test app and its docker images unless they already exist
+# Globals:
+#   SERVER_IMAGE_NAME: Test server Docker image name
+#   CLIENT_IMAGE_NAME: Test client Docker image name
+#   GIT_COMMIT: SHA-1 of git commit being built
+#   FORCE_IMAGE_BUILD
+# Arguments:
+#   None
+# Outputs:
+#   Writes the output to stdout, stderr
+#######################################
+psm::build_docker_images_if_needed() {
+  # Check if images already exist
+  server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
+  printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
+  echo "${server_tags:-Server image not found}"
+
+  client_tags="$(gcloud_gcr_list_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
+  printf "Client image: %s:%s\n" "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}"
+  echo "${client_tags:-Client image not found}"
+
+  # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
+  if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
+    build_test_app_docker_images
+  else
+    echo "Skipping ${GRPC_LANGUAGE} test app build"
+  fi
 }
 
 #######################################
