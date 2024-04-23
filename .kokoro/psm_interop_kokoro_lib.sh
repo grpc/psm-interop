@@ -37,13 +37,11 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 # --- LB TESTS ---
 
 #######################################
-# Returns the list of tests in LB test suite.
+# Prepares the list of tests in PSM LB test suite.
 # Globals:
-#   TESTING_VERSION: Populated with the version branch under test,
-#                    f.e. master, dev, v1.42.x.
-#   TESTS: An array of tests LB tests.
+#   TESTING_VERSION: The version branch under test, f.e. master, dev, v1.42.x.
+#   TESTS: Populated with tests in PSM LB test suite.
 # Outputs:
-#   Sets variable TESTS.
 #   Prints TESTS to stdout.
 #######################################
 psm::lb::get_tests() {
@@ -82,11 +80,10 @@ psm::lb::run() {
 # --- Security TESTS ---
 
 #######################################
-# Returns the list of tests in PSM Security test suite.
+# Prepares the list of tests in PSM Security test suite.
 # Globals:
-#   TESTS: An array of tests LB tests.
+#   TESTS: Populated with tests in PSM Security test suite.
 # Outputs:
-#   Sets variable TESTS.
 #   Prints TESTS to stdout.
 #######################################
 psm::security::get_tests() {
@@ -111,11 +108,10 @@ psm::security::run() {
 # --- URL Map TESTS ---
 
 #######################################
-# Returns the list of tests in URL Map test suite.
+# Prepares the list of tests in URL Map test suite.
 # Globals:
-#   TESTS: An array of tests LB tests.
+#   TESTS: Populated with tests in URL Map test suite.
 # Outputs:
-#   Sets variable TESTS.
 #   Prints TESTS to stdout.
 #######################################
 psm::url_map::get_tests() {
