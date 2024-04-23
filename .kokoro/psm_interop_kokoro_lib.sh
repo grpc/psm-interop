@@ -39,7 +39,7 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 # --- LB TESTS ---
 
 #######################################
-# Returns the list of tests in LN test suite.
+# Returns the list of tests in LB test suite.
 # Globals:
 #   TESTING_VERSION: Populated with the version branch under test,
 #                    f.e. master, dev, v1.42.x.
@@ -50,7 +50,6 @@ readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 #######################################
 psm::lb::get_tests() {
   # TODO(sergiitk): load from env var?
-  declare -ag TESTS
   TESTS=(
     "affinity_test"
     "api_listener_test"
@@ -62,7 +61,6 @@ psm::lb::get_tests() {
     "remove_neg_test"
     "round_robin_test"
   )
-
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
       TESTS+=(
@@ -70,7 +68,6 @@ psm::lb::get_tests() {
         "subsetting_test"
       )
   fi
-
   echo "LB test suite:"
   printf -- "- %s\n" "${TESTS[@]}"
 }
@@ -78,6 +75,35 @@ psm::lb::get_tests() {
 psm::lb::run() {
   activate_gke_cluster GKE_CLUSTER_PSM_LB
   activate_secondary_gke_cluster GKE_CLUSTER_PSM_LB
+  psm::setup_test_driver
+  psm::build_docker_images_if_needed
+  psm::lb::get_tests
+  psm::run_tests
+}
+
+# --- Security TESTS ---
+
+#######################################
+# Returns the list of tests in PSM Security test suite.
+# Globals:
+#   TESTS: An array of tests LB tests.
+# Outputs:
+#   Sets variable TESTS.
+#   Prints TESTS to stdout.
+#######################################
+psm::security::get_tests() {
+  # TODO(sergiitk): load from env var?
+  TESTS=(
+    "baseline_test"
+    "security_test"
+    "authz_test"
+  )
+  echo "Security test suite:"
+  printf -- "- %s\n" "${TESTS[@]}"
+}
+
+psm::security::run() {
+  activate_gke_cluster GKE_CLUSTER_PSM_SECURITY
   psm::setup_test_driver
   psm::build_docker_images_if_needed
   psm::lb::get_tests
@@ -112,6 +138,9 @@ psm::run() {
     lb)
       psm::lb::run
       ;;
+    security)
+      psm::security::run
+      ;;
     *)
       echo "Unknown Test Suite: ${1}"
       exit 1
@@ -144,10 +173,17 @@ psm::run_tests() {
 }
 
 psm::setup_test_driver() {
+  local script_dir
+  script_dir="$(dirname "$0")"
+
   if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
     kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
   else
-    local_setup_test_driver "$(dirname "$0")"
+    local_setup_test_driver "${script_dir}"
+  fi
+
+  if [[ -f "${script_dir}/psm-interop-build.sh" ]]; then
+    source "${script_dir}/psm-interop-build.sh"
   fi
 }
 
