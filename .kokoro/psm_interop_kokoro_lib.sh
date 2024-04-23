@@ -68,13 +68,9 @@ psm::lb::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::lb::run() {
+psm::lb::setup() {
   activate_gke_cluster GKE_CLUSTER_PSM_LB
   activate_secondary_gke_cluster GKE_CLUSTER_PSM_LB
-  psm::setup_test_driver
-  psm::build_docker_images_if_needed
-  psm::lb::get_tests
-  psm::run_tests
 }
 
 # --- Security TESTS ---
@@ -97,12 +93,8 @@ psm::security::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::security::run() {
+psm::security::setup() {
   activate_gke_cluster GKE_CLUSTER_PSM_SECURITY
-  psm::setup_test_driver
-  psm::build_docker_images_if_needed
-  psm::lb::get_tests
-  psm::run_tests
 }
 
 # --- URL Map TESTS ---
@@ -120,12 +112,8 @@ psm::url_map::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::url_map::run() {
+psm::url_map::setup() {
   activate_gke_cluster GKE_CLUSTER_PSM_BASIC
-  psm::setup_test_driver
-  psm::build_docker_images_if_needed
-  psm::url_map::get_tests
-  psm::run_tests
 }
 
 # --- Common test run ---
@@ -153,20 +141,23 @@ psm::url_map::run() {
 psm::run() {
   psm::set_docker_images "${GRPC_LANGUAGE}"
   case $1 in
-    lb)
-      psm::lb::run
-      ;;
-    security)
-      psm::security::run
-      ;;
-    url_map)
-      psm::url_map::run
+    lb | security | url_map)
+      psm::run_generic_test_suite "$1"
       ;;
     *)
       echo "Unknown Test Suite: ${1}"
       exit 1
       ;;
   esac
+}
+
+psm::run_generic_test_suite() {
+  local test_suite="$1"
+  "psm::${test_suite}::setup"
+  psm::setup_test_driver
+  psm::build_docker_images_if_needed
+  "psm::${test_suite}::get_tests"
+  psm::run_tests
 }
 
 psm::set_docker_images() {
@@ -200,7 +191,7 @@ psm::setup_test_driver() {
     echo "Sourcing docker image build script: ${build_docker_script}"
     source "${build_docker_script}"
   fi
-  
+
   if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
     kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
   else
