@@ -126,13 +126,14 @@ class GcpApiManager:
         return secret.payload.data.decode()
 
     @functools.lru_cache(None)
-    def compute(self, version):
+    def compute(self, version: str):
         api_name = "compute"
+
+        if version.startswith("v1") and self.compute_v1_discovery_file:
+            return self._build_from_file(self.compute_v1_discovery_file)
+
         if version == "v1":
-            if self.compute_v1_discovery_file:
-                return self._build_from_file(self.compute_v1_discovery_file)
-            else:
-                return self._build_from_discovery_v1(api_name, version)
+            return self._build_from_discovery_v1(api_name, version)
         elif version == "v1alpha":
             return self._build_from_discovery_v1(api_name, "alpha")
 

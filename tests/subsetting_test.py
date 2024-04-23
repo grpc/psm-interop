@@ -18,6 +18,7 @@ from typing import List
 from absl import flags
 from absl import logging
 from absl.testing import absltest
+from typing_extensions import override
 
 from framework import xds_k8s_testcase
 from framework.helpers import skips
@@ -34,6 +35,12 @@ _NUM_CLIENTS = 3
 
 
 class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
+    @classmethod
+    @override
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.compute_api_version = "v1alpha"
+
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
         # Subsetting is an experimental feature where most work is done on the

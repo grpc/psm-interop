@@ -30,6 +30,47 @@ readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
 readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 
+# TODO(sergiitk): all methods should be using "psm::" package name,
+#   see https://google.github.io/styleguide/shellguide.html#function-names
+
+#######################################
+# Returns the list of tests in LN test suite.
+# Globals:
+#   TESTING_VERSION: Populated with the version branch under test,
+#                    f.e. master, dev, v1.42.x.
+#   TESTS: An array of tests LB tests.
+# Outputs:
+#   Sets variable TESTS.
+#   Prints TESTS to stdout.
+#######################################
+psm::get_lb_tests() {
+  # readarray -t myArray < "$1"
+
+  declare -a TESTS
+  TESTS=(
+    "affinity_test"
+    "api_listener_test"
+    "app_net_test"
+    "change_backend_service_test"
+    "custom_lb_test"
+    "failover_test"
+    "outlier_detection_test"
+    "remove_neg_test"
+    "round_robin_test"
+  )
+
+  # master-only tests
+  if [[ "${TESTING_VERSION}" =~ "master" ]]; then
+      TESTS+=(
+        "bootstrap_generator_test"
+        "subsetting_test"
+      )
+  fi
+
+  echo "Running LB suite tests:"
+  printf "%s\n" "${TESTS[@]}"
+}
+
 #######################################
 # Determines the cluster name and zone based on the given cluster identifier.
 # Globals:
