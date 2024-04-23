@@ -235,7 +235,7 @@ psm::build_docker_images_if_needed() {
 
   # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
   if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
-    build_test_app_docker_images
+    psm::lang::build_docker_images
   else
     echo "Skipping ${GRPC_LANGUAGE} test app build"
   fi
