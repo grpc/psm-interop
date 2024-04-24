@@ -95,7 +95,7 @@ psm::lb::run_test() {
   echo "PSM test flags:"
   printf -- "- %s\n" "${PSM_TEST_FLAGS[@]}"
 
-  psm:tools:run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
 # --- Security TESTS ------------------
@@ -188,7 +188,7 @@ psm::run() {
       ;;
   esac
 
-  psm::run:test_suite "${test_suite}"
+  psm::run::test_suite "${test_suite}"
 }
 
 #######################################
@@ -302,7 +302,7 @@ psm::setup::test_driver() {
 # Outputs:
 #   Writes the output to stdout, stderr
 #######################################
-psm::build_docker_images_if_needed() {
+psm::build::docker_images_if_needed() {
   # Check if images already exist
   server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
   printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
