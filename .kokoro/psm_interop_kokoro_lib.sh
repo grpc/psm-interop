@@ -31,10 +31,17 @@ readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
 readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
 
-# TODO(sergiitk): all methods should be using "psm::" package name,
-#   see https://google.github.io/styleguide/shellguide.html#function-names
+# --- LB TESTS ------------------------
 
-# --- LB TESTS ---
+#######################################
+# LB Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::lb::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_LB
+  activate_secondary_gke_cluster GKE_CLUSTER_PSM_LB
+}
 
 #######################################
 # Prepares the list of tests in PSM LB test suite.
@@ -68,12 +75,39 @@ psm::lb::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::lb::setup() {
-  activate_gke_cluster GKE_CLUSTER_PSM_LB
-  activate_secondary_gke_cluster GKE_CLUSTER_PSM_LB
+#######################################
+# Executes LB test case
+# Globals:
+#   TBD
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::lb::run_test() {
+  local test_name="${1:?missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}"
+    "--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
+    "--client_image=${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
+  )
+  echo "PSM test flags:"
+  printf -- "- %s\n" "${PSM_TEST_FLAGS[@]}"
+
+  psm:tools:run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
-# --- Security TESTS ---
+# --- Security TESTS ------------------
+
+#######################################
+# Security Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::security::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_SECURITY
+}
 
 #######################################
 # Prepares the list of tests in PSM Security test suite.
@@ -93,11 +127,17 @@ psm::security::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::security::setup() {
-  activate_gke_cluster GKE_CLUSTER_PSM_SECURITY
-}
 
-# --- URL Map TESTS ---
+# --- URL Map TESTS ------------------
+
+#######################################
+# URL Map Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::url_map::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_BASIC
+}
 
 #######################################
 # Prepares the list of tests in URL Map test suite.
@@ -112,17 +152,14 @@ psm::url_map::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
-psm::url_map::setup() {
-  activate_gke_cluster GKE_CLUSTER_PSM_BASIC
-}
-
-# --- Common test run ---
+# --- Common test run logic -----------
 
 #######################################
 # TBD
 # Globals:
 #   KOKORO_ARTIFACTS_DIR
 #   GITHUB_REPOSITORY_NAME
+#   GRPC_LANGUAGE
 #   SRC_DIR: Populated with absolute path to the source repo
 #   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
 #                         the test driver
@@ -134,34 +171,95 @@ psm::url_map::setup() {
 #   GIT_COMMIT_SHORT: Populated with the short SHA-1 of git commit being built
 #   KUBE_CONTEXT: Populated with name of kubectl context with GKE cluster access
 # Arguments:
-#   None
+#   Test suite name, one of (lb, security, url_map)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
 psm::run() {
-  psm::set_docker_images "${GRPC_LANGUAGE}"
-  case $1 in
+  psm::setup::docker_image_names "${GRPC_LANGUAGE}"
+  local test_suite="${1:?missing the test suite argument}"
+  case "${test_suite}" in
     lb | security | url_map)
-      psm::run_generic_test_suite "$1"
+      psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
-      echo "Unknown Test Suite: ${1}"
+      echo "Unknown Test Suite: ${test_suite}"
       exit 1
       ;;
   esac
+
+  psm::run:test_suite "${test_suite}"
 }
 
-psm::run_generic_test_suite() {
-  local test_suite="$1"
+#######################################
+# Executes the test suite
+# Globals:
+#   TBD
+# Arguments:
+#   Test suite name
+# Outputs:
+#   TBD
+#######################################
+psm::run::test_suite() {
+  local test_suite="${1:?missing the test suite argument}"
+  cd "${TEST_DRIVER_FULL_DIR}"
+  local failed_tests=0
+  for test_name in "${TESTS[@]}"; do
+    psm::run::test "${test_suite}" "${test_name}" || (( ++failed_tests ))
+  done
+  echo "Failed test suites: ${failed_tests}"
+}
+
+#######################################
+# Executes the test case
+# Globals:
+#   TEST_DRIVER_FLAGFILE: Relative path to test driver flagfile
+#   KUBE_CONTEXT: The name of kubectl context with GKE cluster access
+#   TEST_XML_OUTPUT_DIR: Output directory for the test xUnit XML report
+#   CLIENT_IMAGE_NAME: Test client Docker image name
+#   GIT_COMMIT: SHA-1 of git commit being built
+#   TESTING_VERSION: version branch under test: used by the framework to
+#                     determine the supported PSM features.
+# Arguments:
+#   Test suite name
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::run::test() {
+  # Test driver usage: https://github.com/grpc/psm-interop#basic-usage
+  local test_suite="${1:?missing the test suite argument}"
+  local test_name="${2:?missing the test name argument}"
+  local out_dir="${TEST_XML_OUTPUT_DIR}/${test_name}"
+  mkdir -p "${out_dir}"
+
+  PSM_TEST_FLAGS=(
+    "--flagfile=${TEST_DRIVER_FLAGFILE}"
+    "--kube_context=${KUBE_CONTEXT}"
+    "--force_cleanup"
+    "--collect_app_logs"
+    "--log_dir=${out_dir}"
+    "--testing_version=${TESTING_VERSION}"
+    "--xml_output_file=${out_dir}/sponge_log.xml"
+  )
+
+  # Must be the last line.
+  "psm::${test_suite}::run_test" "${test_name}" |& tee "${out_dir}/sponge_log.log"
+}
+
+# --- Common test setup logic -----------
+
+psm::setup::generic_test_suite() {
+  local test_suite="${1:?missing the test suite argument}"
   "psm::${test_suite}::setup"
-  psm::setup_test_driver
-  psm::build_docker_images_if_needed
+  psm::setup::test_driver
+  psm::build::docker_images_if_needed
   "psm::${test_suite}::get_tests"
-  psm::run_tests
 }
 
-psm::set_docker_images() {
-  case $1 in
+psm::setup::docker_image_names() {
+  case "$1" in
     java)
       SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       CLIENT_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
@@ -175,16 +273,7 @@ psm::set_docker_images() {
   declare -r CLIENT_IMAGE_NAME
 }
 
-psm::run_tests() {
-  cd "${TEST_DRIVER_FULL_DIR}"
-  local failed_tests=0
-  for test_name in "${TESTS[@]}"; do
-    run_test "${test_name}" || (( ++failed_tests ))
-  done
-  echo "Failed test suites: ${failed_tests}"
-}
-
-psm::setup_test_driver() {
+psm::setup::test_driver() {
   local build_docker_script="${BUILD_SCRIPT_DIR}/psm-interop-build-${GRPC_LANGUAGE}.sh"
   echo "Looking for docker image build script ${build_docker_script}"
   if [[ -f "${build_docker_script}" ]]; then
@@ -198,6 +287,8 @@ psm::setup_test_driver() {
     local_setup_test_driver "${BUILD_SCRIPT_DIR}"
   fi
 }
+
+# --- Common test build logic -----------
 
 #######################################
 # Builds test app and its docker images unless they already exist
@@ -228,6 +319,20 @@ psm::build_docker_images_if_needed() {
     echo "Skipping ${GRPC_LANGUAGE} test app build"
   fi
 }
+
+# --- Common helpers ----------------------
+
+psm::tools::run_verbose() {
+  local exit_code=0
+  set -x
+  "$@" || exit_code=$?
+  set +x
+  return $exit_code
+}
+
+# --- "Unsorted" methods --------------
+# TODO(sergiitk): all methods should be using "psm::" package name,
+#   see https://google.github.io/styleguide/shellguide.html#function-names
 
 #######################################
 # Determines the cluster name and zone based on the given cluster identifier.
