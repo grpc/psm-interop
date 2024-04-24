@@ -355,13 +355,17 @@ psm::setup::test_driver() {
 #######################################
 psm::build::docker_images_if_needed() {
   # Check if images already exist
-  server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
-  printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
-  echo "${server_tags:-Server image not found}"
-
   client_tags="$(gcloud_gcr_list_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
   printf "Client image: %s:%s\n" "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}"
   echo "${client_tags:-Client image not found}"
+
+  if [[ -n "${SERVER_IMAGE_NAME}" ]]; then
+    server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
+    printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
+    echo "${server_tags:-Server image not found}"
+  else
+    server_tags="ignored"
+  fi
 
   # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
   if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
