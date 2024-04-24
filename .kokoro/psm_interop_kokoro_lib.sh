@@ -274,7 +274,7 @@ psm::run::test() {
   )
 
   # Some test suites have canonical server image configured in the flagfiles.
-  if [[ -n "${SERVER_IMAGE_NAME}" ]]; then
+  if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     PSM_TEST_FLAGS+=("--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}")
   fi
 
@@ -298,14 +298,28 @@ psm::setup::generic_test_suite() {
   "psm::${test_suite}::get_tests"
 }
 
+#######################################
+# Executes the test case
+# Globals:
+#   CLIENT_IMAGE_NAME: Populated with xDS test client image name
+#   SERVER_IMAGE_NAME: Populated with xDS test server image name
+#   SERVER_IMAGE_USE_CANONICAL: Set to "1" when canonical server image will be used in the tests
+#                               instead of the one configured in SERVER_IMAGE_NAME.
+# Arguments:
+#   gRPC Language
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
 psm::setup::docker_image_names() {
   local language="${1:?missing the language argument}"
   local test_suite="${2:?missing the test suite argument}"
 
   case "${language}" in
     java)
-      SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       CLIENT_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
+      SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       ;;
     *)
       echo "Unknown Language: ${1}"
@@ -316,12 +330,16 @@ psm::setup::docker_image_names() {
   case "${test_suite}" in
     url_map)
       # Uses the canonical server image configured in url-map.cfg
-      SERVER_IMAGE_NAME=""
+      SERVER_IMAGE_USE_CANONICAL="1"
+      ;;
+    *)
+      SERVER_IMAGE_USE_CANONICAL=""
       ;;
   esac
 
-  declare -r SERVER_IMAGE_NAME
   declare -r CLIENT_IMAGE_NAME
+  declare -r SERVER_IMAGE_NAME
+  declare -r SERVER_IMAGE_USE_CANONICAL
 }
 
 psm::setup::test_driver() {
@@ -359,12 +377,12 @@ psm::build::docker_images_if_needed() {
   printf "Client image: %s:%s\n" "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}"
   echo "${client_tags:-Client image not found}"
 
-  if [[ -n "${SERVER_IMAGE_NAME}" ]]; then
+  if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
     printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
     echo "${server_tags:-Server image not found}"
   else
-    server_tags="ignored"
+    server_tags="ignored-use-canonical"
   fi
 
   # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
@@ -377,6 +395,13 @@ psm::build::docker_images_if_needed() {
 
 # --- Common helpers ----------------------
 
+#######################################
+# Print the command with its arguments (aka set xtrace/ set -x) before execution.
+# Arguments:
+#   The command to run
+# Returns:
+#   The exit status of the command executed.
+#######################################
 psm::tools::run_verbose() {
   local exit_code=0
   set -x
