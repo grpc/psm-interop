@@ -66,6 +66,7 @@ psm::lb::get_tests() {
   )
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
+      echo "Appending master-only tests to the LB suite."
       TESTS+=(
         "bootstrap_generator_test"
         "subsetting_test"
@@ -87,14 +88,7 @@ psm::lb::get_tests() {
 #######################################
 psm::lb::run_test() {
   local test_name="${1:?missing the test name argument}"
-  PSM_TEST_FLAGS+=(
-    "--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}"
-    "--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
-    "--client_image=${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
-  )
-  echo "PSM test flags:"
-  printf -- "- %s\n" "${PSM_TEST_FLAGS[@]}"
-
+  psm::tools::print_test_flags
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -127,6 +121,21 @@ psm::security::get_tests() {
   printf -- "- %s\n" "${TESTS[@]}"
 }
 
+#######################################
+# Executes Security test case
+# Globals:
+#   TBD
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::security::run_test() {
+  local test_name="${1:?missing the test name argument}"
+  psm::tools::print_test_flags
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
 
 # --- URL Map TESTS ------------------
 
@@ -144,12 +153,29 @@ psm::url_map::setup() {
 # Globals:
 #   TESTS: Populated with tests in URL Map test suite.
 # Outputs:
-#   Prints TESTS to stdout.
+#   None
 #######################################
 psm::url_map::get_tests() {
   TESTS=("url_map")
-  echo "URL Map test suite:"
-  printf -- "- %s\n" "${TESTS[@]}"
+}
+
+#######################################
+# Executes Security test case
+# Globals:
+#   TBD
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::url_map::run_test() {
+  local test_name="${1:?missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/url-map.cfg"
+  )
+  psm::tools::print_test_flags
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
 # --- Common test run logic -----------
@@ -176,8 +202,9 @@ psm::url_map::get_tests() {
 #   Writes the output of test execution to stdout, stderr
 #######################################
 psm::run() {
-  psm::setup::docker_image_names "${GRPC_LANGUAGE}"
   local test_suite="${1:?missing the test suite argument}"
+  psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
+
   case "${test_suite}" in
     lb | security | url_map)
       psm::setup::generic_test_suite "${test_suite}"
@@ -232,6 +259,7 @@ psm::run::test() {
   local test_suite="${1:?missing the test suite argument}"
   local test_name="${2:?missing the test name argument}"
   local out_dir="${TEST_XML_OUTPUT_DIR}/${test_name}"
+  local test_log="${out_dir}/sponge_log.log"
   mkdir -p "${out_dir}"
 
   PSM_TEST_FLAGS=(
@@ -240,12 +268,24 @@ psm::run::test() {
     "--force_cleanup"
     "--collect_app_logs"
     "--log_dir=${out_dir}"
-    "--testing_version=${TESTING_VERSION}"
     "--xml_output_file=${out_dir}/sponge_log.xml"
+    "--testing_version=${TESTING_VERSION}"
+    "--client_image=${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
   )
 
+  # Some test suites have canonical server image configured in the flagfiles.
+  if [[ -n "${SERVER_IMAGE_NAME}" ]]; then
+    PSM_TEST_FLAGS+=("--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}")
+  fi
+
+  # So far, only LB test uses secondary GKE cluster.
+  if [[ -n "${SECONDARY_KUBE_CONTEXT}" ]]; then
+    PSM_TEST_FLAGS+=("--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}")
+  fi
+
+  echo "Preparing to run ${test_suite} test: ${test_name}" |& tee "${test_log}"
   # Must be the last line.
-  "psm::${test_suite}::run_test" "${test_name}" |& tee "${out_dir}/sponge_log.log"
+  "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}"
 }
 
 # --- Common test setup logic -----------
@@ -259,7 +299,10 @@ psm::setup::generic_test_suite() {
 }
 
 psm::setup::docker_image_names() {
-  case "$1" in
+  local language="${1:?missing the language argument}"
+  local test_suite="${2:?missing the test suite argument}"
+
+  case "${language}" in
     java)
       SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       CLIENT_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
@@ -269,6 +312,14 @@ psm::setup::docker_image_names() {
       exit 1
       ;;
   esac
+
+  case "${test_suite}" in
+    url_map)
+      # Uses the canonical server image configured in url-map.cfg
+      SERVER_IMAGE_NAME=""
+      ;;
+  esac
+
   declare -r SERVER_IMAGE_NAME
   declare -r CLIENT_IMAGE_NAME
 }
@@ -328,6 +379,12 @@ psm::tools::run_verbose() {
   "$@" || exit_code=$?
   set +x
   return $exit_code
+}
+
+psm::tools::print_test_flags() {
+  echo "PSM test flags:"
+  printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
+  echo
 }
 
 # --- "Unsorted" methods --------------
@@ -601,7 +658,7 @@ test_driver_compile_protos() {
 
 #######################################
 # Installs the test driver and it's requirements.
-# https://github.com/grpc/grpc/tree/master/tools/run_tests/xds_k8s_test_driver#installation
+# https://github.com/grpc/psm-interop#basic-usage#installation
 # Globals:
 #   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
 #                         the test driver
