@@ -665,7 +665,7 @@ test_driver_pip_install() {
     source "${venv_dir}/bin/activate"
   fi
 
-  psm::tools::log "Installed Python packages with pip, see install-pip.log"
+  psm::tools::log "Installing Python packages with pip, see install-pip.log"
   psm::driver::pip_install &>> "${BUILD_LOGS_ROOT}/install-pip.log"
 }
 
@@ -887,6 +887,7 @@ kokoro_setup_test_driver() {
   kokoro_install_dependencies &> "${BUILD_LOGS_ROOT}/install-apt.log"
 
   # Get kubectl cluster credentials.
+  psm::tools::log "Fetching GKE cluster credentials"
   gcloud_get_cluster_credentials
 
   # Install the driver.
