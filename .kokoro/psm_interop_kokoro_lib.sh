@@ -376,9 +376,9 @@ psm::setup::docker_image_names() {
   local test_suite="${2:?missing the test suite argument}"
 
   case "${language}" in
-    java)
-      CLIENT_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
-      SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
+    java | cpp | python)
+      CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
+      SERVER_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       ;;
     *)
       psm::tools::log "Unknown Language: ${1}"
