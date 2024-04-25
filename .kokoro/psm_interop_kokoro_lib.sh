@@ -237,6 +237,8 @@ psm::run::test_suite() {
   local failed_tests=0
   for test_name in "${TESTS[@]}"; do
     psm::run::test "${test_suite}" "${test_name}" || (( ++failed_tests ))
+    psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
+    echo
   done
   psm::tools::log "Failed test suites: ${failed_tests}"
 }
@@ -302,7 +304,7 @@ psm::setup::generic_test_suite() {
 
   "psm::${test_suite}::get_tests"
   psm::tools::log "Tests in ${test_suite} test suite:"
-  printf -- "- %s\n" "${TESTS[@]}"
+  printf -- "  - %s\n" "${TESTS[@]}"
   echo
 }
 
@@ -382,13 +384,13 @@ psm::setup::test_driver() {
 psm::build::docker_images_if_needed() {
   # Check if images already exist
   client_tags="$(gcloud_gcr_list_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
-  printf "Client image: %s:%s\n" "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}"
-  psm::tools::log "${client_tags:-Client image not found}"
+  psm::tools::log "Client image: ${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
+  echo "${client_tags:-Client image not found}"
 
   if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
-    printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
-    psm::tools::log "${server_tags:-Server image not found}"
+    psm::tools::log "Server image: ${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
+    echo "${server_tags:-Server image not found}"
   else
     server_tags="ignored-use-canonical"
   fi
@@ -429,7 +431,7 @@ psm::tools::log() {
 
 psm::tools::print_test_flags() {
   local test_name="${1:?missing the test name argument}"
-  psm::tools::log "${test_name} PSM test flags:"
+  psm::tools::log "Test driver flags for ${test_name}:"
   printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
   echo
 }
