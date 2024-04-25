@@ -672,7 +672,7 @@ test_driver_pip_install() {
 psm::driver::pip_install() {
   psm::tools::run_verbose python3 -m pip install -r requirements.lock
   echo
-  psm::tools::run_verbose -m pip list
+  psm::tools::run_verbose python3 -m pip list
 }
 
 #######################################
