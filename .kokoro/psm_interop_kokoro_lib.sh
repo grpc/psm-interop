@@ -140,6 +140,12 @@ psm::security::get_tests() {
 #######################################
 psm::security::run_test() {
   local test_name="${1:?missing the test name argument}"
+
+  # Only java supports extra checks for certificate matches (via channelz socket info).
+  if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
+    PSM_TEST_FLAGS+=("--nocheck_local_certs")
+  fi
+
   psm::tools::print_test_flags
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
@@ -408,6 +414,47 @@ psm::build::docker_images_if_needed() {
     } | tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
+  fi
+}
+
+#######################################
+# Builds test app Docker images and pushes them to GCR
+# Globals:
+#   SRC_DIR: Absolute path to the source repo on Kokoro VM
+#   SERVER_IMAGE_NAME: Test server Docker image name
+#   CLIENT_IMAGE_NAME: Test client Docker image name
+#   GIT_COMMIT: SHA-1 of git commit being built
+#   DOCKER_REGISTRY: Docker registry to push to
+# Arguments:
+#   The path to xDS test client Dockerfile. Can be absolute or relative to SRC_DIR
+#   The path to xDS test server Dockerfile. Optional, server build is skip when omitted.
+# Outputs:
+#   Writes the output of docker image build stdout, stderr
+#######################################
+psm::build::docker_images_generic() {
+  local client_dockerfile="${1:?missing the client dockerfile argument}"
+  local server_dockerfile="${2:-}"
+  pushd "${SRC_DIR}"
+
+  # Client is required.
+  psm::tools::log "Building ${GRPC_LANGUAGE} xDS interop test client"
+  psm::tools::run_verbose docker build -f "${client_dockerfile}" -t "${CLIENT_IMAGE_NAME}:${GIT_COMMIT}" .
+  psm::tools::run_verbose docker push "${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
+
+  # Server is optional
+  if [[ -n "${server_dockerfile}" ]]; then
+    psm::tools::log "Building ${GRPC_LANGUAGE} xDS interop test server"
+    psm::tools::run_verbose docker build -f "${server_dockerfile}" -t "${SERVER_IMAGE_NAME}:${GIT_COMMIT}" .
+    psm::tools::run_verbose docker push "${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
+  fi
+  popd
+
+  if is_version_branch "${TESTING_VERSION}"; then
+    psm::tools::log "Detected proper version branch ${TESTING_VERSION}, adding version tags."
+    tag_and_push_docker_image "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+    if [[ -n "${server_dockerfile}" ]]; then
+      tag_and_push_docker_image "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+    fi
   fi
 }
 
