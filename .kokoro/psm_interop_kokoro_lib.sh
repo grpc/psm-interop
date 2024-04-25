@@ -66,14 +66,12 @@ psm::lb::get_tests() {
   )
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
-      echo "Appending master-only tests to the LB suite."
+      psm::tools::log "Appending master-only tests to the LB suite."
       TESTS+=(
         "bootstrap_generator_test"
         "subsetting_test"
       )
   fi
-  echo "LB test suite:"
-  printf -- "- %s\n" "${TESTS[@]}"
 }
 
 #######################################
@@ -88,7 +86,7 @@ psm::lb::get_tests() {
 #######################################
 psm::lb::run_test() {
   local test_name="${1:?missing the test name argument}"
-  psm::tools::print_test_flags
+  psm::tools::print_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -117,8 +115,6 @@ psm::security::get_tests() {
     "security_test"
     "authz_test"
   )
-  echo "Security test suite:"
-  printf -- "- %s\n" "${TESTS[@]}"
 }
 
 #######################################
@@ -210,7 +206,7 @@ psm::run() {
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
-      echo "Unknown Test Suite: ${test_suite}"
+      psm::tools::log "Unknown Test Suite: ${test_suite}"
       exit 1
       ;;
   esac
@@ -234,7 +230,7 @@ psm::run::test_suite() {
   for test_name in "${TESTS[@]}"; do
     psm::run::test "${test_suite}" "${test_name}" || (( ++failed_tests ))
   done
-  echo "Failed test suites: ${failed_tests}"
+  psm::tools::log "Failed test suites: ${failed_tests}"
 }
 
 #######################################
@@ -283,7 +279,7 @@ psm::run::test() {
     PSM_TEST_FLAGS+=("--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}")
   fi
 
-  echo "Preparing to run ${test_suite} test: ${test_name}" |& tee "${test_log}"
+  psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}"
   # Must be the last line.
   "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}"
 }
@@ -295,7 +291,11 @@ psm::setup::generic_test_suite() {
   "psm::${test_suite}::setup"
   psm::setup::test_driver
   psm::build::docker_images_if_needed
+
   "psm::${test_suite}::get_tests"
+  psm::tools::log "Tests in ${test_suite} test suite:"
+  printf -- "- %s\n" "${TESTS[@]}"
+  echo
 }
 
 #######################################
@@ -322,7 +322,7 @@ psm::setup::docker_image_names() {
       SERVER_IMAGE_NAME="us-docker.pkg.dev/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       ;;
     *)
-      echo "Unknown Language: ${1}"
+      psm::tools::log "Unknown Language: ${1}"
       exit 1
       ;;
   esac
@@ -344,9 +344,9 @@ psm::setup::docker_image_names() {
 
 psm::setup::test_driver() {
   local build_docker_script="${BUILD_SCRIPT_DIR}/psm-interop-build-${GRPC_LANGUAGE}.sh"
-  echo "Looking for docker image build script ${build_docker_script}"
+  psm::tools::log "Looking for docker image build script ${build_docker_script}"
   if [[ -f "${build_docker_script}" ]]; then
-    echo "Sourcing docker image build script: ${build_docker_script}"
+    psm::tools::log "Sourcing docker image build script: ${build_docker_script}"
     source "${build_docker_script}"
   fi
 
@@ -375,21 +375,25 @@ psm::build::docker_images_if_needed() {
   # Check if images already exist
   client_tags="$(gcloud_gcr_list_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
   printf "Client image: %s:%s\n" "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}"
-  echo "${client_tags:-Client image not found}"
+  psm::tools::log "${client_tags:-Client image not found}"
 
   if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     server_tags="$(gcloud_gcr_list_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
     printf "Server image: %s:%s\n" "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}"
-    echo "${server_tags:-Server image not found}"
+    psm::tools::log "${server_tags:-Server image not found}"
   else
     server_tags="ignored-use-canonical"
   fi
 
   # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
   if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
-    psm::lang::build_docker_images
+    {
+      psm::tools::log "Building xDS interop test app Docker images"
+      psm::lang::build_docker_images
+      psm::tools::log "Finished xDS interop test app Docker images"
+    } | tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
-    echo "Skipping ${GRPC_LANGUAGE} test app build"
+    psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
   fi
 }
 
@@ -410,8 +414,14 @@ psm::tools::run_verbose() {
   return $exit_code
 }
 
+psm::tools::log() {
+  echo -en "+ $(date "+[%H:%M:%S %Z]")\011 "
+  echo "$@"
+}
+
 psm::tools::print_test_flags() {
-  echo "PSM test flags:"
+  local test_name="${1:?missing the test name argument}"
+  psm::tools::log "${test_name} PSM test flags:"
   printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
   echo
 }
@@ -454,11 +464,11 @@ activate_gke_cluster() {
       GKE_CLUSTER_ZONE="us-central1-c"
       ;;
     *)
-      echo "Unknown GKE cluster: ${1}"
+      psm::tools::log "Unknown GKE cluster: ${1}"
       exit 1
       ;;
   esac
-  echo -n "Activated GKE cluster: GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME} "
+  psm::tools::log -n "Activated GKE cluster: GKE_CLUSTER_NAME=${GKE_CLUSTER_NAME} "
   if [[ -n "${GKE_CLUSTER_REGION}" ]]; then
     echo "GKE_CLUSTER_REGION=${GKE_CLUSTER_REGION}"
   else
@@ -484,11 +494,11 @@ activate_secondary_gke_cluster() {
       SECONDARY_GKE_CLUSTER_ZONE="us-west1-b"
       ;;
     *)
-      echo "Unknown secondary GKE cluster: ${1}"
+      psm::tools::log "Unknown secondary GKE cluster: ${1}"
       exit 1
       ;;
   esac
-  echo -n "Activated secondary GKE cluster: SECONDARY_GKE_CLUSTER_NAME=${SECONDARY_GKE_CLUSTER_NAME}"
+  psm::tools::log -n "Activated secondary GKE cluster: SECONDARY_GKE_CLUSTER_NAME=${SECONDARY_GKE_CLUSTER_NAME}"
   echo " SECONDARY_GKE_CLUSTER_ZONE=${SECONDARY_GKE_CLUSTER_ZONE}"
 }
 
@@ -505,7 +515,7 @@ run_ignore_exit_code() {
   local exit_code=0
   "$@" || exit_code=$?
   if [[ $exit_code != 0 ]]; then
-    echo "Cmd: '$*', exit code: ${exit_code}"
+    psm::tools::log "Cmd: '$*', exit code: ${exit_code}"
   fi
 }
 
@@ -610,9 +620,9 @@ gcloud_get_cluster_credentials() {
 #######################################
 test_driver_get_source() {
   if [[ -n "${TEST_DRIVER_REPO_DIR_USE_EXISTING}" && -d "${TEST_DRIVER_REPO_DIR}" ]]; then
-    echo "Using exiting driver directory: ${TEST_DRIVER_REPO_DIR}."
+    psm::tools::log "Using exiting driver directory: ${TEST_DRIVER_REPO_DIR}."
   else
-    echo "Cloning driver to ${TEST_DRIVER_REPO_URL} branch ${TEST_DRIVER_BRANCH} to ${TEST_DRIVER_REPO_DIR}"
+    psm::tools::log "Cloning driver to ${TEST_DRIVER_REPO_URL} branch ${TEST_DRIVER_BRANCH} to ${TEST_DRIVER_REPO_DIR}"
     git clone -b "${TEST_DRIVER_BRANCH}" --depth=1 "${TEST_DRIVER_REPO_URL}" "${TEST_DRIVER_REPO_DIR}"
   fi
 }
@@ -630,16 +640,16 @@ test_driver_get_source() {
 #   Writes the list of installed modules to stdout
 #######################################
 test_driver_pip_install() {
-  echo "Install python dependencies"
+  psm::tools::log "Install python dependencies"
   cd "${TEST_DRIVER_FULL_DIR}"
 
   # Create and activate virtual environment unless already using one
   if [[ -z "${VIRTUAL_ENV}" ]]; then
     local venv_dir="${TEST_DRIVER_FULL_DIR}/venv"
     if [[ -d "${venv_dir}" ]]; then
-      echo "Found python virtual environment directory: ${venv_dir}"
+      psm::tools::log "Found python virtual environment directory: ${venv_dir}"
     else
-      echo "Creating python virtual environment: ${venv_dir}"
+      psm::tools::log "Creating python virtual environment: ${venv_dir}"
       "python${PYTHON_VERSION}" -m venv "${venv_dir}" --upgrade-deps
     fi
     # Intentional: No need to check python venv activate script.
@@ -647,9 +657,14 @@ test_driver_pip_install() {
     source "${venv_dir}/bin/activate"
   fi
 
-  python3 -m pip install -r requirements.lock
-  echo "Installed Python packages:"
-  python3 -m pip list
+  psm::tools::log "Installed Python packages with pip, see install-pip.log"
+  psm::driver::pip_install &>> "${BUILD_LOGS_ROOT}/install-pip.log"
+}
+
+psm::driver::pip_install() {
+  psm::tools::run_verbose python3 -m pip install -r requirements.lock
+  echo
+  psm::tools::run_verbose -m pip list
 }
 
 #######################################
@@ -673,7 +688,7 @@ test_driver_compile_protos() {
     "${TEST_DRIVER_PROTOS_PATH}/messages.proto"
     "${TEST_DRIVER_PROTOS_PATH}/empty.proto"
   )
-  echo "Generate python code from grpc.testing protos: ${protos[*]}"
+  psm::tools::log "Generate python code from grpc.testing protos: ${protos[*]}"
   cd "${TEST_DRIVER_REPO_DIR}"
   python3 -m grpc_tools.protoc \
     --proto_path=. \
@@ -681,8 +696,8 @@ test_driver_compile_protos() {
     --grpc_python_out="${TEST_DRIVER_FULL_DIR}" \
     "${protos[@]}"
   local protos_out_dir="${TEST_DRIVER_FULL_DIR}/${TEST_DRIVER_PROTOS_PATH}"
-  echo "Generated files ${protos_out_dir}:"
-  ls -Fl "${protos_out_dir}"
+  psm::tools::log "Generated files ${protos_out_dir}:"
+  du --time --max-depth=1 --all --bytes "${protos_out_dir}"
 }
 
 #######################################
@@ -713,7 +728,7 @@ test_driver_install() {
 #   Writes the output to stdout
 #######################################
 kokoro_print_version() {
-  echo "Kokoro Ubuntu version:"
+  psm::tools::log "Kokoro Ubuntu version:"
   run_ignore_exit_code lsb_release -a
   run_ignore_exit_code "python${PYTHON_VERSION}" --version
   run_ignore_exit_code "python${PYTHON_VERSION}" -m pip --version
@@ -744,7 +759,7 @@ TESTGRID_EXCLUDE,${TESTGRID_EXCLUDE:-0}
 GIT_ORIGIN_URL,${GIT_ORIGIN_URL:?GIT_ORIGIN_URL must be set}
 GIT_COMMIT_SHORT,${GIT_COMMIT_SHORT:?GIT_COMMIT_SHORT must be set}
 EOF
-  echo "Sponge properties:"
+  psm::tools::log "Sponge properties:"
   cat "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv"
 }
 
@@ -831,8 +846,14 @@ kokoro_get_testing_version() {
 #   Writes the output to stdout, stderr, files
 #######################################
 kokoro_setup_test_driver() {
-  # Unset noisy verbose mode often set in the parent script.
+  # Unset noisy verbose mode often set in the parent scripts.
   set +x
+
+  # Prepend verbose mode commands (xtrace) with the date.
+  PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
+
+  psm::tools::log "Starting Kokoro provisioning"
+
   local src_repository_name="${1:?Usage kokoro_setup_test_driver GITHUB_REPOSITORY_NAME}"
   # Capture Kokoro VM version info in the log.
   kokoro_print_version
@@ -843,9 +864,19 @@ kokoro_setup_test_driver() {
   # Kokoro clones repo to ${KOKORO_ARTIFACTS_DIR}/github/${GITHUB_REPOSITORY}
   local github_root="${KOKORO_ARTIFACTS_DIR}/github"
   readonly SRC_DIR="${github_root}/${src_repository_name}"
+
+  # Test artifacts dir: xml reports, logs, etc.
+  local artifacts_dir="${KOKORO_ARTIFACTS_DIR}/artifacts"
+  # Folders after $artifacts_dir reported as target name
+  readonly TEST_XML_OUTPUT_DIR="${artifacts_dir}/${KOKORO_JOB_NAME}"
+  readonly BUILD_LOGS_ROOT="${TEST_XML_OUTPUT_DIR}"
+
+  mkdir -p "${artifacts_dir}" "${TEST_XML_OUTPUT_DIR}" "${BUILD_LOGS_ROOT}"
   parse_src_repo_git_info SRC_DIR
   kokoro_write_sponge_properties
-  kokoro_install_dependencies
+
+  psm::tools::log "Installing packages with apt, see install-apt.log"
+  kokoro_install_dependencies &> "${BUILD_LOGS_ROOT}/install-apt.log"
 
   # Get kubectl cluster credentials.
   gcloud_get_cluster_credentials
@@ -856,12 +887,6 @@ kokoro_setup_test_driver() {
   test_driver_install "${test_driver_repo_dir}"
   # shellcheck disable=SC2034  # Used in the main script
   readonly TEST_DRIVER_FLAGFILE="config/grpc-testing.cfg"
-
-  # Test artifacts dir: xml reports, logs, etc.
-  local artifacts_dir="${KOKORO_ARTIFACTS_DIR}/artifacts"
-  # Folders after $artifacts_dir reported as target name
-  readonly TEST_XML_OUTPUT_DIR="${artifacts_dir}/${KOKORO_JOB_NAME}"
-  mkdir -p "${artifacts_dir}" "${TEST_XML_OUTPUT_DIR}"
 }
 
 #######################################
@@ -905,7 +930,8 @@ local_setup_test_driver() {
   readonly TEST_DRIVER_FLAGFILE="config/local-dev.cfg"
   # Test out
   readonly TEST_XML_OUTPUT_DIR="${TEST_DRIVER_FULL_DIR}/out"
-  mkdir -p "${TEST_XML_OUTPUT_DIR}"
+  readonly BUILD_LOGS_ROOT="${TEST_XML_OUTPUT_DIR}"
+  mkdir -p "${TEST_XML_OUTPUT_DIR}" "${BUILD_LOGS_ROOT}"
 }
 
 #######################################
