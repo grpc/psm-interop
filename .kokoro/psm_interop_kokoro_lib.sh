@@ -26,6 +26,9 @@ readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
 # TODO(sergiitk): can be defined as readonly FORCE_IMAGE_BUILD when removed from buildscripts.
 readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
 
+# Docker
+readonly DOCKER_REGISTRY="us-docker.pkg.dev"
+
 # GKE cluster identifiers.
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
@@ -399,6 +402,7 @@ psm::build::docker_images_if_needed() {
   if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
     {
       psm::tools::log "Building xDS interop test app Docker images"
+      gcloud -q auth configure-docker "${DOCKER_REGISTRY}"
       psm::lang::build_docker_images
       psm::tools::log "Finished xDS interop test app Docker images"
     } | tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
@@ -959,6 +963,6 @@ tag_and_push_docker_image() {
   local from_tag="$2"
   local to_tag="$3"
 
-  docker tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
-  docker push "${image_name}:${to_tag}"
+  psm::tools::run_verbose docker tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
+  psm::tools::run_verbose push "${image_name}:${to_tag}"
 }
