@@ -50,9 +50,7 @@ psm::lb::setup() {
 # Prepares the list of tests in PSM LB test suite.
 # Globals:
 #   TESTING_VERSION: The version branch under test, f.e. master, dev, v1.42.x.
-#   TESTS: Populated with tests in PSM LB test suite.
-# Outputs:
-#   Prints TESTS to stdout.
+#   TESTS: Populated with tests in the test suite.
 #######################################
 psm::lb::get_tests() {
   # TODO(sergiitk): remove after debugging
@@ -86,7 +84,7 @@ psm::lb::get_tests() {
 }
 
 #######################################
-# Executes LB test case
+# Executes LB test case.
 # Globals:
 #   TBD
 # Arguments:
@@ -116,8 +114,6 @@ psm::security::setup() {
 # Prepares the list of tests in PSM Security test suite.
 # Globals:
 #   TESTS: Populated with tests in PSM Security test suite.
-# Outputs:
-#   Prints TESTS to stdout.
 #######################################
 psm::security::get_tests() {
   # TODO(sergiitk): load from env var?
@@ -164,16 +160,14 @@ psm::url_map::setup() {
 #######################################
 # Prepares the list of tests in URL Map test suite.
 # Globals:
-#   TESTS: Populated with tests in URL Map test suite.
-# Outputs:
-#   None
+#   TESTS: Populated with tests in the test suite.
 #######################################
 psm::url_map::get_tests() {
   TESTS=("url_map")
 }
 
 #######################################
-# Executes Security test case
+# Executes URL Map test case
 # Globals:
 #   TBD
 # Arguments:
@@ -186,6 +180,52 @@ psm::url_map::run_test() {
   local test_name="${1:?missing the test name argument}"
   PSM_TEST_FLAGS+=(
     "--flagfile=config/url-map.cfg"
+  )
+  psm::tools::print_test_flags
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
+# --- CSM TESTS ------------------
+
+#######################################
+# CSM Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::csm::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_CSM
+}
+
+#######################################
+# Prepares the list of tests in CSM test suite.
+# Globals:
+#   TESTS: Populated with tests in the test suite.
+#######################################
+psm::csm::get_tests() {
+  # TODO(sergiitk): load from env var?
+  TESTS=(
+    "gamma.gamma_baseline_test"
+    "gamma.affinity_test"
+    "gamma.affinity_session_drain_test"
+    "gamma.csm_observability_test"
+    "app_net_ssa_test"
+  )
+}
+
+#######################################
+# Executes CSM test case
+# Globals:
+#   TBD
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::csm::run_test() {
+  local test_name="${1:?missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-csm.cfg"
   )
   psm::tools::print_test_flags
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
@@ -219,7 +259,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    lb | security | url_map)
+    lb | security | url_map | csm)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
