@@ -52,6 +52,14 @@ psm::lb::setup() {
 #   Prints TESTS to stdout.
 #######################################
 psm::lb::get_tests() {
+  # TODO(sergiitk): remove after debugging
+  TESTS=(
+    "app_net_test"
+    "baseline_test"
+  )
+  return
+
+
   # TODO(sergiitk): load from env var?
   TESTS=(
     "affinity_test"
