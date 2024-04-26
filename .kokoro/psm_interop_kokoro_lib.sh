@@ -94,7 +94,7 @@ psm::lb::get_tests() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::lb::run_test() {
-  local test_name="${1:?missing the test name argument}"
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
   psm::tools::print_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
@@ -135,14 +135,14 @@ psm::security::get_tests() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::security::run_test() {
-  local test_name="${1:?missing the test name argument}"
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
   # Only java supports extra checks for certificate matches (via channelz socket info).
   if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
     PSM_TEST_FLAGS+=("--nocheck_local_certs")
   fi
 
-  psm::tools::print_test_flags
+  psm::tools::print_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -177,11 +177,11 @@ psm::url_map::get_tests() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::url_map::run_test() {
-  local test_name="${1:?missing the test name argument}"
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
   PSM_TEST_FLAGS+=(
     "--flagfile=config/url-map.cfg"
   )
-  psm::tools::print_test_flags
+  psm::tools::print_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -223,11 +223,11 @@ psm::csm::get_tests() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::csm::run_test() {
-  local test_name="${1:?missing the test name argument}"
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
   PSM_TEST_FLAGS+=(
     "--flagfile=config/common-csm.cfg"
   )
-  psm::tools::print_test_flags
+  psm::tools::print_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -255,7 +255,7 @@ psm::csm::run_test() {
 #   Writes the output of test execution to stdout, stderr
 #######################################
 psm::run() {
-  local test_suite="${1:?missing the test suite argument}"
+  local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
@@ -281,7 +281,7 @@ psm::run() {
 #   TBD
 #######################################
 psm::run::test_suite() {
-  local test_suite="${1:?missing the test suite argument}"
+  local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   cd "${TEST_DRIVER_FULL_DIR}"
   local failed_tests=0
   for test_name in "${TESTS[@]}"; do
@@ -311,8 +311,8 @@ psm::run::test_suite() {
 #######################################
 psm::run::test() {
   # Test driver usage: https://github.com/grpc/psm-interop#basic-usage
-  local test_suite="${1:?missing the test suite argument}"
-  local test_name="${2:?missing the test name argument}"
+  local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
+  local test_name="${2:?${FUNCNAME[0]} missing the test name argument}"
   local out_dir="${TEST_XML_OUTPUT_DIR}/${test_name}"
   local test_log="${out_dir}/sponge_log.log"
   mkdir -p "${out_dir}"
@@ -346,7 +346,7 @@ psm::run::test() {
 # --- Common test setup logic -----------
 
 psm::setup::generic_test_suite() {
-  local test_suite="${1:?missing the test suite argument}"
+  local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   "psm::${test_suite}::setup"
   psm::setup::test_driver
   psm::build::docker_images_if_needed
@@ -372,8 +372,8 @@ psm::setup::generic_test_suite() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::setup::docker_image_names() {
-  local language="${1:?missing the language argument}"
-  local test_suite="${2:?missing the test suite argument}"
+  local language="${1:?${FUNCNAME[0]} missing the language argument}"
+  local test_suite="${2:?${FUNCNAME[0]} missing the test suite argument}"
 
   case "${language}" in
     java | cpp | python)
@@ -472,7 +472,7 @@ psm::build::docker_images_if_needed() {
 #   Writes the output of docker image build stdout, stderr
 #######################################
 psm::build::docker_images_generic() {
-  local client_dockerfile="${1:?missing the client dockerfile argument}"
+  local client_dockerfile="${1:?${FUNCNAME[0]} missing the client dockerfile argument}"
   local server_dockerfile="${2:-}"
   pushd "${SRC_DIR}"
 
@@ -521,7 +521,7 @@ psm::tools::log() {
 }
 
 psm::tools::print_test_flags() {
-  local test_name="${1:?missing the test name argument}"
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
   psm::tools::log "Test driver flags for ${test_name}:"
   printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
   echo
