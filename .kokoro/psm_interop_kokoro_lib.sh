@@ -377,6 +377,7 @@ psm::setup::generic_test_suite() {
 psm::setup::docker_image_names() {
   local language="${1:?${FUNCNAME[0]} missing the language argument}"
   local test_suite="${2:?${FUNCNAME[0]} missing the test suite argument}"
+  SERVER_IMAGE_USE_CANONICAL=""
 
   case "${language}" in
     java | cpp | python | go)
@@ -398,9 +399,6 @@ psm::setup::docker_image_names() {
     url_map)
       # Uses the canonical server image configured in url-map.cfg
       SERVER_IMAGE_USE_CANONICAL="1"
-      ;;
-    *)
-      SERVER_IMAGE_USE_CANONICAL=""
       ;;
   esac
 
