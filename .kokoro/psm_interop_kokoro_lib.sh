@@ -806,7 +806,7 @@ test_driver_compile_protos() {
     "${protos[@]}"
   local protos_out_dir="${TEST_DRIVER_FULL_DIR}/${TEST_DRIVER_PROTOS_PATH}"
   psm::tools::log "Generated files ${protos_out_dir}:"
-  du --time --max-depth=1 --all --bytes "${protos_out_dir}"
+  md5sum "${protos_out_dir}/*"
 }
 
 #######################################
