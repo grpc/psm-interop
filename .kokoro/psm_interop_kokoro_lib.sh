@@ -814,7 +814,7 @@ test_driver_compile_protos() {
     "${protos[@]}"
   local protos_out_dir="${TEST_DRIVER_FULL_DIR}/${TEST_DRIVER_PROTOS_PATH}"
   psm::tools::log "Generated files ${protos_out_dir}:"
-  md5sum "${protos_out_dir}/*"
+  find "${protos_out_dir}" -type f -exec md5sum {} \;
 }
 
 #######################################
@@ -965,7 +965,7 @@ kokoro_get_testing_version() {
 kokoro_setup_test_driver() {
   # Unset noisy verbose mode often set in the parent scripts.
   set +x
-  
+
   psm::tools::log "Starting Kokoro provisioning"
 
   local src_repository_name="${1:?Usage kokoro_setup_test_driver GITHUB_REPOSITORY_NAME}"
