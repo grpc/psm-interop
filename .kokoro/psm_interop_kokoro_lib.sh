@@ -517,8 +517,15 @@ psm::tools::run_verbose() {
   local exit_code=0
   set -x
   "$@" || exit_code=$?
-  set +x
-  return $exit_code
+  { set +x; } 2>/dev/null
+
+  if (( exit_code == 0 )); then
+    psm::tools::log "Cmd finished: ${1}"
+  else
+    psm::tools::log "Cmd exit code ${exit_code}: '$*'"
+  fi
+
+  return ${exit_code}
 }
 
 psm::tools::log() {
