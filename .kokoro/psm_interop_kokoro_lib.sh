@@ -14,6 +14,9 @@
 # limitations under the License.
 set -eo pipefail
 
+# Prepend verbose mode commands (xtrace) with the date.
+PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
+
 # Constants
 readonly PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
 # Test driver
@@ -962,10 +965,7 @@ kokoro_get_testing_version() {
 kokoro_setup_test_driver() {
   # Unset noisy verbose mode often set in the parent scripts.
   set +x
-
-  # Prepend verbose mode commands (xtrace) with the date.
-  PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
-
+  
   psm::tools::log "Starting Kokoro provisioning"
 
   local src_repository_name="${1:?Usage kokoro_setup_test_driver GITHUB_REPOSITORY_NAME}"
