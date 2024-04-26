@@ -376,7 +376,7 @@ psm::setup::docker_image_names() {
   local test_suite="${2:?${FUNCNAME[0]} missing the test suite argument}"
 
   case "${language}" in
-    java | cpp | python)
+    java | cpp | python | go)
       CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
       SERVER_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
       ;;
