@@ -534,6 +534,24 @@ psm::tools::run_verbose() {
   return ${exit_code}
 }
 
+#######################################
+# Run command end report its exit code. Doesn't exit on non-zero exit code.
+# Globals:
+#   None
+# Arguments:
+#   Command to execute
+# Outputs:
+#   Writes the output of given command to stdout, stderr
+#######################################
+psm::tools::run_ignore_exit_code() {
+  local exit_code=0
+  "$@" || exit_code=$?
+
+  if (( exit_code == 0 )); then
+    psm::tools::log "Cmd failed with exit code ${exit_code}: $*"
+  fi
+}
+
 psm::tools::log() {
   echo -en "+ $(date "+[%H:%M:%S %Z]")\011 "
   echo "$@"
@@ -624,6 +642,10 @@ activate_secondary_gke_cluster() {
 
 #######################################
 # Run command end report its exit code. Doesn't exit on non-zero exit code.
+#
+# Deprecated. Use psm::tools::run_ignore_exit_code
+# TODO(sergiitk): delete this method when no longer used in per-language buildscripts.
+#
 # Globals:
 #   None
 # Arguments:
