@@ -30,7 +30,10 @@ readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
 readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
 
 # Docker
-readonly DOCKER_REGISTRY="us-docker.pkg.dev"
+# TODO(sergiitk): if can be removed when DOCKER_REGISTRY removed from buildscripts.
+if [[ -z "${DOCKER_REGISTRY}" ]] ; then
+  readonly DOCKER_REGISTRY="us-docker.pkg.dev"
+fi
 
 # GKE cluster identifiers.
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
