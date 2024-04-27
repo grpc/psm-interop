@@ -30,7 +30,7 @@ readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
 readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
 
 # Docker
-# TODO(sergiitk): if can be removed when DOCKER_REGISTRY removed from buildscripts.
+# TODO(sergiitk): 'if' can be removed when DOCKER_REGISTRY removed from buildscripts.
 if [[ -z "${DOCKER_REGISTRY}" ]] ; then
   readonly DOCKER_REGISTRY="us-docker.pkg.dev"
 fi
@@ -59,15 +59,6 @@ psm::lb::setup() {
 #   TESTS: Populated with tests in the test suite.
 #######################################
 psm::lb::get_tests() {
-  # TODO(sergiitk): remove after debugging
-  TESTS=(
-    "app_net_test"
-    "baseline_test"
-  )
-  return
-
-
-  # TODO(sergiitk): load from env var?
   TESTS=(
     "affinity_test"
     "api_listener_test"
@@ -92,7 +83,7 @@ psm::lb::get_tests() {
 #######################################
 # Executes LB test case.
 # Globals:
-#   TBD
+#   PSM_TEST_FLAGS: The array with flags for the test
 # Arguments:
 #   Test case name
 # Outputs:
@@ -122,7 +113,6 @@ psm::security::setup() {
 #   TESTS: Populated with tests in PSM Security test suite.
 #######################################
 psm::security::get_tests() {
-  # TODO(sergiitk): load from env var?
   TESTS=(
     "baseline_test"
     "security_test"
@@ -133,7 +123,8 @@ psm::security::get_tests() {
 #######################################
 # Executes Security test case
 # Globals:
-#   TBD
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
 # Arguments:
 #   Test case name
 # Outputs:
@@ -175,7 +166,7 @@ psm::url_map::get_tests() {
 #######################################
 # Executes URL Map test case
 # Globals:
-#   TBD
+#   PSM_TEST_FLAGS: The array with flags for the test
 # Arguments:
 #   Test case name
 # Outputs:
@@ -208,7 +199,6 @@ psm::csm::setup() {
 #   TESTS: Populated with tests in the test suite.
 #######################################
 psm::csm::get_tests() {
-  # TODO(sergiitk): load from env var?
   TESTS=(
     "gamma.gamma_baseline_test"
     "gamma.affinity_test"
@@ -221,7 +211,7 @@ psm::csm::get_tests() {
 #######################################
 # Executes CSM test case
 # Globals:
-#   TBD
+#   PSM_TEST_FLAGS: The array with flags for the test
 # Arguments:
 #   Test case name
 # Outputs:
@@ -240,7 +230,11 @@ psm::csm::run_test() {
 # --- Common test run logic -----------
 
 #######################################
-# TBD
+# Prepares and runs the test suite.
+#
+# Main entry function to be used by the buildscripts.
+# Provisions necessary software, configures the test driver, and executes the test suite.
+#
 # Globals:
 #   KOKORO_ARTIFACTS_DIR
 #   GITHUB_REPOSITORY_NAME
@@ -281,13 +275,14 @@ psm::run() {
 }
 
 #######################################
-# Executes the test suite
+# Executes tests in the test suite
 # Globals:
-#   TBD
+#   TEST_DRIVER_FULL_DIR
+#   TESTS: the list of the tests to execute
 # Arguments:
-#   Test suite name
+#   Test suite name.
 # Outputs:
-#   TBD
+#   Each test to stdout.
 #######################################
 psm::run::test_suite() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
@@ -302,7 +297,7 @@ psm::run::test_suite() {
 }
 
 #######################################
-# Executes the test case
+# Executes a single test case of given test suite.
 # Globals:
 #   TEST_DRIVER_FLAGFILE: Relative path to test driver flagfile
 #   KUBE_CONTEXT: The name of kubectl context with GKE cluster access
@@ -362,7 +357,12 @@ psm::setup::generic_test_suite() {
   "psm::${test_suite}::setup"
   psm::setup::test_driver
   psm::build::docker_images_if_needed
+  psm::setup::get_tests "${test_suite}"
+}
 
+psm::setup::get_tests() {
+  local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
+  # TODO(sergiitk): allow to override TESTS from an env var
   "psm::${test_suite}::get_tests"
   psm::tools::log "Tests in ${test_suite} test suite:"
   printf -- "  - %s\n" "${TESTS[@]}"
