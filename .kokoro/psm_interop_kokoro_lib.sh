@@ -525,7 +525,7 @@ psm::tools::run_verbose() {
   if (( exit_code == 0 )); then
     psm::tools::log "Cmd finished: ${1}"
   else
-    psm::tools::log "Cmd exit code ${exit_code}: '$*'"
+    psm::tools::log "Cmd failed with exit code ${exit_code}: $*"
   fi
 
   return ${exit_code}
