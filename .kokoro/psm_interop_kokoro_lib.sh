@@ -262,6 +262,8 @@ psm::csm::run_test() {
 #######################################
 psm::run() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
+  psm::tools::log "Starting PSM Interop tests: ${test_suite}"
+
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
@@ -275,6 +277,7 @@ psm::run() {
   esac
 
   psm::run::test_suite "${test_suite}"
+  psm::tools::log "PSM Interop tests completed: ${test_suite}"
 }
 
 #######################################
