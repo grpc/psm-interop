@@ -838,8 +838,11 @@ test_driver_compile_protos() {
     --grpc_python_out="${TEST_DRIVER_FULL_DIR}" \
     "${protos[@]}"
   local protos_out_dir="${TEST_DRIVER_FULL_DIR}/${TEST_DRIVER_PROTOS_PATH}"
-  psm::tools::log "Generated files ${protos_out_dir}:"
-  find "${protos_out_dir}" -type f -exec md5sum {} \;
+
+  if command -v sha256sum &> /dev/null; then
+    psm::tools::log "Generated files ${protos_out_dir}:"
+    find "${protos_out_dir}" -type f -exec sha256sum {} \;
+  fi
 }
 
 #######################################
