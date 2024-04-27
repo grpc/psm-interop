@@ -1,6 +1,6 @@
 Mako==1.2.4
 PyYAML==6.0
-absl-py==0.15.0
+absl-py==2.1.0
 google-api-python-client==1.12.11
 google-cloud-secret-manager==2.15.1
 google-cloud-monitoring==2.18.0

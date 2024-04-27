@@ -57,10 +57,6 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.40.x")
         elif config.client_lang == _Lang.GO:
             return config.version_gte("v1.41.x")
-        elif config.client_lang == _Lang.PYTHON:
-            # TODO(https://github.com/grpc/grpc/issues/27430): supported after
-            #      the issue is fixed.
-            return False
         elif config.client_lang == _Lang.NODE:
             return config.version_gte("v1.10.x")
         return True

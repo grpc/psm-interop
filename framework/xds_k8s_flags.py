@@ -46,6 +46,15 @@ SERVER_IMAGE_CANONICAL = flags.DEFINE_string(
         "does not exist, or missing a feature required for the test."
     ),
 )
+CSM_SERVER_IMAGE_CANONICAL = flags.DEFINE_string(
+    "csm_server_image_canonical",
+    default=None,
+    help=(
+        "The canonical implementation of the CSM xDS test server.\n"
+        "Can be used in tests where language-specific xDS test server"
+        "does not exist, or missing a feature required for the test."
+    ),
+)
 CLIENT_IMAGE = flags.DEFINE_string(
     "client_image", default=None, help="Client Docker image name"
 )

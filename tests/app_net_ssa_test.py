@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List, Optional
+from typing import Final, List, Optional
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import TypeAlias
 
 from framework import xds_k8s_testcase
+from framework.helpers import skips
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_cases import session_affinity_util
@@ -28,13 +30,20 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
-_REPLICA_COUNT = 3
+# Type aliases.
+_Lang: TypeAlias = skips.Lang
 
-# This is here temporarily to run this test separately from other app_net tests.
-# TODO(sergiitk): Move into app_net_test.py
+# Constants.
+_REPLICA_COUNT: Final[int] = 3
 
 
 class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
+    @staticmethod
+    def is_supported(config: skips.TestConfig) -> bool:
+        if config.client_lang in _Lang.CPP | _Lang.PYTHON:
+            return config.version_gte("v1.62.x")
+        return False
+
     def getClientRpcStats(
         self,
         test_client: _XdsTestClient,
@@ -62,6 +71,10 @@ class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("3_create_http_route"):
+            service_full_name: str = self.td.netsvc.resource_full_name(
+                self.td.backend_service.name,
+                "backendServices",
+            )
             self.td.create_http_route_with_content(
                 {
                     "meshes": [self.td.mesh.url],
@@ -73,10 +86,7 @@ class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                             "action": {
                                 "destinations": [
                                     {
-                                        "serviceName": self.td.netsvc.resource_full_name(
-                                            self.td.backend_service.name,
-                                            "backendServices",
-                                        ),
+                                        "serviceName": service_full_name,
                                         "weight": 1,
                                     },
                                 ],

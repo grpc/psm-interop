@@ -490,6 +490,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         # TODO(sergiitk): [GAMMA] let dynamic/exception parse this instead?
         code: int = err.status
         body = err.body.lower() if err.body else ""
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", "replace")
 
         # 401 Unauthorized: token might be expired, attempt auth refresh.
         if code == 401:

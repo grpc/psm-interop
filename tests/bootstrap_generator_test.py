@@ -38,7 +38,9 @@ _timedelta = datetime.timedelta
 
 # Constants
 GCR_PROD: Final[str] = "gcr.io/trafficdirector-prod/td-grpc-bootstrap"
-GCR_TESTING: Final[str] = "gcr.io/grpc-testing/td-grpc-bootstrap"
+GCR_TESTING: Final[
+    str
+] = "us-docker.pkg.dev/grpc-testing/trafficdirector/td-grpc-bootstrap"
 
 
 # Returns a list of bootstrap generator versions to be tested along with their
@@ -64,7 +66,7 @@ def bootstrap_version_testcases() -> Sequence[dict[str, str]]:
         #
         # TODO: Figure out how to pass flags to the bootstrap generator via the
         # client and server runners, and uncomment this version.
-        # ('v0.10.0', 'gcr.io/grpc-testing/td-grpc-bootstrap:66de7ea0e170351c9fae17232b81adbfb3e80ec3'),
+        # dict(version="v0.10.0", image=f"{GCR_PROD}:0.10.0"),
     )
 
 
