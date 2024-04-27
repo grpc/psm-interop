@@ -18,12 +18,15 @@ from typing import List
 from absl import flags
 from absl import logging
 from absl.testing import absltest
-from typing_extensions import override
 
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
+# Change the default value of --compute_api_version to v1alpha.
+# Subsetting test requires Compute v1alpha APIs.
+# Can be tested with another API version if the flag is passed to the test.
+flags.set_default(xds_k8s_testcase.xds_flags.COMPUTE_API_VERSION, "v1alpha")
 
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
@@ -35,14 +38,6 @@ _NUM_CLIENTS = 3
 
 
 class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
-    @classmethod
-    @override
-    def setUpClass(cls):
-        # TODO(sergiitk): use when absl updated to 1.3.0+, also set
-        #  flags.set_default(xds_flags.COMPUTE_API_VERSION, 'v1alpha')
-        super().setUpClass()
-        cls.compute_api_version = "v1alpha"
-
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
         # Subsetting is an experimental feature where most work is done on the
