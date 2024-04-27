@@ -92,7 +92,7 @@ psm::lb::get_tests() {
 #######################################
 psm::lb::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
-  psm::tools::print_test_flags "${test_name}"
+  psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -139,7 +139,7 @@ psm::security::run_test() {
     PSM_TEST_FLAGS+=("--nocheck_local_certs")
   fi
 
-  psm::tools::print_test_flags "${test_name}"
+  psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -178,7 +178,7 @@ psm::url_map::run_test() {
   PSM_TEST_FLAGS+=(
     "--flagfile=config/url-map.cfg"
   )
-  psm::tools::print_test_flags "${test_name}"
+  psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -223,7 +223,7 @@ psm::csm::run_test() {
   PSM_TEST_FLAGS+=(
     "--flagfile=config/common-csm.cfg"
   )
-  psm::tools::print_test_flags "${test_name}"
+  psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
@@ -317,7 +317,7 @@ psm::run::test() {
   # Test driver usage: https://github.com/grpc/psm-interop#basic-usage
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   local test_name="${2:?${FUNCNAME[0]} missing the test name argument}"
-  local out_dir="${TEST_XML_OUTPUT_DIR}/${test_name}"
+  local out_dir="${TEST_XML_OUTPUT_DIR:-/tmp/psm}/${test_name}"
   local test_log="${out_dir}/sponge_log.log"
   mkdir -p "${out_dir}"
 
@@ -350,6 +350,33 @@ psm::run::test() {
   "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}"
 }
 
+#######################################
+# Appends extra flags (if any) to the end of PSM_TEST_FLAGS, prints the flag list.
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   PSM_EXTRA_FLAGS: Space-separated string with extra flags to append
+# Arguments:
+#   Test case name
+# Outputs:
+#   Prints the list of test flags to the stdout
+#######################################
+psm::run::finalize_test_flags() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+
+  # Append extra flags
+  # TODO(sergiitk): replace BAZEL_FLAGS with PSM_EXTRA_FLAGS when allowed_env_vars configured
+  if [[ -n "${BAZEL_FLAGS}" ]]; then
+    declare -a extra_flags
+    IFS=' ' read -r -a extra_flags <<< "${BAZEL_FLAGS}"
+    PSM_TEST_FLAGS+=("${extra_flags[@]}")
+  fi
+
+  psm::tools::log "Test driver flags for ${test_name}:"
+  printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
+  echo
+}
+
+
 # --- Common test setup logic -----------
 
 psm::setup::generic_test_suite() {
@@ -362,8 +389,19 @@ psm::setup::generic_test_suite() {
 
 psm::setup::get_tests() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
-  # TODO(sergiitk): allow to override TESTS from an env var
-  "psm::${test_suite}::get_tests"
+
+  # TODO(sergiitk): replace BAZEL_TESTS with PSM_TESTS when allowed_env_vars configured
+  if [[ -n "${BAZEL_TESTS}" ]]; then
+    # Test list overridden in env var.
+    IFS=' ' read -r -a TESTS <<< "${BAZEL_TESTS}"
+    if (( ${#TESTS[@]} == 0 )); then
+        psm::tools::log "Error: test list overridden, but no tests specified"
+        exit 1
+    fi
+  else
+    "psm::${test_suite}::get_tests"
+  fi
+
   psm::tools::log "Tests in ${test_suite} test suite:"
   printf -- "  - %s\n" "${TESTS[@]}"
   echo
@@ -558,13 +596,6 @@ psm::tools::run_ignore_exit_code() {
 psm::tools::log() {
   echo -en "+ $(date "+[%H:%M:%S %Z]")\011 "
   echo "$@"
-}
-
-psm::tools::print_test_flags() {
-  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
-  psm::tools::log "Test driver flags for ${test_name}:"
-  printf -- "%s\n" "${PSM_TEST_FLAGS[@]}"
-  echo
 }
 
 # --- "Unsorted" methods --------------
