@@ -84,10 +84,12 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
             cls.resource_prefix, cls.resource_suffix
         )
 
-        # Ensures the firewall exist
+        # Create healthcheck firewall rules if necessary.
         if cls.ensure_firewall:
-            cls.td.create_firewall_rule(
-                allowed_ports=cls.firewall_allowed_ports
+            cls.td.create_firewall_rules(
+                allowed_ports=cls.firewall_allowed_ports,
+                source_range=cls.firewall_source_range,
+                source_range_ipv6=cls.firewall_source_range_ipv6,
             )
 
         # Randomize xds port, when it's set to 0

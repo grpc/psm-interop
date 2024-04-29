@@ -16,6 +16,8 @@ import logging
 import random
 from typing import Any, Dict, List, Optional, Set
 
+import googleapiclient.errors
+
 from framework import xds_flags
 from framework.infrastructure import gcp
 
@@ -53,6 +55,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     compute: _ComputeV1
     resource_prefix: str
     resource_suffix: str
+    _ensure_firewall: bool = False
 
     BACKEND_SERVICE_NAME = "backend-service"
     ALTERNATIVE_BACKEND_SERVICE_NAME = "backend-service-alt"
@@ -154,6 +157,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def cleanup(self, *, force=False):
         # Cleanup in the reverse order of creation
+        self.delete_firewall_rules(force=force)
         self.delete_forwarding_rule(force=force)
         self.delete_alternative_forwarding_rule(force=force)
         self.delete_target_http_proxy(force=force)
@@ -165,7 +169,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_alternative_backend_service(force=force)
         self.delete_affinity_backend_service(force=force)
         self.delete_health_check(force=force)
-        self.delete_firewall_rule(force=force)
 
     @functools.lru_cache(None)
     def make_resource_name(self, name: str) -> str:
@@ -717,21 +720,30 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.compute.delete_forwarding_rule(name)
         self.alternative_forwarding_rule = None
 
-    def create_firewall_rule(self, allowed_ports: List[str]):
-        self.firewall_rule = self._create_firewall_rule(
-            self.make_resource_name(self.FIREWALL_RULE_NAME),
-            xds_flags.FIREWALL_SOURCE_RANGE.value,
-            allowed_ports,
-        )
+    def create_firewall_rules(
+        self,
+        *,
+        allowed_ports: list[str],
+        source_range: str,
+        source_range_ipv6: str,
+    ):
+        if source_range:
+            self.firewall_rule = self._create_firewall_rule(
+                self.make_resource_name(self.FIREWALL_RULE_NAME),
+                source_range,
+                allowed_ports,
+            )
+            self._ensure_firewall = True
 
         # A separate fw rule is needed because mixing IPv4 and IPv6 in the same
         # rule is not allowed.
-        if xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value:
+        if source_range_ipv6:
             self.firewall_rule_ipv6 = self._create_firewall_rule(
                 self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6),
-                xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value,
+                source_range_ipv6,
                 allowed_ports,
             )
+            self._ensure_firewall = True
 
     def _create_firewall_rule(
         self, name, source_range, allowed_ports: List[str]
@@ -751,32 +763,45 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             allowed_ports,
         )
 
-    def delete_firewall_rule(self, force=False):
-        """The firewall rule won't be automatically removed."""
-        name, name_ipv6 = "", ""
+    def delete_firewall_rules(self, force=False):
+        if not self._ensure_firewall:
+            return
 
+        self.delete_firewall_rule(force=force)
+        self.delete_firewall_rule_ipv6(force=force)
+        self._ensure_firewall = False
+
+    def delete_firewall_rule(self, force=False):
         if self.firewall_rule:
             name = self.firewall_rule.name
-        if self.firewall_rule_ipv6:
-            name_ipv6 = self.firewall_rule.name
-
-        if not name and force:
+        elif force:
             name = self.make_resource_name(self.FIREWALL_RULE_NAME)
-        if not name_ipv6 and force:
-            name_ipv6 = self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6)
+        else:
+            return
+        if self._delete_firewall_rule(name):
+            self.firewall_rule = None
 
-        try:
-            if name:
-                self._delete_firewall_rule(name)
-                self.firewall_rule = None
-        finally:
-            if name_ipv6:
-                self._delete_firewall_rule(name_ipv6)
-                self.firewall_rule_ipv6 = None
+    def delete_firewall_rule_ipv6(self, force=False):
+        if self.firewall_rule_ipv6:
+            name = self.firewall_rule_ipv6.name
+        elif force:
+            name = self.make_resource_name(self.FIREWALL_RULE_NAME_IPV6)
+        else:
+            return
+        if self._delete_firewall_rule(name):
+            self.firewall_rule_ipv6 = None
 
-    def _delete_firewall_rule(self, name):
+    def _delete_firewall_rule(self, name: str) -> bool:
         logger.info('Deleting Firewall Rule "%s"', name)
-        self.compute.delete_firewall_rule(name)
+        try:
+            self.compute.delete_firewall_rule(name)
+        except googleapiclient.errors.Error as gcp_error:
+            # Only warn on an unsuccessful fw rule deletion.
+            logger.warning(
+                'Failed deleting Firewall Rule "%s": %r', name, gcp_error
+            )
+            return False
+        return True
 
 
 class TrafficDirectorAppNetManager(TrafficDirectorManager):
