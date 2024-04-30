@@ -17,28 +17,42 @@ set -eo pipefail
 # Prepend verbose mode commands (xtrace) with the date.
 PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
 
-# Constants
-readonly PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
-# Test driver
-readonly TEST_DRIVER_REPO_NAME="psm-interop"
-readonly TEST_DRIVER_REPO_URL="https://github.com/${TEST_DRIVER_REPO_OWNER:-grpc}/psm-interop.git"
-readonly TEST_DRIVER_BRANCH="${TEST_DRIVER_BRANCH:-main}"
-readonly TEST_DRIVER_PATH=""
-readonly TEST_DRIVER_PROTOS_PATH="protos/grpc/testing"
-readonly FORCE_TESTING_VERSION="${FORCE_TESTING_VERSION:-}"
-# TODO(sergiitk): can be defined as readonly FORCE_IMAGE_BUILD when removed from buildscripts.
-readonly FORCE_IMAGE_BUILD_PSM="${FORCE_IMAGE_BUILD:-0}"
-
-# Docker
-# TODO(sergiitk): 'if' can be removed when DOCKER_REGISTRY removed from buildscripts.
-if [[ -z "${DOCKER_REGISTRY}" ]] ; then
-  readonly DOCKER_REGISTRY="us-docker.pkg.dev"
-fi
-
+# --- Constants ---
 # GKE cluster identifiers.
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
 readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
+# TODO(sergiitk): 'if' can be removed when DOCKER_REGISTRY removed from buildscripts.
+if [[ -z "${DOCKER_REGISTRY}" ]] ; then
+  readonly DOCKER_REGISTRY="us-docker.pkg.dev"
+fi
+# Test driver
+readonly TEST_DRIVER_REPO_NAME="psm-interop"
+readonly TEST_DRIVER_PATH=""
+readonly TEST_DRIVER_PROTOS_PATH="protos/grpc/testing"
+
+# --- Injectable constants ---
+readonly PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+
+# Test driver
+readonly TEST_DRIVER_REPO_OWNER="${TEST_DRIVER_REPO_OWNER:-grpc}"
+readonly TEST_DRIVER_REPO_URL="https://github.com/${TEST_DRIVER_REPO_OWNER}/${TEST_DRIVER_REPO_NAME}.git"
+readonly TEST_DRIVER_BRANCH="${TEST_DRIVER_BRANCH:-main}"
+
+# Forces image build, even if a tag with GIT_COMMIT already exists.
+readonly PSM_FORCE_IMAGE_BUILD="${PSM_FORCE_IMAGE_BUILD:-0}"
+# Overrides the TESTING_VERSION. Can be used to force versioned image tag, see is_version_branch.
+readonly PSM_FORCE_TESTING_VERSION="${PSM_FORCE_TESTING_VERSION:-}"
+# Overrides the list of test to run. A whitespace-separated string. Example:
+# PSM_TESTS="app_net_test baseline_test"
+readonly PSM_TESTS="${PSM_TESTS:-}"
+# A space-separated string with extra flags to append to the test driver arguments.
+# Can be used to execute a run and test a new flag value, f.e.:
+# PSM_EXTRA_FLAGS="--noenable_workload_identity --td_bootstrap_image=us-docker.pkg.dev/new-image..."
+# In addition, can be used to run a single test in a suite. F.e. to run only test_mtls in security_test:
+# PSM_TESTS="security_test" PSM_EXTRA_FLAGS="SecurityTest.test_mtls"
+readonly PSM_EXTRA_FLAGS="${PSM_EXTRA_FLAGS:-}"
+
 
 # --- LB TESTS ------------------------
 
@@ -364,10 +378,9 @@ psm::run::finalize_test_flags() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
   # Append extra flags
-  # TODO(sergiitk): replace BAZEL_FLAGS with PSM_EXTRA_FLAGS when allowed_env_vars configured
-  if [[ -n "${BAZEL_FLAGS}" ]]; then
+  if [[ -n "${PSM_EXTRA_FLAGS}" ]]; then
     declare -a extra_flags
-    IFS=' ' read -r -a extra_flags <<< "${BAZEL_FLAGS}"
+    IFS=' ' read -r -a extra_flags <<< "${PSM_EXTRA_FLAGS}"
     PSM_TEST_FLAGS+=("${extra_flags[@]}")
   fi
 
@@ -390,10 +403,9 @@ psm::setup::generic_test_suite() {
 psm::setup::get_tests() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
 
-  # TODO(sergiitk): replace BAZEL_TESTS with PSM_TESTS when allowed_env_vars configured
-  if [[ -n "${BAZEL_TESTS}" ]]; then
+  if [[ -n "${PSM_TESTS}" ]]; then
     # Test list overridden in env var.
-    IFS=' ' read -r -a TESTS <<< "${BAZEL_TESTS}"
+    IFS=' ' read -r -a TESTS <<< "${PSM_TESTS}"
     if (( ${#TESTS[@]} == 0 )); then
         psm::tools::log "Error: test list overridden, but no tests specified"
         exit 1
@@ -477,7 +489,7 @@ psm::setup::test_driver() {
 #   SERVER_IMAGE_NAME: Test server Docker image name
 #   CLIENT_IMAGE_NAME: Test client Docker image name
 #   GIT_COMMIT: SHA-1 of git commit being built
-#   FORCE_IMAGE_BUILD
+#   PSM_FORCE_IMAGE_BUILD
 # Arguments:
 #   None
 # Outputs:
@@ -497,8 +509,8 @@ psm::build::docker_images_if_needed() {
     server_tags="ignored-use-canonical"
   fi
 
-  # Build if any of the images are missing, or FORCE_IMAGE_BUILD=1
-  if [[ "${FORCE_IMAGE_BUILD_PSM}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
+  # Build if any of the images are missing, or PSM_FORCE_IMAGE_BUILD=1
+  if [[ "${PSM_FORCE_IMAGE_BUILD}" == "1" || -z "${server_tags}" || -z "${client_tags}" ]]; then
     {
       psm::tools::log "Building xDS interop test app Docker images"
       gcloud -q auth configure-docker "${DOCKER_REGISTRY}"
@@ -966,7 +978,7 @@ kokoro_install_dependencies() {
 # Globals:
 #   KOKORO_JOB_NAME
 #   KOKORO_BUILD_INITIATOR
-#   FORCE_TESTING_VERSION: Forces the testing version to be something else.
+#   PSM_FORCE_TESTING_VERSION: Forces the testing version to be something else.
 #   TESTING_VERSION: Populated with the version branch under test,
 #                    f.e. master, dev, v1.42.x.
 # Outputs:
@@ -982,10 +994,10 @@ kokoro_get_testing_version() {
   local version_from_job_name
   version_from_job_name=$(echo "${KOKORO_JOB_NAME}" | cut -d '/' -f3)
 
-  if [[ -n "${FORCE_TESTING_VERSION}" ]]; then
+  if [[ -n "${PSM_FORCE_TESTING_VERSION}" ]]; then
     # Allows to override the testing version, and force tagging the built
     # images, if necessary.
-    readonly TESTING_VERSION="${FORCE_TESTING_VERSION}"
+    readonly TESTING_VERSION="${PSM_FORCE_TESTING_VERSION}"
   elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != "kokoro" ]]; then
     # If not initiated by Kokoro, it's a dev branch.
     # This allows to know later down the line that the built image doesn't need
@@ -1093,8 +1105,8 @@ local_setup_test_driver() {
   readonly SECONDARY_KUBE_CONTEXT="${SECONDARY_KUBE_CONTEXT}"
 
   # Never override docker image for local runs, unless explicitly forced.
-  if [[ -n "${FORCE_TESTING_VERSION}" ]]; then
-    readonly TESTING_VERSION="${FORCE_TESTING_VERSION}"
+  if [[ -n "${PSM_FORCE_TESTING_VERSION}" ]]; then
+    readonly TESTING_VERSION="${PSM_FORCE_TESTING_VERSION}"
   else
     readonly TESTING_VERSION="dev"
   fi
