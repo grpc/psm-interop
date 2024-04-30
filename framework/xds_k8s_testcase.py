@@ -120,7 +120,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     lang_spec: skips.TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
-    ensure_firewall: bool
+    ensure_firewall: bool = False
+    firewall_allowed_ports: list[str]
+    firewall_source_range: str = ""
+    firewall_source_range_ipv6: str = ""
     force_cleanup: bool
     gcp_api_manager: gcp.api.GcpApiManager
     gcp_service_account: Optional[str]
@@ -175,9 +178,15 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         cls.gcp_service_account = xds_k8s_flags.GCP_SERVICE_ACCOUNT.value
         cls.td_bootstrap_image = xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value
         cls.xds_server_uri = xds_flags.XDS_SERVER_URI.value
+        cls.compute_api_version = xds_flags.COMPUTE_API_VERSION.value
+
+        # Firewall
         cls.ensure_firewall = xds_flags.ENSURE_FIREWALL.value
         cls.firewall_allowed_ports = xds_flags.FIREWALL_ALLOWED_PORTS.value
-        cls.compute_api_version = xds_flags.COMPUTE_API_VERSION.value
+        cls.firewall_source_range = xds_flags.FIREWALL_SOURCE_RANGE.value
+        cls.firewall_source_range_ipv6 = (
+            xds_flags.FIREWALL_SOURCE_RANGE_IPV6.value
+        )
 
         # Resource names.
         cls.resource_prefix = xds_flags.RESOURCE_PREFIX.value
@@ -714,10 +723,12 @@ class IsolatedXdsKubernetesTestCase(
         )
         self.client_runner = self.initKubernetesClientRunner()
 
-        # Ensures the firewall exist
+        # Create healthcheck firewall rules if necessary.
         if self.ensure_firewall:
-            self.td.create_firewall_rule(
-                allowed_ports=self.firewall_allowed_ports
+            self.td.create_firewall_rules(
+                allowed_ports=self.firewall_allowed_ports,
+                source_range=self.firewall_source_range,
+                source_range_ipv6=self.firewall_source_range_ipv6,
             )
 
         # Randomize xds port, when it's set to 0

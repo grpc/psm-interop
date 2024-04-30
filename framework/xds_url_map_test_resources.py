@@ -269,8 +269,10 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
         logging.info("GcpResourceManager: start setup")
         # Firewall
         if self.ensure_firewall:
-            self.td.create_firewall_rule(
-                allowed_ports=self.firewall_allowed_ports
+            self.td.create_firewall_rules(
+                allowed_ports=self.firewall_allowed_ports,
+                source_range=self.firewall_source_range,
+                source_range_ipv6=self.firewall_source_range_ipv6,
             )
         # Health Checks
         self.td.create_health_check()
