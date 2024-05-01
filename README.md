@@ -135,7 +135,7 @@ run:
 
 ```sh
 gcloud artifacts repositories add-iam-policy-binding "projects/grpc-testing/locations/us/repositories/psm-interop" \
-  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --member="serviceAccount:${GCE_SA}" \
   --role="roles/artifactregistry.reader" \
   --condition=None
 ```
