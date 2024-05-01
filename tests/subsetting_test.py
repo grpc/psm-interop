@@ -23,6 +23,10 @@ from framework import xds_k8s_testcase
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
+# Change the default value of --compute_api_version to v1alpha.
+# Subsetting test requires Compute v1alpha APIs.
+# Can be tested with another API version if the flag is passed to the test.
+flags.set_default(xds_k8s_testcase.xds_flags.COMPUTE_API_VERSION, "v1alpha")
 
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer

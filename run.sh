@@ -64,10 +64,22 @@ export PYTHONPATH="${XDS_K8S_DRIVER_DIR}"
 readonly PY_FILE="$1"
 shift
 
+# Create log output dir.
+readonly PSM_LOG_DIR="${PSM_LOG_DIR:-${XDS_K8S_DRIVER_DIR}/out}"
+if [[ ! -d "${PSM_LOG_DIR}" ]]; then
+  mkdir -p "${PSM_LOG_DIR}"
+fi
+
 if [[ "${PY_FILE}" =~ tests/unit($|/) ]]; then
   # Do not set the flagfile when running unit tests.
   exec python "${PY_FILE}" "$@"
 else
+  if [[ "${PY_FILE}" =~ tests($|/) ]]; then
+    # Automatically save last run's log to ./out/psm-last-run.log.
+    readonly PSM_LOG_FILE="${PSM_LOG_DIR}/psm-last-run.log"
+    echo "Saving framework log to ${PSM_LOG_FILE}"
+    exec &> >(tee "${PSM_LOG_FILE}")
+  fi
   # Append args after --flagfile, so they take higher priority.
   exec python "${PY_FILE}" --flagfile="${XDS_K8S_CONFIG}" "$@"
 fi
