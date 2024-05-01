@@ -83,6 +83,7 @@ psm::lb::get_tests() {
     "outlier_detection_test"
     "remove_neg_test"
     "round_robin_test"
+    "circuit_breaking_test"
   )
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
