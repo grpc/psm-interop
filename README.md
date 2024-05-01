@@ -134,11 +134,14 @@ to these images. To grant access to images stored in `grpc-testing` project GCR,
 run:
 
 ```sh
-gcloud projects add-iam-policy-binding "grpc-testing" \
-    --member="serviceAccount:${GCE_SA}" \
-    --role="roles/artifactregistry.reader" \
-    --condition="None"
+gcloud artifacts repositories add-iam-policy-binding "projects/grpc-testing/locations/us/repositories/psm-interop" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/artifactregistry.reader" \
+  --condition=None
 ```
+
+If you get `PERMISSION_DENIED`, contact one of the repo
+[maintainers](https://github.com/grpc/psm-interop/blob/master/MAINTAINERS.md).
 
 ##### Allow test driver to configure workload identity automatically
 Test driver will automatically grant `roles/iam.workloadIdentityUser` to 
