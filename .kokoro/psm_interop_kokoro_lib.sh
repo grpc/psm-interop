@@ -1138,5 +1138,5 @@ tag_and_push_docker_image() {
   local to_tag="$3"
 
   psm::tools::run_verbose docker tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
-  psm::tools::run_verbose push "${image_name}:${to_tag}"
+  psm::tools::run_verbose docker push "${image_name}:${to_tag}"
 }
