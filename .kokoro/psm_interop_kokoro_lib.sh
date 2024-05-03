@@ -250,27 +250,21 @@ psm::csm::run_test() {
 # Provisions necessary software, configures the test driver, and executes the test suite.
 #
 # Globals:
-#   KOKORO_ARTIFACTS_DIR
-#   GITHUB_REPOSITORY_NAME
-#   GRPC_LANGUAGE
-#   SRC_DIR: Populated with absolute path to the source repo
-#   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
-#                         the test driver
-#   TEST_DRIVER_FULL_DIR: Populated with the path to the test driver source code
-#   TEST_DRIVER_FLAGFILE: Populated with relative path to test driver flagfile
-#   TEST_XML_OUTPUT_DIR: Populated with the path to test xUnit XML report
-#   GIT_ORIGIN_URL: Populated with the origin URL of git repo used for the build
-#   GIT_COMMIT: Populated with the SHA-1 of git commit being built
-#   GIT_COMMIT_SHORT: Populated with the short SHA-1 of git commit being built
-#   KUBE_CONTEXT: Populated with name of kubectl context with GKE cluster access
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+#   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
+#     in the source repo.
 # Arguments:
-#   Test suite name, one of (lb, security, url_map)
+#   Test suite name, one of (lb, security, url_map, csm)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
 psm::run() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   psm::tools::log "Starting PSM Interop tests: ${test_suite}"
+  if [[ $(type -t psm::lang::build_docker_images) != function ]]; then
+      psm::tools::log "Method psm::lang::build_docker_images must be defined by the buildscript."
+      exit 1
+  fi
 
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
@@ -467,18 +461,67 @@ psm::setup::docker_image_names() {
 }
 
 psm::setup::test_driver() {
-  local build_docker_script="${BUILD_SCRIPT_DIR}/psm-interop-build-${GRPC_LANGUAGE}.sh"
-  psm::tools::log "Looking for docker image build script ${build_docker_script}"
-  if [[ -f "${build_docker_script}" ]]; then
-    psm::tools::log "Sourcing docker image build script: ${build_docker_script}"
-    source "${build_docker_script}"
-  fi
-
   if [[ -n "${KOKORO_ARTIFACTS_DIR}" ]]; then
-    kokoro_setup_test_driver "${GITHUB_REPOSITORY_NAME}"
+    psm::setup::kokoro "${BUILD_SCRIPT_DIR}"
   else
     local_setup_test_driver "${BUILD_SCRIPT_DIR}"
   fi
+}
+
+#######################################
+# Installs and configures the test driver for testing build script locally.
+# Globals:
+#   TEST_DRIVER_REPO_NAME The repository name of the test driver directory
+#   TEST_DRIVER_REPO_DIR: The path to the test driver directory (optional)
+#   SRC_DIR: Populated with absolute path to the source repo
+#   KUBE_CONTEXT: Populated with name of kubectl context with GKE cluster access
+#   SECONDARY_KUBE_CONTEXT: Populated with name of kubectl context with secondary GKE cluster
+#      access, if any
+#   TEST_DRIVER_FLAGFILE: Populated with relative path to test driver flagfile
+#   TEST_XML_OUTPUT_DIR: Populated with the path to test xUnit XML report
+#   GIT_ORIGIN_URL: Populated with the origin URL of git repo used for the build
+#   GIT_COMMIT: Populated with the SHA-1 of git commit being built
+#   GIT_COMMIT_SHORT: Populated with the short SHA-1 of git commit being built
+# Arguments:
+#   Absolute path to the directory with lang-specific buildscript, must be in the source repo.
+# Outputs:
+#   Writes the output to stdout, stderr, files
+#######################################
+psm::setup::kokoro() {
+  local script_dir="${1:?${FUNCNAME[0]} missing the build script dir argument}"
+
+  psm::tools::log "Starting Kokoro provisioning"
+  # Capture Kokoro VM version info in the log.
+  kokoro_print_version
+  # Get testing version from the job name.
+  kokoro_get_testing_version
+
+  # Absolute path to the root of the source git repo.
+  readonly SRC_DIR="$(git -C "${script_dir}" rev-parse --show-toplevel)"
+
+  # Test artifacts dir: xml reports, logs, etc.
+  local artifacts_dir="${KOKORO_ARTIFACTS_DIR}/artifacts"
+  # Folders after $artifacts_dir reported as target name
+  readonly TEST_XML_OUTPUT_DIR="${artifacts_dir}/${KOKORO_JOB_NAME}"
+  readonly BUILD_LOGS_ROOT="${TEST_XML_OUTPUT_DIR}"
+
+  mkdir -p "${artifacts_dir}" "${TEST_XML_OUTPUT_DIR}" "${BUILD_LOGS_ROOT}"
+  parse_src_repo_git_info SRC_DIR
+  kokoro_write_sponge_properties
+
+  psm::tools::log "Installing packages with apt, see install-apt.log"
+  kokoro_install_dependencies &> "${BUILD_LOGS_ROOT}/install-apt.log"
+
+  # Get kubectl cluster credentials.
+  psm::tools::log "Fetching GKE cluster credentials"
+  gcloud_get_cluster_credentials
+
+  # Install the driver.
+  local test_driver_repo_dir
+  test_driver_repo_dir="${TEST_DRIVER_REPO_DIR:-$(mktemp -d)/${TEST_DRIVER_REPO_NAME}}"
+  test_driver_install "${test_driver_repo_dir}"
+  # shellcheck disable=SC2034  # Used in the main script
+  readonly TEST_DRIVER_FLAGFILE="config/grpc-testing.cfg"
 }
 
 # --- Common test build logic -----------
@@ -514,6 +557,7 @@ psm::build::docker_images_if_needed() {
     {
       psm::tools::log "Building xDS interop test app Docker images"
       gcloud -q auth configure-docker "${DOCKER_REGISTRY}"
+      # This method must be defined in the language-specific buildscript.
       psm::lang::build_docker_images
       psm::tools::log "Finished xDS interop test app Docker images"
     } | tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
@@ -1015,6 +1059,9 @@ kokoro_get_testing_version() {
 
 #######################################
 # Installs and configures the test driver on Kokoro VM.
+#
+# Deprecated. Use psm::setup::kokoro
+#
 # Globals:
 #   KOKORO_ARTIFACTS_DIR
 #   KOKORO_JOB_NAME
@@ -1037,6 +1084,7 @@ kokoro_get_testing_version() {
 #   Writes the output to stdout, stderr, files
 #######################################
 kokoro_setup_test_driver() {
+  # TODO(sergiitk): Remove after per-lang buildscripts are backported.
   # Unset noisy verbose mode often set in the parent scripts.
   set +x
 
