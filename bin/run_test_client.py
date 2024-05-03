@@ -44,8 +44,7 @@ _MODE = flags.DEFINE_enum(
     enum_values=[
         "default",
         "secure",
-        # Uncomment if gamma-specific changes added to the client.
-        # "gamma",
+        "gamma",
     ],
     help="Select client mode",
 )
@@ -81,14 +80,14 @@ flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
 
 
 @flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _CMD.name),
+    (xds_flags.SERVER_XDS_PORT.name, _CMD.name, _MODE.name),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
     ),
 )
 def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_CMD.name] == "cleanup":
+    if flags_dict[_MODE.name] == "gamma" or flags_dict[_CMD.name] == "cleanup":
         return True
     return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
 
@@ -100,6 +99,34 @@ def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
         client_runner.stop_pod_dependencies(log_drain_sec=3)
 
     return sigint_handler
+
+
+def _get_run_kwargs(mode: str, server_runner=None):
+    run_kwargs = dict(
+        qps=_QPS.value,
+        print_response=_PRINT_RESPONSE.value,
+        config_mesh=_CONFIG_MESH.value,
+        log_to_stdout=_FOLLOW.value,
+    )
+    if mode == "secure":
+        run_kwargs["secure_mode"] = True
+
+    if mode == "gamma":
+        run_kwargs["generate_mesh_id"] = True
+        server_target = (
+            f"xds:///{server_runner.frontend_service_name}"
+            f".{server_runner.k8s_namespace.name}.svc.cluster.local"
+            f":{server_runner.DEFAULT_TEST_PORT}"
+        )
+    else:
+        server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
+        if xds_flags.SERVER_XDS_PORT.value != 80:
+            server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+
+    # Server target in Gamma/CSM generated differently.
+    run_kwargs["server_target"] = server_target
+
+    return run_kwargs
 
 
 def main(argv):
@@ -131,21 +158,22 @@ def main(argv):
         enable_workload_identity=enable_workload_identity,
     )
 
-    # Server target
-    server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
-    if xds_flags.SERVER_XDS_PORT.value != 80:
-        server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+    if _MODE.value == "gamma":
+        # Minimal server runner just so it's possible to generate the target
+        server_runner = common.make_server_runner(
+            common.make_server_namespace(k8s_api_manager),
+            gcp_api_manager,
+            mode=_MODE.value,
+        )
+    else:
+        server_runner = None
 
     if _CMD.value == "run":
         logger.info("Run client, mode=%s", _MODE.value)
-        client_runner.run(
-            server_target=server_target,
-            qps=_QPS.value,
-            print_response=_PRINT_RESPONSE.value,
-            secure_mode=_MODE.value == "secure",
-            config_mesh=_CONFIG_MESH.value,
-            log_to_stdout=_FOLLOW.value,
+        run_kwargs = _get_run_kwargs(
+            mode=_MODE.value, server_runner=server_runner
         )
+        client_runner.run(**run_kwargs)
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(client_runner))

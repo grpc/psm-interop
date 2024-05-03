@@ -69,6 +69,21 @@ def _make_sigint_handler(server_runner: common.KubernetesServerRunner):
     return sigint_handler
 
 
+def _get_run_kwargs(mode: str):
+    run_kwargs = dict(
+        test_port=xds_flags.SERVER_PORT.value,
+        maintenance_port=xds_flags.SERVER_MAINTENANCE_PORT.value,
+        log_to_stdout=_FOLLOW.value,
+    )
+    if mode == "secure":
+        run_kwargs["secure_mode"] = True
+
+    if mode == "gamma":
+        run_kwargs["generate_mesh_id"] = True
+
+    return run_kwargs
+
+
 def main(argv):
     if len(argv) > 1:
         raise app.UsageError("Too many command-line arguments.")
@@ -101,12 +116,8 @@ def main(argv):
 
     if _CMD.value == "run":
         logger.info("Run server, mode=%s", _MODE.value)
-        server_runner.run(
-            test_port=xds_flags.SERVER_PORT.value,
-            maintenance_port=xds_flags.SERVER_MAINTENANCE_PORT.value,
-            secure_mode=_MODE.value == "secure",
-            log_to_stdout=_FOLLOW.value,
-        )
+        run_kwargs = _get_run_kwargs(mode=_MODE.value)
+        server_runner.run(**run_kwargs)
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(server_runner))

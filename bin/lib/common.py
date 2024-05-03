@@ -121,6 +121,10 @@ def make_server_runner(
     if mode == "secure":
         runner_kwargs["deployment_template"] = "server-secure.deployment.yaml"
     elif mode == "gamma":
+        runner_kwargs["frontend_service_name"] = (
+            f"{xds_flags.RESOURCE_PREFIX.value}-"
+            f"{xds_flags.RESOURCE_SUFFIX.value}"
+        )
         server_runner = GammaServerRunner
 
     return server_runner(namespace, **runner_kwargs)

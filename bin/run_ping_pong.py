@@ -45,14 +45,20 @@ flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 # Running outside of a test suite, so require explicit resource_suffix.
 flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-flags.register_validator(
-    xds_flags.SERVER_XDS_PORT.name,
-    lambda val: val > 0,
+
+
+@flags.multi_flags_validator(
+    (xds_flags.SERVER_XDS_PORT.name, _MODE.name),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
     ),
 )
+def _check_server_xds_port_flag(flags_dict):
+    if flags_dict[_MODE.name] == "gamma":
+        return True
+    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
+
 
 logger = logging.get_absl_logger()
 
@@ -150,13 +156,21 @@ def main(argv):
         test_port=xds_flags.SERVER_PORT.value,
         secure_mode=_MODE.value == "secure",
     )
-    test_server.set_xds_address(
-        xds_flags.SERVER_XDS_HOST.value, xds_flags.SERVER_XDS_PORT.value
-    )
 
     # Create client app for the client pod.
+    if _MODE.value == "gamma":
+        server_target = (
+            f"xds:///{server_runner.frontend_service_name}"
+            f".{server_runner.k8s_namespace.name}.svc.cluster.local"
+            f":{server_runner.DEFAULT_TEST_PORT}"
+        )
+    else:
+        server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
+        if xds_flags.SERVER_XDS_PORT.value != 80:
+            server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+
     test_client: _XdsTestClient = common.get_test_client_for_pod(
-        client_runner, client_pod, server_target=test_server.xds_uri
+        client_runner, client_pod, server_target=server_target
     )
 
     with test_client, test_server:
