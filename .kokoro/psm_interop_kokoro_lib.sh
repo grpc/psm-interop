@@ -560,7 +560,7 @@ psm::build::docker_images_if_needed() {
       # This method must be defined in the language-specific buildscript.
       psm::lang::build_docker_images
       psm::tools::log "Finished xDS interop test app Docker images"
-    } | tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
+    } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
   fi
