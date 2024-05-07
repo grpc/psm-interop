@@ -80,7 +80,7 @@ flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
 
 
 @flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _CMD.name, _MODE.name),
+    (xds_flags.SERVER_XDS_PORT, _CMD, _MODE),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
@@ -136,7 +136,10 @@ def main(argv):
     # Must be called before KubernetesApiManager or GcpApiManager init.
     xds_flags.set_socket_default_timeout_from_flag()
 
-    # Log following and port forwarding.
+    # Flags.
+    mode: str = _MODE.value
+    command: str = _CMD.value
+    # Flags: log following and port forwarding.
     should_follow_logs = _FOLLOW.value and xds_flags.COLLECT_APP_LOGS.value
     should_port_forward = (
         should_follow_logs and xds_k8s_flags.DEBUG_USE_PORT_FORWARDING.value
@@ -152,34 +155,32 @@ def main(argv):
     client_runner = common.make_client_runner(
         client_namespace,
         gcp_api_manager,
+        mode=mode,
         reuse_namespace=_REUSE_NAMESPACE.value,
-        mode=_MODE.value,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
     )
 
-    if _MODE.value == "gamma":
+    if mode == "gamma":
         # Minimal server runner just so it's possible to generate the target
         server_runner = common.make_server_runner(
             common.make_server_namespace(k8s_api_manager),
             gcp_api_manager,
-            mode=_MODE.value,
+            mode=mode,
         )
     else:
         server_runner = None
 
-    if _CMD.value == "run":
-        logger.info("Run client, mode=%s", _MODE.value)
-        run_kwargs = _get_run_kwargs(
-            mode=_MODE.value, server_runner=server_runner
-        )
+    if command == "run":
+        logger.info("Run client, mode=%s", mode)
+        run_kwargs = _get_run_kwargs(mode=mode, server_runner=server_runner)
         client_runner.run(**run_kwargs)
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(client_runner))
             signal.pause()
 
-    elif _CMD.value == "cleanup":
+    elif command == "cleanup":
         logger.info("Cleanup client")
         client_runner.cleanup(
             force=True, force_namespace=_CLEANUP_NAMESPACE.value

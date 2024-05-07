@@ -91,6 +91,10 @@ def main(argv):
     # Must be called before KubernetesApiManager or GcpApiManager init.
     xds_flags.set_socket_default_timeout_from_flag()
 
+    # Flags.
+    command: str = _CMD.value
+    mode: str = _MODE.value
+    # Flags: log following and port forwarding.
     should_follow_logs = _FOLLOW.value and xds_flags.COLLECT_APP_LOGS.value
     should_port_forward = (
         should_follow_logs and xds_k8s_flags.DEBUG_USE_PORT_FORWARDING.value
@@ -107,23 +111,23 @@ def main(argv):
     server_runner = common.make_server_runner(
         server_namespace,
         gcp_api_manager,
+        mode=mode,
         reuse_namespace=_REUSE_NAMESPACE.value,
         reuse_service=_REUSE_SERVICE.value,
-        mode=_MODE.value,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
     )
 
-    if _CMD.value == "run":
-        logger.info("Run server, mode=%s", _MODE.value)
-        run_kwargs = _get_run_kwargs(mode=_MODE.value)
+    if command == "run":
+        logger.info("Run server, mode=%s", mode)
+        run_kwargs = _get_run_kwargs(mode=mode)
         server_runner.run(**run_kwargs)
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(server_runner))
             signal.pause()
 
-    elif _CMD.value == "cleanup":
+    elif command == "cleanup":
         logger.info("Cleanup server")
         server_runner.cleanup(
             force=True, force_namespace=_CLEANUP_NAMESPACE.value

@@ -58,6 +58,15 @@ _CMD = flags.DEFINE_enum(
     ],
     help="Command",
 )
+_MODE = flags.DEFINE_enum(
+    "mode",
+    default="default",
+    enum_values=[
+        "default",
+        "secure",
+    ],
+    help="Select setup mode",
+)
 _SECURITY = flags.DEFINE_enum(
     "security",
     default=None,
@@ -72,25 +81,180 @@ _SECURITY = flags.DEFINE_enum(
 )
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
+
+# Flag validations.
 # Running outside of a test suite, so require explicit resource_suffix.
 flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
+# Require --security when --mode=secure.
+flags.register_multi_flags_validator(
+    (_MODE, _SECURITY),
+    lambda values: values[_MODE.name] != "secure" or values[_SECURITY.name],
+    "When --mode=secure; --security flag is required",
+)
 
 
 @flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _CMD.name),
-    message=(
-        "Run outside of a test suite, must provide"
-        " the exact port value (must be greater than 0)."
-    ),
+    (xds_flags.SERVER_XDS_PORT, _CMD),
+    "Run outside of a test suite, must provide the exact port value (must be "
+    "greater than 0).",
 )
-def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_CMD.name] not in ("create", "cycle"):
+def _check_server_xds_port_flag(flag_values):
+    if flag_values[_CMD.name] not in ("create", "cycle"):
         return True
-    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
+    return flag_values[xds_flags.SERVER_XDS_PORT.name] > 0
 
 
 # Type aliases
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
+
+
+def _setup_td_secure(
+    security_mode,
+    *,
+    td,
+    server_name,
+    server_namespace,
+    server_port,
+    server_maintenance_port,
+    server_xds_host,
+    server_xds_port,
+):
+    if security_mode == "mtls":
+        logger.info("Setting up mtls")
+        td.setup_for_grpc(
+            server_xds_host,
+            server_xds_port,
+            health_check_port=server_maintenance_port,
+        )
+        td.setup_server_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=server_port,
+            tls=True,
+            mtls=True,
+        )
+        td.setup_client_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            tls=True,
+            mtls=True,
+        )
+
+    elif security_mode == "tls":
+        logger.info("Setting up tls")
+        td.setup_for_grpc(
+            server_xds_host,
+            server_xds_port,
+            health_check_port=server_maintenance_port,
+        )
+        td.setup_server_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=server_port,
+            tls=True,
+            mtls=False,
+        )
+        td.setup_client_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            tls=True,
+            mtls=False,
+        )
+
+    elif security_mode == "plaintext":
+        logger.info("Setting up plaintext")
+        td.setup_for_grpc(
+            server_xds_host,
+            server_xds_port,
+            health_check_port=server_maintenance_port,
+        )
+        td.setup_server_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=server_port,
+            tls=False,
+            mtls=False,
+        )
+        td.setup_client_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            tls=False,
+            mtls=False,
+        )
+
+    elif security_mode == "mtls_error":
+        # Error case: server expects client mTLS cert,
+        # but client configured only for TLS
+        logger.info("Setting up mtls_error")
+        td.setup_for_grpc(
+            server_xds_host,
+            server_xds_port,
+            health_check_port=server_maintenance_port,
+        )
+        td.setup_server_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=server_port,
+            tls=True,
+            mtls=True,
+        )
+        td.setup_client_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            tls=True,
+            mtls=False,
+        )
+
+    elif security_mode == "server_authz_error":
+        # Error case: client does not authorize server
+        # because of mismatched SAN name.
+        logger.info("Setting up mtls_error")
+        td.setup_for_grpc(
+            server_xds_host,
+            server_xds_port,
+            health_check_port=server_maintenance_port,
+        )
+        # Regular TLS setup, but with client policy configured using
+        # intentionality incorrect server_namespace.
+        td.setup_server_security(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=server_port,
+            tls=True,
+            mtls=False,
+        )
+        td.setup_client_security(
+            server_namespace=(f"incorrect-namespace-{rand.rand_string()}"),
+            server_name=server_name,
+            tls=True,
+            mtls=False,
+        )
+
+
+def _cmd_backends_add(td, server_name, server_namespace, server_port):
+    logger.info("Adding backends")
+    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
+    k8s_namespace = k8s.KubernetesNamespace(k8s_api_manager, server_namespace)
+    neg_name, neg_zones = k8s_namespace.parse_service_neg_status(
+        server_name, server_port
+    )
+    td.load_backend_service()
+    td.backend_service_add_neg_backends(neg_name, neg_zones)
+    td.wait_for_backends_healthy_status()
+
+
+def _cmd_backends_cleanup(td):
+    logger.info("Adding cleaning up the backends")
+    td.load_backend_service()
+    td.backend_service_remove_all_backends()
+
+
+def _cmd_unused_port(td):
+    try:
+        unused_xds_port = td.find_unused_forwarding_rule_port()
+        logger.info("Found unused forwarding rule port: %s", unused_xds_port)
+    except Exception:  # noqa pylint: disable=broad-except
+        logger.exception("Couldn't find unused forwarding rule port")
 
 
 def main(
@@ -102,8 +266,13 @@ def main(
     # Must be called before KubernetesApiManager or GcpApiManager init.
     xds_flags.set_socket_default_timeout_from_flag()
 
+    # Flags.
     command = _CMD.value
     security_mode = _SECURITY.value
+    if security_mode:
+        flags.set_default(_MODE, "secure")
+
+    mode = _MODE.value
 
     project: str = xds_flags.PROJECT.value
     network: str = xds_flags.NETWORK.value
@@ -124,15 +293,15 @@ def main(
 
     gcp_api_manager = gcp.api.GcpApiManager()
 
-    if security_mode is None:
-        td = traffic_director.TrafficDirectorManager(
+    if mode == "app_net":
+        td = traffic_director.TrafficDirectorAppNetManager(
             gcp_api_manager,
             project=project,
             network=network,
             resource_prefix=resource_prefix,
             resource_suffix=resource_suffix,
         )
-    else:
+    elif mode == "secure":
         td = traffic_director.TrafficDirectorSecureManager(
             gcp_api_manager,
             project=project,
@@ -144,166 +313,51 @@ def main(
             server_maintenance_port = (
                 _KubernetesServerRunner.DEFAULT_SECURE_MODE_MAINTENANCE_PORT
             )
+    else:
+        td = traffic_director.TrafficDirectorManager(
+            gcp_api_manager,
+            project=project,
+            network=network,
+            resource_prefix=resource_prefix,
+            resource_suffix=resource_suffix,
+        )
 
-    try:
-        if command in ("create", "cycle"):
-            logger.info("Create mode")
-            if security_mode is None:
-                logger.info("No security")
-                td.setup_for_grpc(
-                    server_xds_host,
-                    server_xds_port,
-                    health_check_port=server_maintenance_port,
-                )
-
-            elif security_mode == "mtls":
-                logger.info("Setting up mtls")
-                td.setup_for_grpc(
-                    server_xds_host,
-                    server_xds_port,
-                    health_check_port=server_maintenance_port,
-                )
-                td.setup_server_security(
-                    server_namespace=server_namespace,
+    if command in ("create", "cycle"):
+        logger.info("Setting up Traffic Director, mode=%s", mode)
+        try:
+            if mode == "secure":
+                _setup_td_secure(
+                    security_mode,
+                    td=td,
                     server_name=server_name,
+                    server_namespace=server_namespace,
                     server_port=server_port,
-                    tls=True,
-                    mtls=True,
+                    server_maintenance_port=server_maintenance_port,
+                    server_xds_host=server_xds_host,
+                    server_xds_port=server_xds_port,
                 )
-                td.setup_client_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    tls=True,
-                    mtls=True,
-                )
-
-            elif security_mode == "tls":
-                logger.info("Setting up tls")
+            else:
                 td.setup_for_grpc(
                     server_xds_host,
                     server_xds_port,
                     health_check_port=server_maintenance_port,
-                )
-                td.setup_server_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    server_port=server_port,
-                    tls=True,
-                    mtls=False,
-                )
-                td.setup_client_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    tls=True,
-                    mtls=False,
-                )
-
-            elif security_mode == "plaintext":
-                logger.info("Setting up plaintext")
-                td.setup_for_grpc(
-                    server_xds_host,
-                    server_xds_port,
-                    health_check_port=server_maintenance_port,
-                )
-                td.setup_server_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    server_port=server_port,
-                    tls=False,
-                    mtls=False,
-                )
-                td.setup_client_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    tls=False,
-                    mtls=False,
-                )
-
-            elif security_mode == "mtls_error":
-                # Error case: server expects client mTLS cert,
-                # but client configured only for TLS
-                logger.info("Setting up mtls_error")
-                td.setup_for_grpc(
-                    server_xds_host,
-                    server_xds_port,
-                    health_check_port=server_maintenance_port,
-                )
-                td.setup_server_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    server_port=server_port,
-                    tls=True,
-                    mtls=True,
-                )
-                td.setup_client_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    tls=True,
-                    mtls=False,
-                )
-
-            elif security_mode == "server_authz_error":
-                # Error case: client does not authorize server
-                # because of mismatched SAN name.
-                logger.info("Setting up mtls_error")
-                td.setup_for_grpc(
-                    server_xds_host,
-                    server_xds_port,
-                    health_check_port=server_maintenance_port,
-                )
-                # Regular TLS setup, but with client policy configured using
-                # intentionality incorrect server_namespace.
-                td.setup_server_security(
-                    server_namespace=server_namespace,
-                    server_name=server_name,
-                    server_port=server_port,
-                    tls=True,
-                    mtls=False,
-                )
-                td.setup_client_security(
-                    server_namespace=(
-                        f"incorrect-namespace-{rand.rand_string()}"
-                    ),
-                    server_name=server_name,
-                    tls=True,
-                    mtls=False,
                 )
 
             logger.info("Works!")
-    except Exception:  # noqa pylint: disable=broad-except
-        logger.exception("Got error during creation")
+        except Exception:  # noqa pylint: disable=broad-except
+            logger.exception("Got error during creation")
 
     if command in ("cleanup", "cycle"):
         logger.info("Cleaning up")
         td.cleanup(force=True)
+        return
 
     if command == "backends-add":
-        logger.info("Adding backends")
-        k8s_api_manager = k8s.KubernetesApiManager(
-            xds_k8s_flags.KUBE_CONTEXT.value
-        )
-        k8s_namespace = k8s.KubernetesNamespace(
-            k8s_api_manager, server_namespace
-        )
-
-        neg_name, neg_zones = k8s_namespace.parse_service_neg_status(
-            server_name, server_port
-        )
-
-        td.load_backend_service()
-        td.backend_service_add_neg_backends(neg_name, neg_zones)
-        td.wait_for_backends_healthy_status()
+        _cmd_backends_add(td, server_name, server_namespace, server_port)
     elif command == "backends-cleanup":
-        td.load_backend_service()
-        td.backend_service_remove_all_backends()
+        _cmd_backends_cleanup(td)
     elif command == "unused-xds-port":
-        try:
-            unused_xds_port = td.find_unused_forwarding_rule_port()
-            logger.info(
-                "Found unused forwarding rule port: %s", unused_xds_port
-            )
-        except Exception:  # noqa pylint: disable=broad-except
-            logger.exception("Couldn't find unused forwarding rule port")
+        _cmd_unused_port(td)
 
 
 if __name__ == "__main__":
