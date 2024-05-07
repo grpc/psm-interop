@@ -64,6 +64,7 @@ _MODE = flags.DEFINE_enum(
     enum_values=[
         "default",
         "secure",
+        "app_net",
     ],
     help="Select setup mode",
 )
@@ -111,7 +112,7 @@ _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 def _setup_td_secure(
     security_mode,
     *,
-    td,
+    td: traffic_director.TrafficDirectorSecureManager,
     server_name,
     server_namespace,
     server_port,
@@ -139,7 +140,6 @@ def _setup_td_secure(
             tls=True,
             mtls=True,
         )
-
     elif security_mode == "tls":
         logger.info("Setting up tls")
         td.setup_for_grpc(
@@ -160,7 +160,6 @@ def _setup_td_secure(
             tls=True,
             mtls=False,
         )
-
     elif security_mode == "plaintext":
         logger.info("Setting up plaintext")
         td.setup_for_grpc(
@@ -181,7 +180,6 @@ def _setup_td_secure(
             tls=False,
             mtls=False,
         )
-
     elif security_mode == "mtls_error":
         # Error case: server expects client mTLS cert,
         # but client configured only for TLS
@@ -204,7 +202,6 @@ def _setup_td_secure(
             tls=True,
             mtls=False,
         )
-
     elif security_mode == "server_authz_error":
         # Error case: client does not authorize server
         # because of mismatched SAN name.
@@ -229,6 +226,18 @@ def _setup_td_secure(
             tls=True,
             mtls=False,
         )
+
+
+def _setup_td_appnet(
+    *,
+    td: traffic_director.TrafficDirectorAppNetManager,
+    server_xds_host,
+    server_xds_port,
+):
+    td.create_health_check()
+    td.create_backend_service()
+    td.create_mesh()
+    td.create_grpc_route(server_xds_host, server_xds_port)
 
 
 def _cmd_backends_add(td, server_name, server_namespace, server_port):
@@ -325,7 +334,13 @@ def main(
     if command in ("create", "cycle"):
         logger.info("Setting up Traffic Director, mode=%s", mode)
         try:
-            if mode == "secure":
+            if mode == "app_net":
+                _setup_td_appnet(
+                    td=td,
+                    server_xds_host=server_xds_host,
+                    server_xds_port=server_xds_port,
+                )
+            elif mode == "secure":
                 _setup_td_secure(
                     security_mode,
                     td=td,
@@ -343,7 +358,7 @@ def main(
                     health_check_port=server_maintenance_port,
                 )
 
-            logger.info("Works!")
+            logger.info("Done!")
         except Exception:  # noqa pylint: disable=broad-except
             logger.exception("Got error during creation")
 

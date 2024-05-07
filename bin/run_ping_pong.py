@@ -31,7 +31,12 @@ from framework.test_app import server_app
 _MODE = flags.DEFINE_enum(
     "mode",
     default="default",
-    enum_values=["default", "secure", "gamma"],
+    enum_values=[
+        "default",
+        "secure",
+        "app_net",
+        "gamma",
+    ],
     help="Select a deployment of the client/server",
 )
 _NUM_RPCS = flags.DEFINE_integer(

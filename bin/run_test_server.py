@@ -37,7 +37,12 @@ _CMD = flags.DEFINE_enum(
 _MODE = flags.DEFINE_enum(
     "mode",
     default="default",
-    enum_values=["default", "secure", "gamma"],
+    enum_values=[
+        "default",
+        "secure",
+        "app_net",
+        "gamma",
+    ],
     help="Select server mode",
 )
 _REUSE_NAMESPACE = flags.DEFINE_bool(
@@ -77,8 +82,7 @@ def _get_run_kwargs(mode: str):
     )
     if mode == "secure":
         run_kwargs["secure_mode"] = True
-
-    if mode == "gamma":
+    elif mode == "gamma":
         run_kwargs["generate_mesh_id"] = True
 
     return run_kwargs

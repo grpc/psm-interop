@@ -32,6 +32,7 @@ from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.infrastructure import traffic_director
 
 logger = logging.getLogger(__name__)
 # Flags
@@ -44,6 +45,7 @@ _MODE = flags.DEFINE_enum(
     enum_values=[
         "default",
         "secure",
+        "app_net",
         "gamma",
     ],
     help="Select client mode",
@@ -59,11 +61,6 @@ _FOLLOW = flags.DEFINE_bool(
         "Follow pod logs. Requires --collect_app_logs or"
         " --debug_use_port_forwarding"
     ),
-)
-_CONFIG_MESH = flags.DEFINE_string(
-    "config_mesh",
-    default=None,
-    help="Optional. Supplied to bootstrap generator to indicate AppNet mesh.",
 )
 _REUSE_NAMESPACE = flags.DEFINE_bool(
     "reuse_namespace", default=True, help="Use existing namespace if exists"
@@ -101,29 +98,51 @@ def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
     return sigint_handler
 
 
-def _get_run_kwargs(mode: str, server_runner=None):
+def _get_run_kwargs(mode: str, *, gcp_api_manager=None, k8s_api_manager=None):
     run_kwargs = dict(
         qps=_QPS.value,
         print_response=_PRINT_RESPONSE.value,
-        config_mesh=_CONFIG_MESH.value,
         log_to_stdout=_FOLLOW.value,
     )
+
+    server_target = ""
+
     if mode == "secure":
         run_kwargs["secure_mode"] = True
 
-    if mode == "gamma":
+    elif mode == "app_net":
+        # Minimal appnet td setup so it's possible to generate config mesh name
+        td = traffic_director.TrafficDirectorAppNetManager(
+            gcp_api_manager,
+            project=xds_flags.PROJECT.value,
+            network=xds_flags.NETWORK.value,
+            resource_prefix=xds_flags.RESOURCE_PREFIX.value,
+            resource_suffix=xds_flags.RESOURCE_SUFFIX.value,
+        )
+        run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
+
+    elif mode == "gamma":
         run_kwargs["generate_mesh_id"] = True
+
+        # In gamma setup, the target URI is determined by the server resources.
+        # Minimal server runner just so it's possible to generate the target URI
+        server_runner = common.make_server_runner(
+            common.make_server_namespace(k8s_api_manager),
+            gcp_api_manager,
+            mode=mode,
+        )
         server_target = (
             f"xds:///{server_runner.frontend_service_name}"
             f".{server_runner.k8s_namespace.name}.svc.cluster.local"
             f":{server_runner.DEFAULT_TEST_PORT}"
         )
-    else:
+
+    if not server_target:
+        # Default server target pattern.
         server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
         if xds_flags.SERVER_XDS_PORT.value != 80:
             server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
 
-    # Server target in Gamma/CSM generated differently.
     run_kwargs["server_target"] = server_target
 
     return run_kwargs
@@ -161,19 +180,13 @@ def main(argv):
         enable_workload_identity=enable_workload_identity,
     )
 
-    if mode == "gamma":
-        # Minimal server runner just so it's possible to generate the target
-        server_runner = common.make_server_runner(
-            common.make_server_namespace(k8s_api_manager),
-            gcp_api_manager,
-            mode=mode,
-        )
-    else:
-        server_runner = None
-
     if command == "run":
         logger.info("Run client, mode=%s", mode)
-        run_kwargs = _get_run_kwargs(mode=mode, server_runner=server_runner)
+        run_kwargs = _get_run_kwargs(
+            mode=mode,
+            gcp_api_manager=gcp_api_manager,
+            k8s_api_manager=k8s_api_manager,
+        )
         client_runner.run(**run_kwargs)
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
