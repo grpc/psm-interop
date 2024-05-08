@@ -45,6 +45,12 @@ _MODE = flags.DEFINE_enum(
     ],
     help="Select server mode",
 )
+_ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
+    "gamma_route_kind",
+    default=k8s.RouteKinds.HTTP,
+    enum_class=k8s.RouteKinds,
+    help="When --mode=gamma, select the kind of a gamma route to create",
+)
 _REUSE_NAMESPACE = flags.DEFINE_bool(
     "reuse_namespace", default=True, help="Use existing namespace if exists"
 )
@@ -62,7 +68,7 @@ _CLEANUP_NAMESPACE = flags.DEFINE_bool(
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 # Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required("resource_suffix")
+flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX)
 
 
 def _make_sigint_handler(server_runner: common.KubernetesServerRunner):
@@ -84,6 +90,10 @@ def _get_run_kwargs(mode: str):
         run_kwargs["secure_mode"] = True
     elif mode == "gamma":
         run_kwargs["generate_mesh_id"] = True
+        if _ROUTE_KIND_GAMMA.value is k8s.RouteKinds.HTTP:
+            run_kwargs["route_template"] = "gamma/route_http.yaml"
+        elif _ROUTE_KIND_GAMMA.value is k8s.RouteKinds.GRPC:
+            run_kwargs["route_template"] = "gamma/route_grpc.yaml"
 
     return run_kwargs
 

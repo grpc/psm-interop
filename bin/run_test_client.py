@@ -187,7 +187,7 @@ def main(argv):
             gcp_api_manager=gcp_api_manager,
             k8s_api_manager=k8s_api_manager,
         )
-        client_runner.run(**run_kwargs)
+        client_runner.run(**run_kwargs)  # pylint: disable=missing-kwoa
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(client_runner))

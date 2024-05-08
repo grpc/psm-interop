@@ -65,6 +65,7 @@ _MODE = flags.DEFINE_enum(
         "default",
         "secure",
         "app_net",
+        "gamma",
     ],
     help="Select setup mode",
 )
@@ -282,6 +283,11 @@ def main(
         flags.set_default(_MODE, "secure")
 
     mode = _MODE.value
+
+    # Short circuit for gamma node.
+    if mode == "gamma":
+        logger.info("Traffic Director not needed for gamma setup")
+        return
 
     project: str = xds_flags.PROJECT.value
     network: str = xds_flags.NETWORK.value
