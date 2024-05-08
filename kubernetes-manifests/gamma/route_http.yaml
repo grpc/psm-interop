@@ -8,16 +8,16 @@ metadata:
     owner: xds-k8s-interop-test
 spec:
   parentRefs:
-  - name: ${frontend_service_name}
-    namespace: ${namespace_name}
-    group: ""
-    kind: Service
+    - name: ${frontend_service_name}
+      namespace: ${namespace_name}
+      group: ""
+      kind: Service
   rules:
-  - matches:
-    - path:
-        type: Exact
-        value: /grpc.testing.TestService/UnaryCall
-    backendRefs:
-    - name: ${service_name}
-      port: 8080
+    - matches:
+        - path:
+            type: Exact
+            value: /grpc.testing.TestService/UnaryCall
+      backendRefs:
+        - name: ${service_name}
+          port: 8080
 ...
