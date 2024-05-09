@@ -164,7 +164,7 @@ class GcpApiManager:
                 api_key=self.private_api_key,
                 visibility_labels=["NETWORKSERVICES_ALPHA"],
             )
-        elif version == "v1beta1":
+        elif version in ("v1", "v1beta1"):
             return self._build_from_discovery_v2(api_name, version)
 
         raise NotImplementedError(f"Network Services {version} not supported")
