@@ -42,6 +42,7 @@ sudo apt-get install python3-venv
 3. Enable gcloud services:
    ```shell
    gcloud services enable \
+     artifactregistry.googleapis.com \
      compute.googleapis.com \
      container.googleapis.com \
      logging.googleapis.com \
@@ -120,19 +121,27 @@ Enable the service account to [access the Traffic Director API](https://cloud.go
 ```shell
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
    --member="serviceAccount:${WORKLOAD_SA_EMAIL}" \
-   --role="roles/trafficdirector.client"
+   --role="roles/trafficdirector.client" \
+   --condition="None"
 ```
 
 ##### Allow access to images
 The test framework needs read access to the client and server images and the bootstrap
 generator image. You may have these images in your project but if you want to use these
-from the grpc-testing project you will have to grant the necessary access to these images
-using https://cloud.google.com/container-registry/docs/access-control#grant or a
-gsutil command. For example, to grant access to images stored in `grpc-testing` project GCR, run:
+from the grpc-testing project you will have to grant
+the [necessary access](https://cloud.google.com/artifact-registry/docs/access-control#permissions)
+to these images. To grant access to images stored in `grpc-testing` project GCR,
+run:
 
 ```sh
-gsutil iam ch "serviceAccount:${GCE_SA}:objectViewer" gs://artifacts.grpc-testing.appspot.com/
+gcloud artifacts repositories add-iam-policy-binding "projects/grpc-testing/locations/us/repositories/psm-interop" \
+  --member="serviceAccount:${GCE_SA}" \
+  --role="roles/artifactregistry.reader" \
+  --condition=None
 ```
+
+If you get `PERMISSION_DENIED`, contact one of the repo
+[maintainers](https://github.com/grpc/psm-interop/blob/master/MAINTAINERS.md).
 
 ##### Allow test driver to configure workload identity automatically
 Test driver will automatically grant `roles/iam.workloadIdentityUser` to 

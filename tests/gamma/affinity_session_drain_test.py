@@ -50,12 +50,18 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
     xds_gamma_testcase.GammaXdsKubernetesTestCase,
     session_affinity_mixin.SessionAffinityMixin,
 ):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Force the python client to use the reference server image (C++)
+        # because the python server doesn't yet support session drain test.
+        if cls.lang_spec.client_lang == _Lang.PYTHON:
+            cls.server_image = cls.csm_server_image_canonical
+
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
-            # TODO(sergiitk): Clarify the version.
-            # HookService is only added in CPP ....
+        if config.client_lang in _Lang.CPP | _Lang.PYTHON:
             return config.version_gte("v1.62.x")
         return False
 

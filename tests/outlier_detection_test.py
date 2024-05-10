@@ -53,16 +53,20 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         https://github.com/grpc/grpc/blob/master/doc/xds-test-descriptions.md#server
         """
         super().setUpClass()
+        client_lang = cls.lang_spec.client_lang
+
         # gRPC Java implemented server "error-code-" rpc-behavior in v1.47.x.
-        if cls.lang_spec.client_lang == _Lang.JAVA:
+        if client_lang == _Lang.JAVA:
             return
 
         # gRPC CPP implemented server "hostname" rpc-behavior in v1.57.x,
         # see https://github.com/grpc/grpc/pull/33446.
-        if (
-            cls.lang_spec.client_lang == _Lang.CPP
-            and cls.lang_spec.version_gte("v1.57.x")
-        ):
+        if client_lang == _Lang.CPP and cls.lang_spec.version_gte("v1.57.x"):
+            return
+
+        # gRPC Go implemented server "hostname" rpc-behavior in v1.59.x,
+        # see https://github.com/grpc/grpc-go/pull/6575.
+        if client_lang == _Lang.GO and cls.lang_spec.version_gte("v1.59.x"):
             return
 
         # gRPC go, python and node fallback to the gRPC Java.
@@ -79,8 +83,7 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         if config.client_lang == _Lang.NODE:
             return config.version_gte("v1.6.x")
         if config.client_lang == _Lang.GO:
-            # TODO(zasweq): Update when the feature makes in a version branch.
-            return config.version_gte("master")
+            return config.version_gte("v1.50.x")
         return False
 
     def test_outlier_detection(self) -> None:

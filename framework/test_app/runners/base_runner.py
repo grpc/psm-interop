@@ -42,7 +42,7 @@ class BaseRunner(metaclass=ABCMeta):
     def __init__(self):
         if xds_flags.COLLECT_APP_LOGS.value:
             self._logs_subdir = logs.log_dir_mkdir(_LOGS_SUBDIR)
-            self._log_stop_event = threading.Event()
+        self._reset_state()
 
     @property
     @functools.lru_cache(None)
@@ -73,6 +73,11 @@ class BaseRunner(metaclass=ABCMeta):
     @abstractmethod
     def cleanup(self, *, force=False):
         pass
+
+    def _reset_state(self):
+        """Reset the mutable state of the previous run."""
+        if self.should_collect_logs:
+            self._log_stop_event = threading.Event()
 
     @classmethod
     def _logs_explorer_link_from_params(

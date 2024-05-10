@@ -23,6 +23,10 @@ from framework import xds_k8s_testcase
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
+# Change the default value of --compute_api_version to v1alpha.
+# Subsetting test requires Compute v1alpha APIs.
+# Can be tested with another API version if the flag is passed to the test.
+flags.set_default(xds_k8s_testcase.xds_flags.COMPUTE_API_VERSION, "v1alpha")
 
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
@@ -36,10 +40,8 @@ _NUM_CLIENTS = 3
 class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        # Subsetting is an experimental feature where most work is done on the
-        # server-side. We limit it to only run on master branch to save
-        # resources.
-        return config.version_gte("master")
+        # Skip subsetting tests while the feature is temporarily disabled.
+        return False
 
     def test_subsetting_basic(self) -> None:
         with self.subTest("00_create_health_check"):
@@ -87,7 +89,12 @@ class SubsettingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                     len(parsed.endpoints),
                     parsed.endpoints,
                 )
-                self.assertLen(parsed.endpoints, _SUBSET_SIZE)
+                self.assertLen(
+                    parsed.endpoints,
+                    _SUBSET_SIZE,
+                    "CSDS endpoint length does not match the subset size:"
+                    f" expected={_SUBSET_SIZE}, got={len(parsed.endpoints)}",
+                )
                 # Record RPC stats
                 lb_stats = self.getClientRpcStats(
                     test_client, _NUM_BACKENDS * 25

@@ -322,22 +322,6 @@ class GammaServerRunner(KubernetesServerRunner):
     @override
     def cleanup(self, *, force=False, force_namespace=False):
         try:
-            if self.route or force:
-                self._delete_gamma_route(self.route_name)
-                self.route = None
-
-            if self.frontend_service or force:
-                self._delete_service(self.frontend_service_name)
-                self.frontend_service = None
-
-            if (self.service and not self.reuse_service) or force:
-                self._delete_service(self.service_name)
-                self.service = None
-
-            if self.deployment or force:
-                self._delete_deployment(self.deployment_name)
-                self.deployment = None
-
             if self.session_affinity_policy or force:
                 self._delete_session_affinity_policy(
                     self.SESSION_AFFINITY_POLICY_NAME
@@ -353,6 +337,22 @@ class GammaServerRunner(KubernetesServerRunner):
             if self.backend_policy or force:
                 self._delete_backend_policy(self.BACKEND_POLICY_NAME)
                 self.backend_policy = None
+
+            if self.route or force:
+                self._delete_gamma_route(self.route_name)
+                self.route = None
+
+            if self.frontend_service or force:
+                self._delete_service(self.frontend_service_name)
+                self.frontend_service = None
+
+            if (self.service and not self.reuse_service) or force:
+                self._delete_service(self.service_name)
+                self.service = None
+
+            if self.deployment or force:
+                self._delete_deployment(self.deployment_name)
+                self.deployment = None
 
             if self.enable_workload_identity and (
                 self.service_account or force

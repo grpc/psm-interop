@@ -130,7 +130,11 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
         return (
             channel
             for channel in self.list_channels(**kwargs)
-            if channel.data.target == target
+            # We are doing a substring match here instead of an equals match
+            # since the target received from channelz might be canonicalized.
+            # For example, "trafficdirector.googleapis.com:443" can be reported
+            # as "dns:///trafficdirector.googleapis.com:443".
+            if target in channel.data.target
         )
 
     def find_server_listening_on_port(

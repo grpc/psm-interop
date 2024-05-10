@@ -18,8 +18,8 @@
 ### ------------------------------- App images ---------------------------------
 
 ## Test images, f.e. java v1.57.x.
---server_image=gcr.io/grpc-testing/xds-interop/java-server:v1.57.x
---client_image=gcr.io/grpc-testing/xds-interop/java-client:v1.57.x
+--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:v1.63.x
+--client_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-client:v1.63.x
 
 ### ----------------------------------- App ------------------------------------
 
