@@ -14,6 +14,7 @@
 """
 Run xDS Test Client on Kubernetes.
 """
+import dataclasses
 import logging
 from typing import Optional
 
@@ -25,6 +26,15 @@ from framework.test_app.runners.k8s import k8s_base_runner
 logger = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass(frozen=True)
+class ClientDeploymentArgs:
+    csm_workload_name: str = ""
+    csm_canonical_service_name: str = ""
+
+    def as_dict(self):
+        return dataclasses.asdict(self)
+
+
 class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     # Required fields.
     xds_server_uri: str
@@ -34,8 +44,9 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     debug_use_port_forwarding: bool
     td_bootstrap_image: str
     network: str
-    csm_workload_name: str
-    csm_canonical_service_name: str
+
+    # Client Deployment args
+    deployment_args: ClientDeploymentArgs
 
     # Optional fields.
     service_account_name: Optional[str] = None
@@ -66,6 +77,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         enable_workload_identity: bool = True,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
+        deployment_args: Optional[ClientDeploymentArgs] = None,
     ):
         super().__init__(
             k8s_namespace,
@@ -83,8 +95,16 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.deployment_template = deployment_template
         self.enable_workload_identity = enable_workload_identity
         self.debug_use_port_forwarding = debug_use_port_forwarding
-        self.csm_workload_name = csm_workload_name
-        self.csm_canonical_service_name = csm_canonical_service_name
+
+        # Client deployment arguments.
+        if not deployment_args:
+            deployment_args = ClientDeploymentArgs(
+                # TODO(stanleycheung): remove once https://github.com/grpc/psm-interop/pull/33
+                #    is merged and removed self.csm_* removed as class args.
+                csm_workload_name=csm_workload_name,
+                csm_canonical_service_name=csm_canonical_service_name,
+            )
+        self.deployment_args = deployment_args
 
         # Used by the TD bootstrap generator.
         self.td_bootstrap_image = td_bootstrap_image
@@ -175,8 +195,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             generate_mesh_id=generate_mesh_id,
             print_response=print_response,
             enable_csm_observability=enable_csm_observability,
-            csm_workload_name=self.csm_workload_name,
-            csm_canonical_service_name=self.csm_canonical_service_name,
+            **self.deployment_args.as_dict(),
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled

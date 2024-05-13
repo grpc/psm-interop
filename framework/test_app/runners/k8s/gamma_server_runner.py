@@ -211,8 +211,6 @@ class GammaServerRunner(KubernetesServerRunner):
             bootstrap_version=bootstrap_version,
             enable_csm_observability=enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
-            csm_workload_name=self.csm_workload_name,
-            csm_canonical_service_name=self.csm_canonical_service_name,
             **self.deployment_args.as_dict(),
         )
 
