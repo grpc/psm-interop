@@ -386,21 +386,37 @@ class NetworkServicesV1Beta1(_NetworkServicesBase):
         )
 
 
-class NetworkServicesV1Alpha1(NetworkServicesV1Beta1):
-    """NetworkServices API v1alpha1.
-
-    Note: extending v1beta1 class presumes that v1beta1 is just a v1alpha1 API
-    graduated into a more stable version. This is true in most cases. However,
-    v1alpha1 class can always override and reimplement incompatible methods.
-    """
+class NetworkServicesV1(_NetworkServicesBase):
+    """NetworkServices API v1."""
 
     HTTP_ROUTES = "httpRoutes"
     GRPC_ROUTES = "grpcRoutes"
     MESHES = "meshes"
+    ENDPOINT_POLICIES = "endpointPolicies"
 
     @property
     def api_version(self) -> str:
-        return "v1alpha1"
+        return "v1"
+
+    def create_endpoint_policy(self, name, body: dict) -> GcpResource:
+        return self._create_resource(
+            collection=self._api_locations.endpointPolicies(),
+            body=body,
+            endpointPolicyId=name,
+        )
+
+    def get_endpoint_policy(self, name: str) -> EndpointPolicy:
+        response = self._get_resource(
+            collection=self._api_locations.endpointPolicies(),
+            full_name=self.resource_full_name(name, self.ENDPOINT_POLICIES),
+        )
+        return EndpointPolicy.from_response(name, response)
+
+    def delete_endpoint_policy(self, name: str) -> bool:
+        return self._delete_resource(
+            collection=self._api_locations.endpointPolicies(),
+            full_name=self.resource_full_name(name, self.ENDPOINT_POLICIES),
+        )
 
     def create_mesh(self, name: str, body: dict) -> GcpResource:
         return self._create_resource(
