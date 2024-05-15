@@ -20,6 +20,7 @@ from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.infrastructure import k8s
+from framework.rpc import grpc_testing
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 
 logger = logging.getLogger(__name__)
