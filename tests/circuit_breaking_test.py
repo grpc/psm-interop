@@ -46,7 +46,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         https://github.com/grpc/grpc/blob/master/doc/xds-test-descriptions.md#server
         """
         super().setUpClass()
-         if cls.lang_spec.client_lang is not _Lang.JAVA:
+        if cls.lang_spec.client_lang is not _Lang.JAVA:
             # gRPC C++, go, python and node fallback to the gRPC Java.
             # TODO(https://github.com/grpc/grpc-go/issues/6288): use go server.
             # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
@@ -194,10 +194,14 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("12_client_reaches_target_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
-                test_client, rpc_type="UNARY_CALL", num_rpcs=_INITIAL_UNARY_MAX_REQUESTS
+                test_client,
+                rpc_type="UNARY_CALL",
+                num_rpcs=_INITIAL_UNARY_MAX_REQUESTS,
             )
             self.assertClientEventuallyReachesSteadyState(
-                test_client, rpc_type="EMPTY_CALL", num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS
+                test_client,
+                rpc_type="EMPTY_CALL",
+                num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS,
             )
 
         with self.subTest("13_increase_backend_max_requests"):
@@ -207,7 +211,9 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("14_client_reaches_increased_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
-                test_client, rpc_type="UNARY_CALL", num_rpcs=_UPDATED_UNARY_MAX_REQUESTS
+                test_client,
+                rpc_type="UNARY_CALL",
+                num_rpcs=_UPDATED_UNARY_MAX_REQUESTS,
             )
 
 
