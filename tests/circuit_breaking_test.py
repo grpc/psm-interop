@@ -194,10 +194,10 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("12_client_reaches_target_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
-                test_client, "UNARY_CALL", _INITIAL_UNARY_MAX_REQUESTS, 1
+                test_client, rpc_type="UNARY_CALL", num_rpcs=_INITIAL_UNARY_MAX_REQUESTS
             )
             self.assertClientEventuallyReachesSteadyState(
-                test_client, "EMPTY_CALL", _INITIAL_EMPTY_MAX_REQUESTS, 1
+                test_client, rpc_type="EMPTY_CALL", num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS
             )
 
         with self.subTest("13_increase_backend_max_requests"):
@@ -207,7 +207,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("14_client_reaches_increased_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
-                test_client, "UNARY_CALL", _UPDATED_UNARY_MAX_REQUESTS, 1
+                test_client, rpc_type="UNARY_CALL", num_rpcs=_UPDATED_UNARY_MAX_REQUESTS
             )
 
 

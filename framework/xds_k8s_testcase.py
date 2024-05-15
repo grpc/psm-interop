@@ -694,10 +694,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     def assertClientEventuallyReachesSteadyState(
         self,
         test_client: XdsTestClient,
+        *,
         rpc_type: str,
         num_rpcs: int,
-        threshold_percent: int,
-        *,
+        threshold_percent: int = 1,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=20),
         retry_wait: dt.timedelta = dt.timedelta(seconds=2),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
@@ -707,7 +707,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             timeout=retry_timeout,
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
-                f"report {num_rpcs} pending calls +/-{threshold_percent}%"
+                f"report {num_rpcs} pending calls ±{threshold_percent}%"
             ),
         )
         for attempt in retryer:
@@ -715,6 +715,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 self._checkRpcsInFlight(
                     test_client, rpc_type, num_rpcs, threshold_percent
                 )
+        logging.info(
+            "[%s] << Checking again after %d seconds to verify that RPC count is steady",
+            steady_state_delay.total_seconds()
+        )
         time.sleep(steady_state_delay.total_seconds())
         self._checkRpcsInFlight(
             test_client, rpc_type, num_rpcs, threshold_percent
@@ -743,31 +747,22 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         rpcs_failed = stats.num_rpcs_failed_by_method[rpc_type]
         rpcs_in_flight = rpcs_started - rpcs_succeeded - rpcs_failed
         logging.info(
-            "[%s] << %s RPCs in flight: %d, expecting %d +/-%d%%",
+            "[%s] << %s RPCs in flight: %d, expecting %d ±%d%%",
             test_client.hostname,
             rpc_type,
             rpcs_in_flight,
             num_rpcs,
             threshold_percent,
         )
-        if rpcs_in_flight < (num_rpcs * (1 - threshold_fraction)):
-            raise AssertionError(
-                "actual(%d) < expected(%d - %d%%)"
-                % (
-                    rpcs_in_flight,
-                    num_rpcs,
-                    threshold_percent,
-                )
-            )
-        elif rpcs_in_flight > (num_rpcs * (1 + threshold_fraction)):
-            raise AssertionError(
-                "actual(%d) > expected(%d + %d%%)"
-                % (
-                    rpcs_in_flight,
-                    num_rpcs,
-                    threshold_percent,
-                )
-            )
+        self.assertBetween(
+            rpcs_in_flight,
+            minv=int(num_rpcs * (1 - threshold_fraction)),
+            maxv=int(num_rpcs * (1 + threshold_fraction)),
+            msg=(
+                f"Found wrong number of RPCs in flight: actual({rpcs_in_flight}),"
+                f" expected({num_rpcs} ± {threshold_percent}%)"
+            ),
+        )
 
 
 class IsolatedXdsKubernetesTestCase(

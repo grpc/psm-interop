@@ -203,9 +203,13 @@ class ComputeV1(
             for backend in backends
         ]
 
+        request = {"backends": backend_list}
+        if circuit_breaker:
+            request["circuitBreakers"] = circuit_breaker
+
         self._patch_resource(
             collection=self.api.backendServices(),
-            body={"backends": backend_list, "circuitBreakers": circuit_breaker},
+            body=request,
             backendService=backend_service.name,
         )
 
