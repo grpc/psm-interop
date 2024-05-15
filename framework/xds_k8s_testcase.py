@@ -717,6 +717,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 )
         logging.info(
             "[%s] << Checking again after %d seconds to verify that RPC count is steady",
+            test_client.hostname,
             steady_state_delay.total_seconds(),
         )
         time.sleep(steady_state_delay.total_seconds())
