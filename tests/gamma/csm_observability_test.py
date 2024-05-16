@@ -222,37 +222,12 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "Letting test client run for %d seconds to produce metric data",
                 TEST_RUN_SECS,
             )
-            server_prometheus_logger = PrometheusLogger(
-                self.server_runner, test_server.hostname
-            )
-            client_prometheus_logger = PrometheusLogger(
-                self.client_runner, test_client.hostname
-            )
-            try:
-                for i in range(0, TEST_RUN_SECS // 10):
-                    time.sleep(10)
-                    curr_secs = int(time.time())
-                    server_prometheus_logger.write(
-                        f"Prometheus endpoint content at {curr_secs}"
-                    )
-                    server_prometheus_logger.write(
-                        self.ping_prometheus_endpoint(
-                            test_server.rpc_host,
-                            test_server.monitoring_port,
-                        )
-                    )
-                    client_prometheus_logger.write(
-                        f"Prometheus endpoint content at {curr_secs}"
-                    )
-                    client_prometheus_logger.write(
-                        self.ping_prometheus_endpoint(
-                            test_client.rpc_host,
-                            test_client.monitoring_port,
-                        )
-                    )
-            finally:
-                server_prometheus_logger.close()
-                client_prometheus_logger.close()
+            if self.server_runner.should_collect_logs:
+                self._sleep_and_ping_prometheus_endpoint(
+                    test_server, test_client
+                )
+            else:
+                time.sleep(TEST_RUN_SECS)
 
         with self.subTest("5_query_cloud_monitoring_metrics"):
             end_secs = int(time.time())
@@ -555,8 +530,44 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f"No data point with {ref_bytes}±{tolerance*100}% bytes found"
         )
 
-    def ping_prometheus_endpoint(
-        self, monitoring_host: str, monitoring_port: int
+    def _sleep_and_ping_prometheus_endpoint(
+        self, test_server: _XdsTestServer, test_client: _XdsTestClient
+    ):
+        server_prometheus_logger = PrometheusLogger(
+            self.server_runner, test_server.hostname
+        )
+        client_prometheus_logger = PrometheusLogger(
+            self.client_runner, test_client.hostname
+        )
+        try:
+            for i in range(0, TEST_RUN_SECS // 10):
+                time.sleep(10)
+                curr_secs = int(time.time())
+                server_prometheus_logger.write(
+                    f"Prometheus endpoint content at {curr_secs}"
+                )
+                server_prometheus_logger.write(
+                    self._ping_prometheus_endpoint(
+                        test_server.rpc_host,
+                        test_server.monitoring_port,
+                    )
+                )
+                client_prometheus_logger.write(
+                    f"Prometheus endpoint content at {curr_secs}"
+                )
+                client_prometheus_logger.write(
+                    self._ping_prometheus_endpoint(
+                        test_client.rpc_host,
+                        test_client.monitoring_port,
+                    )
+                )
+        finally:
+            server_prometheus_logger.close()
+            client_prometheus_logger.close()
+
+    @classmethod
+    def _ping_prometheus_endpoint(
+        cls, monitoring_host: str, monitoring_port: int
     ) -> str:
         """
         A helper function to ping the pod's Prometheus endpoint to get what GMP
