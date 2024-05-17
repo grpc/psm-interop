@@ -99,6 +99,7 @@ ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
+ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
 BuildQueryFn = Callable[[str, str], str]
 ANY = unittest.mock.ANY
 
@@ -186,9 +187,11 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # each run().
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super().initKubernetesClientRunner(
-            enable_csm_observability=True,
-            csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
-            csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
+            deployment_args = ClientDeploymentArgs(
+                enable_csm_observability=True,
+                csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
+                csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
+            )
         )
 
     # These parameters are more pertaining to the test itself, not to
