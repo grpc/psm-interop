@@ -187,7 +187,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     # each run().
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super().initKubernetesClientRunner(
-            deployment_args = ClientDeploymentArgs(
+            deployment_args=ClientDeploymentArgs(
                 enable_csm_observability=True,
                 csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
