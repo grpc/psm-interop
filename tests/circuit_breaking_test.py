@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List
 
 from absl import flags
 from absl.testing import absltest
@@ -47,13 +46,11 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         https://github.com/grpc/grpc/blob/master/doc/xds-test-descriptions.md#server
         """
         super().setUpClass()
-        if cls.lang_spec.client_lang == _Lang.JAVA:
-            return
-
-        # gRPC C++, go, python and node fallback to the gRPC Java.
-        # TODO(https://github.com/grpc/grpc-go/issues/6288): use go server.
-        # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
-        cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
+         if cls.lang_spec.client_lang is not _Lang.JAVA:
+            # gRPC C++, go, python and node fallback to the gRPC Java.
+            # TODO(https://github.com/grpc/grpc-go/issues/6288): use go server.
+            # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
+            cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
         super().setUp()
@@ -94,6 +91,25 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             matcher_name = self.td.make_resource_name(
                 self.td.URL_MAP_PATH_MATCHER_NAME
             )
+            route_rules = [
+                {
+                    "priority": 0,
+                    # UnaryCall -> backend_service
+                    "matchRules": [
+                        {"fullPathMatch": "/grpc.testing.TestService/UnaryCall"}
+                    ],
+                    "service": self.td.backend_service.url,
+                },
+                {
+                    "priority": 1,
+                    # EmptyCall -> alternative_backend_service
+                    "matchRules": [
+                        {"fullPathMatch": "/grpc.testing.TestService/EmptyCall"}
+                    ],
+                    "service": self.td.alternative_backend_service.url,
+                },
+            ]
+
             self.td.create_url_map_with_content(
                 {
                     "name": self.td.make_resource_name(self.td.URL_MAP_NAME),
@@ -105,28 +121,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                         {
                             "name": matcher_name,
                             "defaultService": self.td.backend_service.url,
-                            "routeRules": [
-                                {
-                                    "priority": 0,
-                                    # UnaryCall -> backend_service
-                                    "matchRules": [
-                                        {
-                                            "fullPathMatch": "/grpc.testing.TestService/UnaryCall"
-                                        }
-                                    ],
-                                    "service": self.td.backend_service.url,
-                                },
-                                {
-                                    "priority": 1,
-                                    # EmptyCall -> alternative_backend_service
-                                    "matchRules": [
-                                        {
-                                            "fullPathMatch": "/grpc.testing.TestService/EmptyCall"
-                                        }
-                                    ],
-                                    "service": self.td.alternative_backend_service.url,
-                                },
-                            ],
+                            "routeRules": route_rules,
                         }
                     ],
                 }
@@ -138,13 +133,11 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("04_create_forwarding_rule"):
             self.td.create_forwarding_rule(self.server_xds_port)
 
-        default_test_servers: List[_XdsTestServer]
-        alternate_test_servers: List[_XdsTestServer]
         with self.subTest("05_start_test_servers"):
-            default_test_servers = self.startTestServers()
-            alternate_test_servers = self.startTestServers(
+            default_test_server: _XdsTestServer = self.startTestServers()[0]
+            alternate_test_server: _XdsTestServer = self.startTestServers(
                 server_runner=self.alternate_server_runner
-            )
+            )[0]
 
         with self.subTest("06_add_server_backends_to_backend_services"):
             self.setupServerBackends()
@@ -170,7 +163,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         test_client: _XdsTestClient
         with self.subTest("08_start_test_client"):
             test_client = self.startTestClient(
-                default_test_servers[0], rpc="UnaryCall,EmptyCall", qps=_QPS
+                default_test_server, rpc="UnaryCall,EmptyCall", qps=_QPS
             )
 
         with self.subTest("09_test_client_xds_config_exists"):
@@ -178,15 +171,23 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("10_test_server_received_rpcs_from_test_client"):
             self.assertRpcsEventuallyGoToGivenServers(
-                test_client, default_test_servers + alternate_test_servers
+                test_client, (default_test_server, alternate_test_server)
             )
 
         with self.subTest("11_configure_client_with_keep_open"):
             test_client.update_config.configure(
-                rpc_types=["UNARY_CALL", "EMPTY_CALL"],
+                rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
                 metadata={
-                    ("UNARY_CALL", "rpc-behavior", "keep-open"),
-                    ("EMPTY_CALL", "rpc-behavior", "keep-open"),
+                    (
+                        grpc_testing.RPC_TYPE_UNARY_CALL,
+                        "rpc-behavior",
+                        "keep-open",
+                    ),
+                    (
+                        grpc_testing.RPC_TYPE_EMPTY_CALL,
+                        "rpc-behavior",
+                        "keep-open",
+                    ),
                 },
                 timeout_sec=20,
             )
@@ -211,4 +212,4 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
 
 if __name__ == "__main__":
-    absltest.main(failfast=True)
+    absltest.main()

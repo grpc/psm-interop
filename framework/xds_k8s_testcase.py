@@ -706,7 +706,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             wait_fixed=retry_wait,
             timeout=retry_timeout,
             error_note=(
-                f"Timeout waiting for test client ${test_client.hostname} to"
+                f"Timeout waiting for test client {test_client.hostname} to"
                 f"report {num_rpcs} pending calls +/-{threshold_percent}%"
             ),
         )
@@ -727,7 +727,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         num_rpcs: int,
         threshold_percent: int,
     ):
-        if threshold_percent < 0 or threshold_percent > 100:
+        if not 0 <= threshold_percent <= 100:
             raise ValueError(
                 "Value error: Threshold should be between 0 to 100"
             )

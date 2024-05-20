@@ -189,7 +189,8 @@ class ComputeV1(
         backend_service,
         backends,
         max_rate_per_endpoint: Optional[int] = None,
-        circuit_breaker: Optional[Dict] = None,
+        *,
+        circuit_breaker: Optional[dict[str, int]] = None,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5
