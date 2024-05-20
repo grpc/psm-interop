@@ -277,7 +277,10 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.backend_service_patch_backends()
 
     def backend_service_patch_backends(
-        self, max_rate_per_endpoint: Optional[int] = None
+        self,
+        max_rate_per_endpoint: Optional[int] = None,
+        *,
+        circuit_breakers: Optional[dict[str, int]] = None,
     ):
         logging.info(
             "Adding backends to Backend Service %s: %r",
@@ -285,7 +288,10 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
         )
         self.compute.backend_service_patch_backends(
-            self.backend_service, self.backends, max_rate_per_endpoint
+            self.backend_service,
+            self.backends,
+            max_rate_per_endpoint,
+            circuit_breakers=circuit_breakers,
         )
 
     def backend_service_remove_all_backends(self):
@@ -348,14 +354,18 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.alternative_backends.add(backend)
         self.alternative_backend_service_patch_backends()
 
-    def alternative_backend_service_patch_backends(self):
+    def alternative_backend_service_patch_backends(
+        self, *, circuit_breakers: Optional[dict[str, int]] = None
+    ):
         logging.info(
             "Adding backends to Backend Service %s: %r",
             self.alternative_backend_service.name,
             self.alternative_backends,
         )
         self.compute.backend_service_patch_backends(
-            self.alternative_backend_service, self.alternative_backends
+            self.alternative_backend_service,
+            self.alternative_backends,
+            circuit_breakers=circuit_breakers,
         )
 
     def alternative_backend_service_remove_all_backends(self):
