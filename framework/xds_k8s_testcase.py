@@ -698,8 +698,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         rpc_type: str,
         num_rpcs: int,
         threshold_percent: int = 1,
-        retry_timeout: dt.timedelta = dt.timedelta(minutes=20),
-        retry_wait: dt.timedelta = dt.timedelta(seconds=2),
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
         retryer = retryers.constant_retryer(
@@ -716,7 +716,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                     test_client, rpc_type, num_rpcs, threshold_percent
                 )
         logging.info(
-            "[%s] << Checking again after %d seconds to verify that RPC count is steady",
+            "Will check again in %d seconds to verify that RPC count is steady",
             test_client.hostname,
             steady_state_delay.total_seconds(),
         )
@@ -760,8 +760,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             minv=int(num_rpcs * (1 - threshold_fraction)),
             maxv=int(num_rpcs * (1 + threshold_fraction)),
             msg=(
-                f"Found wrong number of RPCs in flight: actual({rpcs_in_flight}),"
-                f" expected({num_rpcs} ± {threshold_percent}%)"
+                f"Found wrong number of RPCs in flight: actual({rpcs_in_flight}"
+                f"), expected({num_rpcs} ± {threshold_percent}%)"
             ),
         )
 

@@ -190,7 +190,7 @@ class ComputeV1(
         backends,
         max_rate_per_endpoint: Optional[int] = None,
         *,
-        circuit_breaker: Optional[dict[str, int]] = None,
+        circuit_breakers: Optional[dict[str, int]] = None,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5
@@ -204,8 +204,8 @@ class ComputeV1(
         ]
 
         request = {"backends": backend_list}
-        if circuit_breaker:
-            request["circuitBreakers"] = circuit_breaker
+        if circuit_breakers:
+            request["circuitBreakers"] = circuit_breakers
 
         self._patch_resource(
             collection=self.api.backendServices(),

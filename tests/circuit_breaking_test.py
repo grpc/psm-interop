@@ -155,10 +155,10 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("07_patch_backends_with_circuit_breakers"):
             self.td.backend_service_patch_backends(
-                circuit_breaker={"maxRequests": _INITIAL_UNARY_MAX_REQUESTS}
+                circuit_breakers={"maxRequests": _INITIAL_UNARY_MAX_REQUESTS}
             )
             self.td.alternative_backend_service_patch_backends(
-                circuit_breaker={"maxRequests": _INITIAL_EMPTY_MAX_REQUESTS}
+                circuit_breakers={"maxRequests": _INITIAL_EMPTY_MAX_REQUESTS}
             )
 
         test_client: _XdsTestClient
@@ -196,24 +196,24 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("12_client_reaches_target_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
-                rpc_type="UNARY_CALL",
+                rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_INITIAL_UNARY_MAX_REQUESTS,
             )
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
-                rpc_type="EMPTY_CALL",
+                rpc_type=grpc_testing.RPC_TYPE_EMPTY_CALL,
                 num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS,
             )
 
         with self.subTest("13_increase_backend_max_requests"):
             self.td.backend_service_patch_backends(
-                circuit_breaker={"maxRequests": _UPDATED_UNARY_MAX_REQUESTS}
+                circuit_breakers={"maxRequests": _UPDATED_UNARY_MAX_REQUESTS}
             )
 
         with self.subTest("14_client_reaches_increased_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
-                rpc_type="UNARY_CALL",
+                rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_UPDATED_UNARY_MAX_REQUESTS,
             )
 
