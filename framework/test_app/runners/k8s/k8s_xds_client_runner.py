@@ -96,6 +96,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.debug_use_port_forwarding = debug_use_port_forwarding
 
         # Client deployment arguments.
+        if not deployment_args:
+            deployment_args = ClientDeploymentArgs()
         self.deployment_args = deployment_args
 
         # Used by the TD bootstrap generator.
