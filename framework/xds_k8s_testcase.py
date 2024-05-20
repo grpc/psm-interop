@@ -747,7 +747,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         rpcs_failed = stats.num_rpcs_failed_by_method[rpc_type]
         rpcs_in_flight = rpcs_started - rpcs_succeeded - rpcs_failed
         logging.info(
-            "[%s] << %s RPCs in flight: %d, expecting %d ±%d%%",
+            "[%s] << %s RPCs in flight: %d, expected %d ±%d%%",
             test_client.hostname,
             rpc_type,
             rpcs_in_flight,
