@@ -13,6 +13,7 @@
 # limitations under the License.
 """Common functionality for bin/ python helpers."""
 import atexit
+import functools
 import signal
 import sys
 
@@ -38,20 +39,36 @@ _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
 
-def make_client_namespace(
-    k8s_api_manager: k8s.KubernetesApiManager,
-    namespace_name: str = None,
-) -> k8s.KubernetesNamespace:
+@functools.cache
+def k8s_api_manager():
+    return k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
+
+
+@functools.cache
+def gcp_api_manager():
+    return gcp.api.GcpApiManager()
+
+
+def td_attrs():
+    return dict(
+        gcp_api_manager=gcp_api_manager(),
+        project=xds_flags.PROJECT.value,
+        network=xds_flags.NETWORK.value,
+        resource_prefix=xds_flags.RESOURCE_PREFIX.value,
+        resource_suffix=xds_flags.RESOURCE_SUFFIX.value,
+    )
+
+
+def make_client_namespace(namespace_name: str = "") -> k8s.KubernetesNamespace:
     if not namespace_name:
-        namespace_name: str = KubernetesClientRunner.make_namespace_name(
+        namespace_name = KubernetesClientRunner.make_namespace_name(
             xds_flags.RESOURCE_PREFIX.value, xds_flags.RESOURCE_SUFFIX.value
         )
-    return k8s.KubernetesNamespace(k8s_api_manager, namespace_name)
+    return k8s.KubernetesNamespace(k8s_api_manager(), namespace_name)
 
 
 def make_client_runner(
     namespace: k8s.KubernetesNamespace,
-    gcp_api_manager: gcp.api.GcpApiManager,
     *,
     port_forwarding: bool = False,
     reuse_namespace: bool = True,
@@ -64,7 +81,7 @@ def make_client_runner(
         image_name=xds_k8s_flags.CLIENT_IMAGE.value,
         td_bootstrap_image=xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value,
         gcp_project=xds_flags.PROJECT.value,
-        gcp_api_manager=gcp_api_manager,
+        gcp_api_manager=gcp_api_manager(),
         gcp_service_account=xds_k8s_flags.GCP_SERVICE_ACCOUNT.value,
         xds_server_uri=xds_flags.XDS_SERVER_URI.value,
         network=xds_flags.NETWORK.value,
@@ -82,18 +99,16 @@ def make_client_runner(
 
 
 def make_server_namespace(
-    k8s_api_manager: k8s.KubernetesApiManager,
     server_runner: KubernetesServerRunner = KubernetesServerRunner,
 ) -> k8s.KubernetesNamespace:
     namespace_name: str = server_runner.make_namespace_name(
         xds_flags.RESOURCE_PREFIX.value, xds_flags.RESOURCE_SUFFIX.value
     )
-    return k8s.KubernetesNamespace(k8s_api_manager, namespace_name)
+    return k8s.KubernetesNamespace(k8s_api_manager(), namespace_name)
 
 
 def make_server_runner(
     namespace: k8s.KubernetesNamespace,
-    gcp_api_manager: gcp.api.GcpApiManager,
     *,
     port_forwarding: bool = False,
     reuse_namespace: bool = True,
@@ -108,7 +123,7 @@ def make_server_runner(
         td_bootstrap_image=xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value,
         xds_server_uri=xds_flags.XDS_SERVER_URI.value,
         gcp_project=xds_flags.PROJECT.value,
-        gcp_api_manager=gcp_api_manager,
+        gcp_api_manager=gcp_api_manager(),
         gcp_service_account=xds_k8s_flags.GCP_SERVICE_ACCOUNT.value,
         network=xds_flags.NETWORK.value,
         reuse_namespace=reuse_namespace,

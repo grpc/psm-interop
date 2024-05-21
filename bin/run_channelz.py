@@ -210,10 +210,9 @@ def main(argv):
     k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
 
     # Server.
-    server_namespace = common.make_server_namespace(k8s_api_manager)
+    server_namespace = common.make_server_namespace()
     server_runner = common.make_server_runner(
         server_namespace,
-        gcp_api_manager,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
         mode="secure",
@@ -224,10 +223,9 @@ def main(argv):
     )
 
     # Client
-    client_namespace = common.make_client_namespace(k8s_api_manager)
+    client_namespace = common.make_client_namespace()
     client_runner = common.make_client_runner(
         client_namespace,
-        gcp_api_manager,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
         mode="secure",

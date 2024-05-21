@@ -26,7 +26,6 @@ from absl import flags
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 
 logger = logging.getLogger(__name__)
@@ -118,13 +117,8 @@ def main(argv):
     )
 
     # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
-    server_namespace = common.make_server_namespace(k8s_api_manager)
-
     server_runner = common.make_server_runner(
-        server_namespace,
-        gcp_api_manager,
+        common.make_server_namespace(),
         mode=mode,
         reuse_namespace=_REUSE_NAMESPACE.value,
         reuse_service=_REUSE_SERVICE.value,

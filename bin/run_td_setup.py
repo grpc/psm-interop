@@ -35,10 +35,10 @@ import logging
 from absl import app
 from absl import flags
 
+from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.helpers import rand
-from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
 from framework.test_app.runners.k8s import k8s_xds_server_runner
@@ -289,9 +289,6 @@ def main(
         logger.info("Traffic Director not needed for gamma setup")
         return
 
-    project: str = xds_flags.PROJECT.value
-    network: str = xds_flags.NETWORK.value
-
     # Resource names.
     resource_prefix: str = xds_flags.RESOURCE_PREFIX.value
     resource_suffix: str = xds_flags.RESOURCE_SUFFIX.value
@@ -302,40 +299,21 @@ def main(
     server_maintenance_port = xds_flags.SERVER_MAINTENANCE_PORT.value
     server_xds_host = xds_flags.SERVER_XDS_HOST.value
     server_xds_port = xds_flags.SERVER_XDS_PORT.value
-    server_namespace = _KubernetesServerRunner.make_namespace_name(
+    server_namespace_name = _KubernetesServerRunner.make_namespace_name(
         resource_prefix, resource_suffix
     )
 
-    gcp_api_manager = gcp.api.GcpApiManager()
-
+    td_attrs = common.td_attrs()
     if mode == "app_net":
-        td = traffic_director.TrafficDirectorAppNetManager(
-            gcp_api_manager,
-            project=project,
-            network=network,
-            resource_prefix=resource_prefix,
-            resource_suffix=resource_suffix,
-        )
+        td = traffic_director.TrafficDirectorAppNetManager(**td_attrs)
     elif mode == "secure":
-        td = traffic_director.TrafficDirectorSecureManager(
-            gcp_api_manager,
-            project=project,
-            network=network,
-            resource_prefix=resource_prefix,
-            resource_suffix=resource_suffix,
-        )
+        td = traffic_director.TrafficDirectorSecureManager(**td_attrs)
         if server_maintenance_port is None:
             server_maintenance_port = (
                 _KubernetesServerRunner.DEFAULT_SECURE_MODE_MAINTENANCE_PORT
             )
     else:
-        td = traffic_director.TrafficDirectorManager(
-            gcp_api_manager,
-            project=project,
-            network=network,
-            resource_prefix=resource_prefix,
-            resource_suffix=resource_suffix,
-        )
+        td = traffic_director.TrafficDirectorManager(**td_attrs)
 
     if command in ("create", "cycle"):
         logger.info("Setting up Traffic Director, mode=%s", mode)
@@ -351,7 +329,7 @@ def main(
                     security_mode,
                     td=td,
                     server_name=server_name,
-                    server_namespace=server_namespace,
+                    server_namespace=server_namespace_name,
                     server_port=server_port,
                     server_maintenance_port=server_maintenance_port,
                     server_xds_host=server_xds_host,
@@ -374,7 +352,7 @@ def main(
         return
 
     if command == "backends-add":
-        _cmd_backends_add(td, server_name, server_namespace, server_port)
+        _cmd_backends_add(td, server_name, server_namespace_name, server_port)
     elif command == "backends-cleanup":
         _cmd_backends_cleanup(td)
     elif command == "unused-xds-port":

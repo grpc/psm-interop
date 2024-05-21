@@ -30,8 +30,6 @@ from absl import flags
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import gcp
-from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
 
 logger = logging.getLogger(__name__)
@@ -98,7 +96,7 @@ def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
     return sigint_handler
 
 
-def _get_run_kwargs(mode: str, *, gcp_api_manager=None, k8s_api_manager=None):
+def _get_run_kwargs(mode: str, *, k8s_api_manager=None):
     run_kwargs = dict(
         qps=_QPS.value,
         print_response=_PRINT_RESPONSE.value,
@@ -112,13 +110,7 @@ def _get_run_kwargs(mode: str, *, gcp_api_manager=None, k8s_api_manager=None):
 
     elif mode == "app_net":
         # Minimal appnet td setup so it's possible to generate config mesh name
-        td = traffic_director.TrafficDirectorAppNetManager(
-            gcp_api_manager,
-            project=xds_flags.PROJECT.value,
-            network=xds_flags.NETWORK.value,
-            resource_prefix=xds_flags.RESOURCE_PREFIX.value,
-            resource_suffix=xds_flags.RESOURCE_SUFFIX.value,
-        )
+        td = traffic_director.TrafficDirectorAppNetManager(**common.td_attrs())
         run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
 
     elif mode == "gamma":
@@ -127,8 +119,7 @@ def _get_run_kwargs(mode: str, *, gcp_api_manager=None, k8s_api_manager=None):
         # In gamma setup, the target URI is determined by the server resources.
         # Minimal server runner just so it's possible to generate the target URI
         server_runner = common.make_server_runner(
-            common.make_server_namespace(k8s_api_manager),
-            gcp_api_manager,
+            common.make_server_namespace(),
             mode=mode,
         )
         server_target = (
@@ -168,12 +159,8 @@ def main(argv):
     )
 
     # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
-    client_namespace = common.make_client_namespace(k8s_api_manager)
     client_runner = common.make_client_runner(
-        client_namespace,
-        gcp_api_manager,
+        common.make_client_namespace(),
         mode=mode,
         reuse_namespace=_REUSE_NAMESPACE.value,
         port_forwarding=should_port_forward,
@@ -182,11 +169,7 @@ def main(argv):
 
     if command == "run":
         logger.info("Run client, mode=%s", mode)
-        run_kwargs = _get_run_kwargs(
-            mode=mode,
-            gcp_api_manager=gcp_api_manager,
-            k8s_api_manager=k8s_api_manager,
-        )
+        run_kwargs = _get_run_kwargs(mode=mode)
         client_runner.run(**run_kwargs)  # pylint: disable=missing-kwoa
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
