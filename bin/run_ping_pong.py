@@ -34,7 +34,6 @@ from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.helpers import grpc as helpers_grpc
 import framework.helpers.highlighter
-from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_testing
@@ -133,13 +132,9 @@ def main(argv):
         xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
     )
 
-    # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-
     # Server.
-    server_namespace = common.make_server_namespace()
     server_runner = common.make_server_runner(
-        server_namespace,
+        common.make_server_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
         mode=_MODE.value,
@@ -150,9 +145,8 @@ def main(argv):
     )
 
     # Client
-    client_namespace = common.make_client_namespace()
     client_runner = common.make_client_runner(
-        client_namespace,
+        common.make_client_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
         mode=_MODE.value,

@@ -38,7 +38,6 @@ from absl import logging
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.rpc import grpc_channelz
 from framework.test_app import client_app
@@ -205,10 +204,6 @@ def main(argv):
         xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
     )
     is_secure: bool = bool(_SECURITY.value)
-
-    # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
 
     # Server.
     server_namespace = common.make_server_namespace()

@@ -29,7 +29,6 @@ Typical usage examples:
     ./run.sh ./bin/run_test_client.py --mode=gamma --cmd=cleanup
 """
 
-
 import logging
 import signal
 
@@ -105,7 +104,7 @@ def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
     return sigint_handler
 
 
-def _get_run_kwargs(mode: str, *, k8s_api_manager=None):
+def _get_run_kwargs(mode: str):
     run_kwargs = dict(
         qps=_QPS.value,
         print_response=_PRINT_RESPONSE.value,
