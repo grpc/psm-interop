@@ -39,6 +39,9 @@
 ## Verbosity: -3 (fatal/critical), -2 (error), -1 (warning), 0 (info), 1 (debug)
 # --verbosity=1
 
+# Log all GCP API requests and responses
+# --verbose_gcp_api
+
 ## Uncomment and set different log levels per module. Examples:
 # --logger_levels=__main__:DEBUG,framework:INFO
 # --logger_levels=__main__:INFO,framework:DEBUG,urllib3.connectionpool:ERROR

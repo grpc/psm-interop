@@ -29,6 +29,7 @@ from google.rpc import status_pb2
 from googleapiclient import discovery
 import googleapiclient.errors
 import googleapiclient.http
+import googleapiclient.model
 import tenacity
 import yaml
 
@@ -63,6 +64,11 @@ GCP_UI_URL = flags.DEFINE_string(
     default="console.cloud.google.com",
     help="Override GCP UI URL.",
 )
+VERBOSE_GCP_API = flags.DEFINE_boolean(
+    "verbose_gcp_api",
+    default=False,
+    help="Log GCP API requests and responses.",
+)
 
 # Type aliases
 _HttpError = googleapiclient.errors.HttpError
@@ -73,6 +79,9 @@ HttpRequest = googleapiclient.http.HttpRequest
 
 
 class GcpApiManager:
+    # The previous value of googleapiclient.model.dump_request_response.
+    _dump_req_resp: Optional[bool] = None
+
     def __init__(
         self,
         *,
@@ -81,7 +90,14 @@ class GcpApiManager:
         compute_v1_discovery_file=None,
         private_api_key_secret_name=None,
         gcp_ui_url=None,
+        verbose_gcp_api: bool = False,
     ):
+        # Log GCP API requests and responses.
+        # Note: this modifies a global variable on googleapiclient.model.
+        if verbose_gcp_api or VERBOSE_GCP_API.value:
+            self._dump_req_resp = googleapiclient.model.dump_request_response
+            googleapiclient.model.dump_request_response = True
+
         self.v1_discovery_uri = v1_discovery_uri or V1_DISCOVERY_URI.value
         self.v2_discovery_uri = v2_discovery_uri or V2_DISCOVERY_URI.value
         self.compute_v1_discovery_file = (
@@ -96,6 +112,11 @@ class GcpApiManager:
 
     def close(self):
         self._exit_stack.close()
+        # Reset value of global googleapiclient.model.dump_request_response,
+        # but only if previously changed it.
+        if self._dump_req_resp is not None:
+            googleapiclient.model.dump_request_response = self._dump_req_resp
+            self._dump_req_resp = None
 
     @property
     @functools.lru_cache(None)
