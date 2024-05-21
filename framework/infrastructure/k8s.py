@@ -77,7 +77,7 @@ _RETRY_ON_EXCEPTIONS = (
 )
 
 
-class RouteKinds(enum.Enum):
+class RouteKind(enum.Enum):
     HTTP = "HTTPRoute"
     GRPC = "GRPCRoute"
 
@@ -93,7 +93,7 @@ class RouteKinds(enum.Enum):
         return self.value
 
 
-KIND_GAMMA_ROUTES: Final[tuple[str, ...]] = tuple(rk.value for rk in RouteKinds)
+KIND_GAMMA_ROUTES: Final[tuple[str, ...]] = tuple(rk.value for rk in RouteKind)
 
 
 def _server_restart_retryer() -> retryers.Retrying:
@@ -346,8 +346,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     @property
     def gamma_route_apis(self):
         return {
-            RouteKinds.HTTP: self.api_http_route,
-            RouteKinds.GRPC: self.api_grpc_route,
+            RouteKind.HTTP: self.api_http_route,
+            RouteKind.GRPC: self.api_grpc_route,
         }
 
     @property
@@ -597,7 +597,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         return self._get_dyn_resource(self.api_gke_mesh, name)
 
     def get_gamma_route(
-        self, name: str, *, kind: RouteKinds
+        self, name: str, *, kind: RouteKind
     ) -> Optional[GammaXRoute]:
         return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
@@ -664,7 +664,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         self,
         name: str,
         *,
-        kind: RouteKinds,
+        kind: RouteKind,
         grace_period_seconds: int = DELETE_GRACE_PERIOD_SEC,
     ) -> None:
         # TODO(sergiitk): [GAMMA] Can we call delete on dynamic_res.ResourceList
@@ -807,7 +807,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def wait_for_get_gamma_route_deleted(
         self,
         name: str,
-        kind: RouteKinds,
+        kind: RouteKind,
         timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
     ) -> None:

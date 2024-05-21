@@ -631,13 +631,13 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         kind_str = getattr(route, "kind", "unknown")
         kind = None
         try:
-            kind = k8s.RouteKinds.from_str(kind_str)
+            kind = k8s.RouteKind.from_str(kind_str)
         except AttributeError:
             pass
 
-        if kind is k8s.RouteKinds.HTTP:
+        if kind is k8s.RouteKind.HTTP:
             route = cast(k8s.GammaHttpRoute, route)
-        elif kind is k8s.RouteKinds.GRPC:
+        elif kind is k8s.RouteKind.GRPC:
             route = cast(k8s.GammaGrpcRoute, route)
         else:
             raise _RunnerError(
@@ -791,7 +791,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self,
         name: str,
         *,
-        kind: k8s.RouteKinds,
+        kind: k8s.RouteKind,
         wait_for_deletion: bool = True,
     ):
         logger.info("Deleting %s %s", kind, name)

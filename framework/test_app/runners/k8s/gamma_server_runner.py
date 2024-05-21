@@ -22,7 +22,7 @@ from typing_extensions import override
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
-from framework.infrastructure.k8s import RouteKinds
+from framework.infrastructure.k8s import RouteKind
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_app.server_app import XdsTestServer
@@ -44,7 +44,7 @@ class GammaServerRunner(KubernetesServerRunner):
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
 
-    route_kind: Final[RouteKinds]
+    route_kind: Final[RouteKind]
     route_name: Final[str]
     frontend_service_name: str
     enable_csm_observability: bool
@@ -70,7 +70,7 @@ class GammaServerRunner(KubernetesServerRunner):
         gcp_service_account: str,
         service_account_name: Optional[str] = None,
         service_name: Optional[str] = None,
-        route_kind: k8s.RouteKinds = k8s.RouteKinds.HTTP,
+        route_kind: k8s.RouteKind = k8s.RouteKind.HTTP,
         neg_name: Optional[str] = None,
         deployment_template: str = "server.deployment.yaml",
         service_account_template: str = "service-account.yaml",

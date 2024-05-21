@@ -34,7 +34,7 @@ class GammaGrpcRouteTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     def initKubernetesServerRunner(
         self, **kwargs
     ) -> gamma_server_runner.GammaServerRunner:
-        kwargs["route_kind"] = k8s.RouteKinds.GRPC
+        kwargs["route_kind"] = k8s.RouteKind.GRPC
         return super().initKubernetesServerRunner(**kwargs)
 
     def test_ping_pong(self):
