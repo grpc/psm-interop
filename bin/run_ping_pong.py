@@ -11,6 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Run ping-pong test using existing xds test client and server.
+
+Typical usage examples:
+
+    # Help.
+    ./run.sh ./bin/run_ping_pong.py --help
+
+    # Run modes.
+    ./run.sh ./bin/run_ping_pong.py --mode=secure
+    ./run.sh ./bin/run_ping_pong.py --mode=app_net
+    ./run.sh ./bin/run_ping_pong.py --mode=gamma
+"""
+
 from absl import app
 from absl import flags
 from absl import logging

@@ -14,8 +14,23 @@
 """
 Run test xds server.
 
-Gamma example:
-./run.sh bin/run_test_server.py --mode=gamma
+Typical usage examples:
+
+    # Help.
+    ./run.sh ./bin/run_test_server.py --help
+
+    # Run modes.
+    ./run.sh ./bin/run_test_server.py --mode=app_net
+    ./run.sh ./bin/run_test_server.py --mode=secure
+
+    # Gamma run mode: uses HTTPRoute by default.
+    ./run.sh ./bin/run_test_server.py --mode=gamma
+
+    # Gamma run mode: use GRPCRoute.
+    ./run.sh ./bin/run_test_server.py --mode=gamma --gamma_route_kind=grpc
+
+    # Cleanup: make sure to set the same mode used to create.
+    ./run.sh ./bin/run_test_server.py --mode=gamma --cmd=cleanup
 """
 import logging
 import signal

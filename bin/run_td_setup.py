@@ -11,24 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Configure Traffic Director for different GRPC Proxyless.
+"""
+Configure Traffic Director for different GRPC Proxyless.
 
 This is intended as a debugging / local development helper and not executed
 as a part of interop test suites.
 
 Typical usage examples:
 
-    # Regular proxyless setup
-    python -m bin.run_td_setup --flagfile=config/local-dev.cfg
+    # Regular proxyless setup.
+    ./run.sh ./bin/run_td_setup.py
 
     # Additional commands: cleanup, backend management, etc.
-    python -m bin.run_td_setup --flagfile=config/local-dev.cfg --cmd=cleanup
+    ./run.sh ./bin/run_td_setup.py --cmd=cleanup
+    ./run.sh ./bin/run_td_setup.py --cmd=backends-add
 
     # PSM security setup options: mtls, tls, etc.
-    python -m bin.run_td_setup --flagfile=config/local-dev.cfg --security=mtls
+    ./run.sh ./bin/run_td_setup.py --mode=secure --security=mtls
+    ./run.sh ./bin/run_td_setup.py --mode=secure --security=mtls --cmd=cleanup
 
-    # More information and usage options
-    python -m bin.run_td_setup --helpfull
+    # AppNet mode.
+    ./run.sh ./bin/run_td_setup.py --mode=app_net
+    ./run.sh ./bin/run_td_setup.py --mode=app_net --cmd=backends-add
+    ./run.sh ./bin/run_td_setup.py --mode=app_net --cmd=cleanup
+
+    # Gamma mode - does nothing, just for compatibility with other bin scripts.
+    ./run.sh ./bin/run_td_setup.py --mode=gamma
+
+    # More information and usage options.
+    ./run.sh ./bin/run_td_setup.py --help
+    ./run.sh ./bin/run_td_setup.py --helpfull
 """
 import logging
 

@@ -14,10 +14,19 @@
 """
 Run test xds client.
 
-Gamma example:
-./run.sh bin/run_test_client.py --server_xds_host=psm-grpc-server \
-    --server_xds_port=80 \
-    --config_mesh=gketd-psm-grpc-server
+
+Typical usage examples:
+
+    # Help.
+    ./run.sh ./bin/run_test_client.py --help
+
+    # Run modes.
+    ./run.sh ./bin/run_test_client.py --mode=app_net
+    ./run.sh ./bin/run_test_client.py --mode=gamma
+    ./run.sh ./bin/run_test_client.py --mode=secure
+
+    # Cleanup: make sure to set the same mode used to create.
+    ./run.sh ./bin/run_test_client.py --mode=gamma --cmd=cleanup
 """
 
 
