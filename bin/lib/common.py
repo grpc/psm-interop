@@ -56,6 +56,7 @@ def td_attrs():
         network=xds_flags.NETWORK.value,
         resource_prefix=xds_flags.RESOURCE_PREFIX.value,
         resource_suffix=xds_flags.RESOURCE_SUFFIX.value,
+        compute_api_version=xds_flags.COMPUTE_API_VERSION.value,
     )
 
 
