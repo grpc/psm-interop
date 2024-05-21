@@ -22,7 +22,7 @@ import datetime as dt
 import functools
 import logging
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import absl.logging
 import mako.lookup
@@ -616,7 +616,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         test_port: int,
         frontend_service_name: str,
         **template_vars,
-    ) -> k8s.GammaHttpRoute:
+    ) -> k8s.GammaXRoute:
         route = self._create_from_template(
             template,
             custom_object=True,
@@ -627,21 +627,30 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             frontend_service_name=frontend_service_name,
             **template_vars,
         )
-        if not (
-            isinstance(route, k8s.GammaHttpRoute) and route.kind == "HTTPRoute"
-        ):
+
+        kind_str = getattr(route, "kind", "unknown")
+        kind = None
+        try:
+            kind = k8s.RouteKind.from_str(kind_str)
+        except AttributeError:
+            pass
+
+        if kind is k8s.RouteKind.HTTP:
+            route = cast(k8s.GammaHttpRoute, route)
+        elif kind is k8s.RouteKind.GRPC:
+            route = cast(k8s.GammaGrpcRoute, route)
+        else:
             raise _RunnerError(
-                f"Expected HTTPRoute to be created from" f" manifest {template}"
+                f"Expected {k8s.KIND_GAMMA_ROUTES} to be created from manifest"
+                f" {template}, got: {kind_str}"
             )
-        if route.metadata.name != route_name:
-            raise _RunnerError(
-                "HTTPRoute created with unexpected name:"
-                f" {route.metadata.name}"
-            )
+
+        name: str = route.metadata.name
+        if name != route_name:
+            raise _RunnerError(f"{kind} created with unexpected name: {name}")
+
         logger.debug(
-            "HTTPRoute %s created at %s",
-            route.metadata.name,
-            route.metadata.creation_timestamp,
+            "%s %s created at %s", kind, name, route.metadata.creation_timestamp
         )
         return route
 
@@ -778,22 +787,26 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
         return service
 
-    def _delete_gamma_route(self, name, wait_for_deletion=True):
-        logger.info("Deleting HTTPRoute %s", name)
+    def _delete_gamma_route(
+        self,
+        name: str,
+        *,
+        kind: k8s.RouteKind,
+        wait_for_deletion: bool = True,
+    ):
+        logger.info("Deleting %s %s", kind, name)
         try:
-            self.k8s_namespace.delete_gamma_route(name)
+            self.k8s_namespace.delete_gamma_route(name, kind=kind)
         except k8s.NotFound:
-            logger.debug(
-                "HTTPRoute %s not deleted since it doesn't exist", name
-            )
+            logger.debug("%s %s not deleted since it doesn't exist", kind, name)
             return
         except retryers.RetryError as e:
-            logger.warning("HTTPRoute %s deletion failed: %s", name, e)
+            logger.warning("%s %s deletion failed: %s", kind, name, e)
             return
 
         if wait_for_deletion:
-            self.k8s_namespace.wait_for_get_gamma_route_deleted(name)
-        logger.info("HTTPRoute %s deleted", name)
+            self.k8s_namespace.wait_for_get_gamma_route_deleted(name, kind=kind)
+        logger.info("%s %s deleted", kind, name)
 
     def _delete_session_affinity_policy(self, name, wait_for_deletion=True):
         logger.info("Deleting GCPSessionAffinityPolicy %s", name)

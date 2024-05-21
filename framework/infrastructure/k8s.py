@@ -15,12 +15,13 @@
 #   added to get around circular dependencies caused by k8s.py clashing with
 #   k8s/__init__.py
 import datetime
+import enum
 import functools
 import json
 import logging
 import pathlib
 import threading
-from typing import Any, Callable, Final, List, Optional, Tuple
+from typing import Any, Callable, Final, List, Optional, Tuple, Union
 import warnings
 
 from kubernetes import client
@@ -29,6 +30,7 @@ from kubernetes import utils
 import kubernetes.config
 from kubernetes.dynamic import exceptions as dynamic_exc
 from kubernetes.dynamic import resource as dynamic_res
+from typing_extensions import Self, TypeAlias, override
 import urllib3.exceptions
 import yaml
 
@@ -54,13 +56,13 @@ V1ObjectMeta = client.V1ObjectMeta
 
 DynResourceInstance = dynamic_res.ResourceInstance
 GammaMesh = DynResourceInstance
-GammaGrpcRoute = DynResourceInstance
-GammaHttpRoute = DynResourceInstance
+GammaGrpcRoute: TypeAlias = DynResourceInstance
+GammaHttpRoute: TypeAlias = DynResourceInstance
+GammaXRoute: TypeAlias = Union[GammaHttpRoute, GammaGrpcRoute]
 GcpSessionAffinityPolicy = DynResourceInstance
 GcpSessionAffinityFilter = DynResourceInstance
 GcpBackendPolicy = DynResourceInstance
 PodMonitoring = DynResourceInstance
-
 _timedelta = datetime.timedelta
 _datetime = datetime.datetime
 _helper_datetime = framework.helpers.datetime
@@ -73,6 +75,25 @@ _RETRY_ON_EXCEPTIONS = (
     _ApiException,
     _FailToCreateError,
 )
+
+
+class RouteKind(enum.Enum):
+    HTTP = "HTTPRoute"
+    GRPC = "GRPCRoute"
+
+    @classmethod
+    def from_str(cls, name: str) -> Self:
+        for kind in cls:
+            if kind.value == name:
+                return kind
+        raise AttributeError(name)
+
+    @override
+    def __str__(self) -> str:
+        return self.value
+
+
+KIND_GAMMA_ROUTES: Final[tuple[str, ...]] = tuple(rk.value for rk in RouteKind)
 
 
 def _server_restart_retryer() -> retryers.Retrying:
@@ -323,6 +344,13 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
 
     @property
+    def gamma_route_apis(self):
+        return {
+            RouteKind.HTTP: self.api_http_route,
+            RouteKind.GRPC: self.api_grpc_route,
+        }
+
+    @property
     @functools.cache
     def api_session_affinity_filter(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
@@ -568,8 +596,10 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def get_gamma_mesh(self, name) -> Optional[GammaMesh]:
         return self._get_dyn_resource(self.api_gke_mesh, name)
 
-    def get_gamma_route(self, name) -> Optional[GammaHttpRoute]:
-        return self._get_dyn_resource(self.api_http_route, name)
+    def get_gamma_route(
+        self, name: str, *, kind: RouteKind
+    ) -> Optional[GammaXRoute]:
+        return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
     def get_session_affinity_policy(
         self, name
@@ -633,12 +663,14 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def delete_gamma_route(
         self,
         name: str,
-        grace_period_seconds=DELETE_GRACE_PERIOD_SEC,
+        *,
+        kind: RouteKind,
+        grace_period_seconds: int = DELETE_GRACE_PERIOD_SEC,
     ) -> None:
         # TODO(sergiitk): [GAMMA] Can we call delete on dynamic_res.ResourceList
         #  to avoid no-member issues due to dynamic_res.Resource proxying calls?
         self._execute(
-            self.api_http_route.delete,  # pylint: disable=no-member
+            self.gamma_route_apis[kind].delete,  # pylint: enable=no-member
             name=name,
             namespace=self.name,
             propagation_policy="Foreground",
@@ -775,6 +807,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def wait_for_get_gamma_route_deleted(
         self,
         name: str,
+        kind: RouteKind,
         timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
@@ -783,7 +816,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             timeout=_timedelta(seconds=timeout_sec),
             check_result=lambda route: route is None,
         )
-        retryer(self.get_gamma_route, name)
+        retryer(self.get_gamma_route, name, kind=kind)
 
     def wait_for_get_session_affinity_policy_deleted(
         self,

@@ -22,6 +22,7 @@ from typing_extensions import override
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.infrastructure.k8s import RouteKind
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_app.server_app import XdsTestServer
@@ -43,7 +44,8 @@ class GammaServerRunner(KubernetesServerRunner):
     pod_monitoring: Optional[k8s.PodMonitoring] = None
     pod_monitoring_name: Optional[str] = None
 
-    route_name: str
+    route_kind: Final[RouteKind]
+    route_name: Final[str]
     frontend_service_name: str
     enable_csm_observability: bool
     csm_workload_name: str
@@ -68,7 +70,7 @@ class GammaServerRunner(KubernetesServerRunner):
         gcp_service_account: str,
         service_account_name: Optional[str] = None,
         service_name: Optional[str] = None,
-        route_name: Optional[str] = None,
+        route_kind: k8s.RouteKind = k8s.RouteKind.HTTP,
         neg_name: Optional[str] = None,
         deployment_template: str = "server.deployment.yaml",
         service_account_template: str = "service-account.yaml",
@@ -109,10 +111,11 @@ class GammaServerRunner(KubernetesServerRunner):
         )
 
         self.frontend_service_name = frontend_service_name
-        self.route_name = route_name or f"route-{deployment_name}"
         self.enable_csm_observability = enable_csm_observability
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
+        self.route_kind = route_kind
+        self.route_name = f"route-{route_kind.value.lower()}-{deployment_name}"
 
     @override
     def run(  # pylint: disable=arguments-differ
@@ -339,7 +342,7 @@ class GammaServerRunner(KubernetesServerRunner):
                 self.backend_policy = None
 
             if self.route or force:
-                self._delete_gamma_route(self.route_name)
+                self._delete_gamma_route(self.route_name, kind=self.route_kind)
                 self.route = None
 
             if self.frontend_service or force:
