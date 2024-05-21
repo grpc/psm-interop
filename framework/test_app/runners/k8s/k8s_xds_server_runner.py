@@ -305,6 +305,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         test_port: int = DEFAULT_TEST_PORT,
         maintenance_port: Optional[int] = None,
         secure_mode: bool = False,
+        monitoring_port: Optional[int] = None,
     ) -> XdsTestServer:
         if maintenance_port is None:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -322,6 +323,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             maintenance_port=rpc_port,
             secure_mode=secure_mode,
             rpc_host=rpc_host,
+            monitoring_port=monitoring_port,
         )
         self.pods_to_servers[pod.metadata.name] = server
         return server

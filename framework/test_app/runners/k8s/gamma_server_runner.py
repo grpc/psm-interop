@@ -45,6 +45,7 @@ class GammaServerRunner(KubernetesServerRunner):
 
     route_name: str
     frontend_service_name: str
+    enable_csm_observability: bool
     csm_workload_name: str
     csm_canonical_service_name: str
 
@@ -77,6 +78,7 @@ class GammaServerRunner(KubernetesServerRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        enable_csm_observability: bool = False,
         csm_workload_name: str = "",
         csm_canonical_service_name: str = "",
         deployment_args: Optional[ServerDeploymentArgs] = None,
@@ -108,6 +110,7 @@ class GammaServerRunner(KubernetesServerRunner):
 
         self.frontend_service_name = frontend_service_name
         self.route_name = route_name or f"route-{deployment_name}"
+        self.enable_csm_observability = enable_csm_observability
         self.csm_workload_name = csm_workload_name
         self.csm_canonical_service_name = csm_canonical_service_name
 
@@ -122,7 +125,6 @@ class GammaServerRunner(KubernetesServerRunner):
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
         route_template: str = "gamma/route_http.yaml",
-        enable_csm_observability: bool = False,
         generate_mesh_id: bool = False,
     ) -> list[XdsTestServer]:
         if not maintenance_port:
@@ -209,7 +211,7 @@ class GammaServerRunner(KubernetesServerRunner):
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
             bootstrap_version=bootstrap_version,
-            enable_csm_observability=enable_csm_observability,
+            enable_csm_observability=self.enable_csm_observability,
             generate_mesh_id=generate_mesh_id,
             csm_workload_name=self.csm_workload_name,
             csm_canonical_service_name=self.csm_canonical_service_name,
@@ -218,13 +220,14 @@ class GammaServerRunner(KubernetesServerRunner):
 
         # Create a PodMonitoring resource if CSM Observability is enabled
         # This is GMP (Google Managed Prometheus)
-        if enable_csm_observability:
+        if self.enable_csm_observability:
             self.pod_monitoring_name = f"{self.deployment_id}-gmp"
             self.pod_monitoring = self._create_pod_monitoring(
                 "csm/pod-monitoring.yaml",
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
+                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
             )
 
         servers = self._make_servers_for_deployment(
@@ -288,6 +291,32 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_name=self.k8s_namespace.name,
             service_name=self.service_name,
             draining_timeout_sec=draining_timeout_sec,
+        )
+
+    def _xds_test_server_for_pod(
+        self,
+        pod: k8s.V1Pod,
+        *,
+        test_port: int = KubernetesServerRunner.DEFAULT_TEST_PORT,
+        maintenance_port: Optional[int] = None,
+        secure_mode: bool = False,
+        monitoring_port: Optional[int] = None,
+    ) -> XdsTestServer:
+        if self.enable_csm_observability:
+            if self.debug_use_port_forwarding:
+                pf = self._start_port_forwarding_pod(
+                    pod, self.DEFAULT_MONITORING_PORT
+                )
+                monitoring_port = pf.local_port
+            else:
+                monitoring_port = self.DEFAULT_MONITORING_PORT
+
+        return super()._xds_test_server_for_pod(
+            pod=pod,
+            test_port=test_port,
+            maintenance_port=maintenance_port,
+            secure_mode=secure_mode,
+            monitoring_port=monitoring_port,
         )
 
     @override

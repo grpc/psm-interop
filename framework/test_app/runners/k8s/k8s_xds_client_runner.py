@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class ClientDeploymentArgs:
+    enable_csm_observability: bool = False
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
 
@@ -75,8 +76,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        csm_workload_name: str = "",
-        csm_canonical_service_name: str = "",
         deployment_args: Optional[ClientDeploymentArgs] = None,
     ):
         super().__init__(
@@ -98,12 +97,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
 
         # Client deployment arguments.
         if not deployment_args:
-            deployment_args = ClientDeploymentArgs(
-                # TODO(stanleycheung): remove once https://github.com/grpc/psm-interop/pull/33
-                #    is merged and removed self.csm_* removed as class args.
-                csm_workload_name=csm_workload_name,
-                csm_canonical_service_name=csm_canonical_service_name,
-            )
+            deployment_args = ClientDeploymentArgs()
         self.deployment_args = deployment_args
 
         # Used by the TD bootstrap generator.
@@ -132,7 +126,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         generate_mesh_id=False,
         print_response=False,
         log_to_stdout: bool = False,
-        enable_csm_observability: bool = False,
         request_payload_size: int = 0,
         response_payload_size: int = 0,
     ) -> client_app.XdsTestClient:
@@ -194,19 +187,19 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             config_mesh=config_mesh,
             generate_mesh_id=generate_mesh_id,
             print_response=print_response,
-            enable_csm_observability=enable_csm_observability,
             **self.deployment_args.as_dict(),
         )
 
         # Create a PodMonitoring resource if CSM Observability is enabled
         # This is GMP (Google Managed Prometheus)
-        if enable_csm_observability:
+        if self.deployment_args.enable_csm_observability:
             self.pod_monitoring_name = f"{self.deployment_id}-gmp"
             self.pod_monitoring = self._create_pod_monitoring(
                 "csm/pod-monitoring.yaml",
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
+                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
             )
 
         # We don't support for multiple client replicas at the moment.
@@ -237,11 +230,19 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     def _xds_test_client_for_pod(
         self, pod: k8s.V1Pod, *, server_target: str
     ) -> client_app.XdsTestClient:
+        monitoring_port = None
         if self.debug_use_port_forwarding:
             pf = self._start_port_forwarding_pod(pod, self.stats_port)
             rpc_port, rpc_host = pf.local_port, pf.local_address
+            if self.deployment_args.enable_csm_observability:
+                pf = self._start_port_forwarding_pod(
+                    pod, self.DEFAULT_MONITORING_PORT
+                )
+                monitoring_port = pf.local_port
         else:
             rpc_port, rpc_host = self.stats_port, None
+            if self.deployment_args.enable_csm_observability:
+                monitoring_port = self.DEFAULT_MONITORING_PORT
 
         return client_app.XdsTestClient(
             ip=pod.status.pod_ip,
@@ -249,6 +250,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             server_target=server_target,
             hostname=pod.metadata.name,
             rpc_host=rpc_host,
+            monitoring_port=monitoring_port,
         )
 
     # pylint: disable=arguments-differ
