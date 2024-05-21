@@ -46,8 +46,8 @@ _MODE = flags.DEFINE_enum(
 )
 _ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
     "gamma_route_kind",
-    default=k8s.RouteKinds.HTTP,
-    enum_class=k8s.RouteKinds,
+    default=k8s.RouteKind.HTTP,
+    enum_class=k8s.RouteKind,
     help="When --mode=gamma, select the kind of a gamma route to create",
 )
 _REUSE_NAMESPACE = flags.DEFINE_bool(
@@ -89,9 +89,9 @@ def _get_run_kwargs(mode: str):
         run_kwargs["secure_mode"] = True
     elif mode == "gamma":
         run_kwargs["generate_mesh_id"] = True
-        if _ROUTE_KIND_GAMMA.value is k8s.RouteKinds.HTTP:
+        if _ROUTE_KIND_GAMMA.value is k8s.RouteKind.HTTP:
             run_kwargs["route_template"] = "gamma/route_http.yaml"
-        elif _ROUTE_KIND_GAMMA.value is k8s.RouteKinds.GRPC:
+        elif _ROUTE_KIND_GAMMA.value is k8s.RouteKind.GRPC:
             run_kwargs["route_template"] = "gamma/route_grpc.yaml"
 
     return run_kwargs
