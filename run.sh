@@ -18,7 +18,7 @@ set -eo pipefail
 XDS_K8S_DRIVER_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 readonly XDS_K8S_DRIVER_DIR
 readonly XDS_K8S_CONFIG="${XDS_K8S_CONFIG:-$XDS_K8S_DRIVER_DIR/config/local-dev.cfg}"
-readonly PSM_LOG_DIR="${PSM_LOG_DIR:-${XDS_K8S_DRIVER_DIR}/out}"
+readonly PSM_LOG_DIR="${PSM_LOG_DIR:-${XDS_K8S_DRIVER_DIR}/out/run}"
 
 display_usage() {
   cat <<EOF >/dev/stderr
@@ -43,7 +43,7 @@ This tool performs the following:
 EXAMPLES:
 $0 bin/run_td_setup.py --help      # list script-specific options
 $0 bin/run_td_setup.py --helpfull  # list all available options
-XDS_K8S_CONFIG=./path-to-flagfile.cfg ./run.sh bin/run_td_setup.py --resource_suffix=override-suffix
+XDS_K8S_CONFIG=./path-to-flagfile.cfg ./run.sh bin/run_td_setup.py --resource_suffix=override-prefix
 $0 tests/baseline_test.py
 $0 tests/security_test.py --verbosity=1 --logger_levels=__main__:DEBUG,framework:DEBUG
 $0 tests/security_test.py SecurityTest.test_mtls --nocheck_local_certs
@@ -70,20 +70,17 @@ main() {
   # Split path to python file from the rest of the args.
   local py_file="$1"
   shift
-  local psm_log_file
+  local psm_log_file prefix script_basename
 
   if [[ "${py_file}" =~ tests/unit($|/) ]]; then
     # Do not set the flagfile when running unit tests.
     exec python "${py_file}" "$@"
   fi
 
-  if [[ "${py_file}" =~ tests($|/) ]]; then
-    psm_log_file="${PSM_LOG_DIR}/psm-last-run.log"
-  elif [[ "${py_file}" =~ bin/.+\.py$ ]]; then
-    # Automatically save last of bin/*.py scripts.
-    local bin_script_basename
-    bin_script_basename="$(basename "${py_file}" ".py")"
-    psm_log_file="${PSM_LOG_DIR}/psm-last-${bin_script_basename}.log"
+  prefix="$(date '+%Y%m%d-%H%M%S')"
+  if [[ -f "${py_file}" && "${py_file}" =~ (bin|tests)/.+\.py$ ]]; then
+    script_basename="$(basename "${py_file}" ".py")"
+    psm_log_file="${prefix}-${script_basename}.log"
   else
     echo "Can't run '${py_file}'. Did you mean to run it directly?"
     exit 1
@@ -92,8 +89,8 @@ main() {
   # Automatically save last run logs to out/
   if [[ -n "${psm_log_file}" ]]; then
     mkdir -p "${PSM_LOG_DIR}"
-    exec &> >(tee "${psm_log_file}")
-    echo "Saving framework log to ${psm_log_file}"
+    exec &> >(tee "${PSM_LOG_DIR}/${psm_log_file}")
+    echo "Saving framework log to ${PSM_LOG_DIR}/${psm_log_file}"
   fi
 
   PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
