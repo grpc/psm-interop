@@ -32,13 +32,13 @@ spec:
         - name: ${deployment_name}
           image: ${image_name}
           imagePullPolicy: Always
-#          startupProbe:
-#            tcpSocket:
-#              port: ${test_port}
-#            periodSeconds: 3
-#            ## Extend the number of probes well beyond the duration of the test
-#            ## driver waiting for the container to start.
-#            failureThreshold: 1000
+          startupProbe:
+            tcpSocket:
+              port: ${test_port}
+            periodSeconds: 3
+            ## Extend the number of probes well beyond the duration of the test
+            ## driver waiting for the container to start.
+            failureThreshold: 1000
           ${prestop_hook.main_lifecycle() if pre_stop_hook else ''}
           args:
             - "--port=${test_port}"
@@ -57,7 +57,7 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
               value: "true"
-            - name: grpc.experimental.xdsDualstackEndpoints
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
               value: "true"
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
