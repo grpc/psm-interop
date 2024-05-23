@@ -16,9 +16,11 @@ from typing import List, Optional
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import TypeAlias, override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
+from framework.helpers import skips
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
@@ -27,6 +29,8 @@ from framework.test_cases import session_affinity_util
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
 
+# Type aliases.
+_Lang: TypeAlias = skips.Lang
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -34,6 +38,13 @@ _REPLICA_COUNT = 3
 
 
 class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    @staticmethod
+    @override
+    def is_supported(config: skips.TestConfig) -> bool:
+        if config.client_lang in _Lang.CPP | _Lang.PYTHON:
+            return config.version_gte("v1.62.x")
+        return False
+
     def getClientRpcStats(
         self,
         test_client: _XdsTestClient,
