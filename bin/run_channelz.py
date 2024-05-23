@@ -72,6 +72,7 @@ _SECURITY = flags.DEFINE_enum(
     ],
     help="Show info for a security setup",
 )
+flags.adopt_module_key_flags(common)
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 # Running outside of a test suite, so require explicit resource_suffix.
@@ -254,9 +255,14 @@ def main(argv):
         mode=_MODE.value,
     )
     # Find server pod.
-    server_pod: k8s.V1Pod = common.get_server_pod(
+    server_pods = common.get_server_pods(
         server_runner, xds_flags.SERVER_NAME.value
     )
+    if len(server_pods) > 1:
+        raise app.Error(
+            "Test server with multiple replicas isn't supported by this script."
+        )
+    server_pod = server_pods[0]
 
     # Client
     client_namespace = common.make_client_namespace()

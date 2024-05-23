@@ -17,6 +17,7 @@ import functools
 import signal
 import sys
 
+from absl import flags
 from absl import logging
 
 from framework import xds_flags
@@ -31,6 +32,14 @@ from framework.test_app.runners.k8s import k8s_xds_server_runner
 
 logger = logging.get_absl_logger()
 # TODO(sergiitk): move common flags/validations here: mode, security, etc
+
+SERVER_REPLICA_COUNT = flags.DEFINE_integer(
+    "server_replica_count",
+    default=1,
+    lower_bound=1,
+    upper_bound=999,
+    help="The number server replicas to run.",
+)
 
 # Type aliases
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
@@ -187,17 +196,21 @@ def get_client_pod(
     return client_runner._wait_pod_started(client_pod_name)
 
 
-def get_server_pod(
+def get_server_pods(
     server_runner: KubernetesServerRunner, deployment_name: str
-) -> k8s.V1Pod:
+) -> list[k8s.V1Pod]:
     server_deployment: k8s.V1Deployment
     server_deployment = server_runner.k8s_namespace.get_deployment(
         deployment_name
     )
-    server_pod_name: str = server_runner._wait_deployment_pod_count(
-        server_deployment
-    )[0]
-    return server_runner._wait_pod_started(server_pod_name)
+    pod_names = server_runner._wait_deployment_pod_count(
+        server_deployment,
+        count=SERVER_REPLICA_COUNT.value,
+    )
+    pods = []
+    for pod_name in pod_names:
+        pods.append(server_runner._wait_pod_started(pod_name))
+    return pods
 
 
 def get_test_server_for_pod(
