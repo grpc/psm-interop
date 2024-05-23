@@ -29,21 +29,37 @@ Typical usage examples:
     ./run.sh ./bin/run_channelz.py --security=tls
     ./run.sh ./bin/run_channelz.py --security=mtls_error
 """
+import functools
 import hashlib
+import json
 
 from absl import app
 from absl import flags
 from absl import logging
+from google.protobuf import json_format
+import yaml
 
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
+import framework.helpers.highlighter
 from framework.infrastructure import k8s
 from framework.rpc import grpc_channelz
 from framework.test_app import client_app
 from framework.test_app import server_app
 
 # Flags
+_MODE = flags.DEFINE_enum(
+    "mode",
+    default="default",
+    enum_values=[
+        "default",
+        "secure",
+        "app_net",
+        "gamma",
+    ],
+    help="Select test mode",
+)
 _SECURITY = flags.DEFINE_enum(
     "security",
     default=None,
@@ -60,14 +76,20 @@ flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 # Running outside of a test suite, so require explicit resource_suffix.
 flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-flags.register_validator(
-    xds_flags.SERVER_XDS_PORT.name,
-    lambda val: val > 0,
+
+
+@flags.multi_flags_validator(
+    (xds_flags.SERVER_XDS_PORT.name, _MODE.name),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
     ),
 )
+def _check_server_xds_port_flag(flags_dict):
+    if flags_dict[_MODE.name] == "gamma":
+        return True
+    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
+
 
 logger = logging.get_absl_logger()
 
@@ -179,6 +201,24 @@ def debug_security_setup_positive(test_client, test_server):
         print("(mTLS) Not detected")
 
 
+@functools.cache
+def highlighter_yaml():
+    return framework.helpers.highlighter.HighlighterYaml()
+
+
+def hl(pb_message) -> str:
+    try:
+        return highlighter_yaml().highlight(
+            yaml.dump(
+                json.loads(json_format.MessageToJson(pb_message, indent=2)),
+                sort_keys=False,
+                width=350,
+            )
+        )
+    except Exception:  # noqa pylint: disable=broad-except
+        return str(pb_message)
+
+
 def debug_basic_setup(test_client, test_server):
     """Show channel and server socket pair"""
     test_client.wait_for_server_channel_ready()
@@ -187,8 +227,8 @@ def debug_basic_setup(test_client, test_server):
         client_sock
     )
 
-    logger.debug("Client socket: %s\n", client_sock)
-    logger.debug("Matching server socket: %s\n", server_sock)
+    logger.info("Client socket:\n%s\n\n", hl(client_sock))
+    logger.info("Matching server socket:\n%s\n\n", hl(server_sock))
 
 
 def main(argv):
@@ -211,7 +251,7 @@ def main(argv):
         server_namespace,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode="secure",
+        mode=_MODE.value,
     )
     # Find server pod.
     server_pod: k8s.V1Pod = common.get_server_pod(
@@ -224,7 +264,7 @@ def main(argv):
         client_namespace,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode="secure",
+        mode=_MODE.value,
     )
     # Find client pod.
     client_pod: k8s.V1Pod = common.get_client_pod(
@@ -246,8 +286,20 @@ def main(argv):
     )
 
     # Create client app for the client pod.
+    if _MODE.value == "gamma":
+        server_target = (
+            f"xds:///{server_runner.frontend_service_name}"
+            f".{server_runner.k8s_namespace.name}.svc.cluster.local"
+            f":{server_runner.DEFAULT_TEST_PORT}"
+        )
+    else:
+        server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
+        if xds_flags.SERVER_XDS_PORT.value != 80:
+            server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+
+    # Create client app for the client pod.
     test_client: _XdsTestClient = common.get_test_client_for_pod(
-        client_runner, client_pod, server_target=test_server.xds_uri
+        client_runner, client_pod, server_target=server_target
     )
 
     with test_client, test_server:
