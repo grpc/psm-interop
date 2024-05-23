@@ -30,6 +30,7 @@ from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 
 logger = logging.get_absl_logger()
+# TODO(sergiitk): move common flags/validations here: mode, security, etc
 
 # Type aliases
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
