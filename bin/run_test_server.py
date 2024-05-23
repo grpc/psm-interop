@@ -66,7 +66,7 @@ _ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
     help="When --mode=gamma, select the kind of a gamma route to create",
 )
 _REPLICA_COUNT = flags.DEFINE_integer(
-    "replica_count",
+    "server_replica_count",
     default=1,
     lower_bound=1,
     upper_bound=999,
