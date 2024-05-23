@@ -10,6 +10,10 @@ metadata:
     cloud.google.com/neg: '{"exposed_ports": {"${test_port}":{"name":"${neg_name}"}}}'
 spec:
   type: ClusterIP
+  ipFamilyPolicy: PreferDualStack
+  ipFamilies:
+    - IPv6
+    - IPv4
   selector:
     app: ${deployment_name}
   ports:

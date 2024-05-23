@@ -151,6 +151,7 @@ class ComputeV1(
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
             "healthChecks": [health_check.url],
             "protocol": protocol.name,
+            "ipAddressSelectionPolicy": "PREFER_IPV6",
         }
         # If affinity header is specified, config the backend service to support
         # affinity, and set affinity header to the one given.
