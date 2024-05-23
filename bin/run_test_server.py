@@ -29,6 +29,9 @@ Typical usage examples:
     # Gamma run mode: use GRPCRoute.
     ./run.sh ./bin/run_test_server.py --mode=gamma --gamma_route_kind=grpc
 
+    # Running multipler server replicas.
+    ./run.sh ./bin/run_test_server.py --server_replica_count=3
+
     # Cleanup: make sure to set the same mode used to create.
     ./run.sh ./bin/run_test_server.py --mode=gamma --cmd=cleanup
 """
@@ -65,13 +68,6 @@ _ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
     enum_class=k8s.RouteKind,
     help="When --mode=gamma, select the kind of a gamma route to create",
 )
-_REPLICA_COUNT = flags.DEFINE_integer(
-    "server_replica_count",
-    default=1,
-    lower_bound=1,
-    upper_bound=999,
-    help="The number server replicas to run.",
-)
 _REUSE_NAMESPACE = flags.DEFINE_bool(
     "reuse_namespace", default=True, help="Use existing namespace if exists"
 )
@@ -88,6 +84,7 @@ _CLEANUP_NAMESPACE = flags.DEFINE_bool(
 )
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
+flags.adopt_module_key_flags(common)
 # Running outside of a test suite, so require explicit resource_suffix.
 flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX)
 
@@ -104,7 +101,7 @@ def _make_sigint_handler(server_runner: common.KubernetesServerRunner):
 def _get_run_kwargs(mode: str):
     run_kwargs = dict(
         test_port=xds_flags.SERVER_PORT.value,
-        replica_count=_REPLICA_COUNT.value,
+        replica_count=common.SERVER_REPLICA_COUNT.value,
         maintenance_port=xds_flags.SERVER_MAINTENANCE_PORT.value,
         log_to_stdout=_FOLLOW.value,
     )
