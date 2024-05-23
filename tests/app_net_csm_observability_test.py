@@ -26,10 +26,8 @@ import requests
 from requests.exceptions import RequestException
 import yaml
 
-from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
 from framework.helpers import skips
-from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
@@ -98,7 +96,6 @@ CLIENT_METRICS = HISTOGRAM_CLIENT_METRICS + COUNTER_CLIENT_METRICS
 SERVER_METRICS = HISTOGRAM_SERVER_METRICS + COUNTER_SERVER_METRICS
 ALL_METRICS = HISTOGRAM_METRICS + COUNTER_METRICS
 
-GammaServerRunner = gamma_server_runner.GammaServerRunner
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
@@ -171,17 +168,14 @@ class PrometheusLogger:
         self.log_stream.close()
 
 
-class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
     metric_client: monitoring_v3.MetricServiceClient
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.CPP:
+        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
+            # CSM Observability Test is only supported for CPP for now.
             return config.version_gte("v1.62.x")
-        elif config.client_lang == _Lang.GO:
-            return config.version_gte("v1.65.x")
-        elif config.client_lang == _Lang.JAVA:
-            return config.version_gte("v1.65.x")
         return False
 
     @classmethod
@@ -202,7 +196,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
 
     # These parameters are more pertaining to the test itself, not to
     # each run().
-    def initKubernetesServerRunner(self, **kwargs) -> GammaServerRunner:
+    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
         return super().initKubernetesServerRunner(
             deployment_args=ServerDeploymentArgs(
                 enable_csm_observability=True,
@@ -212,18 +206,39 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         )
 
     def test_csm_observability(self):
-        # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
-        #   resource creation out of self.startTestServers()
+        with self.subTest("0_create_health_check"):
+            self.td.create_health_check()
+
+        with self.subTest("1_create_backend_service"):
+            self.td.create_backend_service()
+
+        with self.subTest("2_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("3_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
+
         with self.subTest("1_run_test_server"):
             start_secs = int(time.time())
-            test_server: _XdsTestServer = self.startTestServers()[0]
+            test_server: _XdsTestServer = self.startTestServers(
+                replica_count=1
+            )[0]
+
+        with self.subTest("5_setup_server_backends"):
+            self.setupServerBackends()
 
         with self.subTest("2_start_test_client"):
             test_client: _XdsTestClient = self.startTestClient(
                 test_server,
+                config_mesh=self.td.mesh.name,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
             )
+
+        with self.subTest("7_assert_xds_config_exists"):
+            self.assertXdsConfigExists(test_client)
 
         with self.subTest("3_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
@@ -295,8 +310,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "csm_remote_workload_namespace_name": self.server_namespace,
                 "csm_remote_workload_project_id": self.project,
                 "csm_remote_workload_type": "gcp_kubernetes_engine",
-                "csm_service_name": self.server_runner.service_name,
-                "csm_service_namespace_name": self.server_namespace,
+                "csm_service_name": self.td.backend_service.name,
+                "csm_service_namespace_name": "unknown",
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "grpc_method": GRPC_METHOD_NAME,
                 "grpc_status": "OK",
