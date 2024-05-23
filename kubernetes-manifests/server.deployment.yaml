@@ -10,8 +10,7 @@ metadata:
     deployment_id: ${deployment_id}
     owner: xds-k8s-interop-test
 spec:
-#  replicas: ${replica_count}
-  replicas: 3
+  replicas: ${replica_count}
   selector:
     matchLabels:
       app: ${deployment_name}
