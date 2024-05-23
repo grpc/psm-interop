@@ -34,6 +34,7 @@ ENVIRONMENT:
                    Will be appended as --flagfile="config_absolute_path" argument
    XDS_K8S_DRIVER_VENV_DIR: the path to python virtual environment directory
                             Default: $XDS_K8S_DRIVER_DIR/venv
+   PSM_EXTRA_FLAGS: Extra flags to append after the flagfile, but before the arguments
 DESCRIPTION:
 This tool performs the following:
 1) Ensures python virtual env installed and activated
@@ -86,6 +87,17 @@ main() {
     exit 1
   fi
 
+  declare -a extra_flags
+
+  # Append extra flags
+  if [[ -n "${PSM_EXTRA_FLAGS}" ]]; then
+    declare -a extra_flags
+    IFS=' ' read -r -a extra_flags <<< "${PSM_EXTRA_FLAGS}"
+    echo "Appending flags from \$PSM_EXTRA_FLAGS:"
+    printf -- "%s\n" "${extra_flags[@]}"
+    echo
+  fi
+
   # Automatically save last run logs to out/
   if [[ -n "${psm_log_file}" ]]; then
     mkdir -p "${PSM_LOG_DIR}"
@@ -96,7 +108,7 @@ main() {
   PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
   set -x
   # Append args after --flagfile, so they take higher priority.
-  exec python "${py_file}" --flagfile="${XDS_K8S_CONFIG}" "$@"
+  exec python "${py_file}" --flagfile="${XDS_K8S_CONFIG}" "${extra_flags[@]}" "$@"
 }
 
 main "$@"
