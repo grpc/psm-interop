@@ -18,6 +18,7 @@ set -eo pipefail
 XDS_K8S_DRIVER_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 readonly XDS_K8S_DRIVER_DIR
 readonly XDS_K8S_CONFIG="${XDS_K8S_CONFIG:-$XDS_K8S_DRIVER_DIR/config/local-dev.cfg}"
+readonly PSM_LOG_DIR="${PSM_LOG_DIR:-${XDS_K8S_DRIVER_DIR}/out/run}"
 
 display_usage() {
   cat <<EOF >/dev/stderr
@@ -33,6 +34,7 @@ ENVIRONMENT:
                    Will be appended as --flagfile="config_absolute_path" argument
    XDS_K8S_DRIVER_VENV_DIR: the path to python virtual environment directory
                             Default: $XDS_K8S_DRIVER_DIR/venv
+   PSM_EXTRA_FLAGS: Extra flags to append after the flagfile, but before the arguments
 DESCRIPTION:
 This tool performs the following:
 1) Ensures python virtual env installed and activated
@@ -42,7 +44,7 @@ This tool performs the following:
 EXAMPLES:
 $0 bin/run_td_setup.py --help      # list script-specific options
 $0 bin/run_td_setup.py --helpfull  # list all available options
-XDS_K8S_CONFIG=./path-to-flagfile.cfg ./run.sh bin/run_td_setup.py --resource_suffix=override-suffix
+XDS_K8S_CONFIG=./path-to-flagfile.cfg ./run.sh bin/run_td_setup.py --resource_suffix=override-prefix
 $0 tests/baseline_test.py
 $0 tests/security_test.py --verbosity=1 --logger_levels=__main__:DEBUG,framework:DEBUG
 $0 tests/security_test.py SecurityTest.test_mtls --nocheck_local_certs
@@ -54,32 +56,59 @@ if [[ "$#" -eq 0 || "$1" = "-h" || "$1" = "--help" ]]; then
   display_usage
 fi
 
-# Relative paths not yet supported by shellcheck.
-# shellcheck source=/dev/null
-source "${XDS_K8S_DRIVER_DIR}/bin/ensure_venv.sh"
 
-cd "${XDS_K8S_DRIVER_DIR}"
-export PYTHONPATH="${XDS_K8S_DRIVER_DIR}"
-# Split path to python file from the rest of the args.
-readonly PY_FILE="$1"
-shift
+ensure_venv() {
+  # Relative paths not yet supported by shellcheck.
+  # shellcheck source=/dev/null
+  source "${XDS_K8S_DRIVER_DIR}/bin/ensure_venv.sh"
+  export PYTHONPATH="${XDS_K8S_DRIVER_DIR}"
+}
 
-# Create log output dir.
-readonly PSM_LOG_DIR="${PSM_LOG_DIR:-${XDS_K8S_DRIVER_DIR}/out}"
-if [[ ! -d "${PSM_LOG_DIR}" ]]; then
-  mkdir -p "${PSM_LOG_DIR}"
-fi
+main() {
+  cd "${XDS_K8S_DRIVER_DIR}"
+  ensure_venv
 
-if [[ "${PY_FILE}" =~ tests/unit($|/) ]]; then
-  # Do not set the flagfile when running unit tests.
-  exec python "${PY_FILE}" "$@"
-else
-  if [[ "${PY_FILE}" =~ tests($|/) ]]; then
-    # Automatically save last run's log to ./out/psm-last-run.log.
-    readonly PSM_LOG_FILE="${PSM_LOG_DIR}/psm-last-run.log"
-    echo "Saving framework log to ${PSM_LOG_FILE}"
-    exec &> >(tee "${PSM_LOG_FILE}")
+  # Split path to python file from the rest of the args.
+  local py_file="$1"
+  shift
+  local psm_log_file prefix script_basename
+
+  if [[ "${py_file}" =~ tests/unit($|/) ]]; then
+    # Do not set the flagfile when running unit tests.
+    exec python "${py_file}" "$@"
   fi
+
+  prefix="$(date '+%Y%m%d-%H%M%S')"
+  if [[ -f "${py_file}" && "${py_file}" =~ (bin|tests)/.+\.py$ ]]; then
+    script_basename="$(basename "${py_file}" ".py")"
+    psm_log_file="${prefix}-${script_basename}.log"
+  else
+    echo "Can't run '${py_file}'. Did you mean to run it directly?"
+    exit 1
+  fi
+
+  declare -a extra_flags
+
+  # Append extra flags
+  if [[ -n "${PSM_EXTRA_FLAGS}" ]]; then
+    declare -a extra_flags
+    IFS=' ' read -r -a extra_flags <<< "${PSM_EXTRA_FLAGS}"
+    echo "Appending flags from \$PSM_EXTRA_FLAGS:"
+    printf -- "%s\n" "${extra_flags[@]}"
+    echo
+  fi
+
+  # Automatically save last run logs to out/
+  if [[ -n "${psm_log_file}" ]]; then
+    mkdir -p "${PSM_LOG_DIR}"
+    exec &> >(tee "${PSM_LOG_DIR}/${psm_log_file}")
+    echo "Saving framework log to ${PSM_LOG_DIR}/${psm_log_file}"
+  fi
+
+  PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
+  set -x
   # Append args after --flagfile, so they take higher priority.
-  exec python "${PY_FILE}" --flagfile="${XDS_K8S_CONFIG}" "$@"
-fi
+  exec python "${py_file}" --flagfile="${XDS_K8S_CONFIG}" "${extra_flags[@]}" "$@"
+}
+
+main "$@"

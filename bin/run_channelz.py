@@ -11,39 +11,55 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Channelz debugging tool for xDS test client/server.
+"""
+Channelz debugging tool for xDS test client/server.
 
 This is intended as a debugging / local development helper and not executed
 as a part of interop test suites.
 
 Typical usage examples:
 
-    # Show channel and server socket pair
-    python -m bin.run_channelz --flagfile=config/local-dev.cfg
+    # Help.
+    ./run.sh ./bin/run_channelz.py --help
 
-    # Evaluate setup for different security configurations
-    python -m bin.run_channelz --flagfile=config/local-dev.cfg --security=tls
-    python -m bin.run_channelz --flagfile=config/local-dev.cfg --security=mtls_error
+    # Show channel and server socket pair.
+    ./run.sh ./bin/run_channelz.py
 
-    # More information and usage options
-    python -m bin.run_channelz --helpfull
+    # Security mode: Evaluate setup for different security configurations.
+    ./run.sh ./bin/run_channelz.py --security=tls
+    ./run.sh ./bin/run_channelz.py --security=mtls_error
 """
+import functools
 import hashlib
+import json
 
 from absl import app
 from absl import flags
 from absl import logging
+from google.protobuf import json_format
+import yaml
 
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import gcp
+import framework.helpers.highlighter
 from framework.infrastructure import k8s
 from framework.rpc import grpc_channelz
 from framework.test_app import client_app
 from framework.test_app import server_app
 
 # Flags
+_MODE = flags.DEFINE_enum(
+    "mode",
+    default="default",
+    enum_values=[
+        "default",
+        "secure",
+        "app_net",
+        "gamma",
+    ],
+    help="Select test mode",
+)
 _SECURITY = flags.DEFINE_enum(
     "security",
     default=None,
@@ -60,14 +76,20 @@ flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 # Running outside of a test suite, so require explicit resource_suffix.
 flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-flags.register_validator(
-    xds_flags.SERVER_XDS_PORT.name,
-    lambda val: val > 0,
+
+
+@flags.multi_flags_validator(
+    (xds_flags.SERVER_XDS_PORT.name, _MODE.name),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
     ),
 )
+def _check_server_xds_port_flag(flags_dict):
+    if flags_dict[_MODE.name] == "gamma":
+        return True
+    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
+
 
 logger = logging.get_absl_logger()
 
@@ -179,6 +201,24 @@ def debug_security_setup_positive(test_client, test_server):
         print("(mTLS) Not detected")
 
 
+@functools.cache
+def highlighter_yaml():
+    return framework.helpers.highlighter.HighlighterYaml()
+
+
+def hl(pb_message) -> str:
+    try:
+        return highlighter_yaml().highlight(
+            yaml.dump(
+                json.loads(json_format.MessageToJson(pb_message, indent=2)),
+                sort_keys=False,
+                width=350,
+            )
+        )
+    except Exception:  # noqa pylint: disable=broad-except
+        return str(pb_message)
+
+
 def debug_basic_setup(test_client, test_server):
     """Show channel and server socket pair"""
     test_client.wait_for_server_channel_ready()
@@ -187,8 +227,8 @@ def debug_basic_setup(test_client, test_server):
         client_sock
     )
 
-    logger.debug("Client socket: %s\n", client_sock)
-    logger.debug("Matching server socket: %s\n", server_sock)
+    logger.info("Client socket:\n%s\n\n", hl(client_sock))
+    logger.info("Matching server socket:\n%s\n\n", hl(server_sock))
 
 
 def main(argv):
@@ -205,18 +245,13 @@ def main(argv):
     )
     is_secure: bool = bool(_SECURITY.value)
 
-    # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
-
     # Server.
-    server_namespace = common.make_server_namespace(k8s_api_manager)
+    server_namespace = common.make_server_namespace()
     server_runner = common.make_server_runner(
         server_namespace,
-        gcp_api_manager,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode="secure",
+        mode=_MODE.value,
     )
     # Find server pod.
     server_pod: k8s.V1Pod = common.get_server_pod(
@@ -224,13 +259,12 @@ def main(argv):
     )
 
     # Client
-    client_namespace = common.make_client_namespace(k8s_api_manager)
+    client_namespace = common.make_client_namespace()
     client_runner = common.make_client_runner(
         client_namespace,
-        gcp_api_manager,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode="secure",
+        mode=_MODE.value,
     )
     # Find client pod.
     client_pod: k8s.V1Pod = common.get_client_pod(
@@ -252,8 +286,20 @@ def main(argv):
     )
 
     # Create client app for the client pod.
+    if _MODE.value == "gamma":
+        server_target = (
+            f"xds:///{server_runner.frontend_service_name}"
+            f".{server_runner.k8s_namespace.name}.svc.cluster.local"
+            f":{server_runner.DEFAULT_TEST_PORT}"
+        )
+    else:
+        server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
+        if xds_flags.SERVER_XDS_PORT.value != 80:
+            server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+
+    # Create client app for the client pod.
     test_client: _XdsTestClient = common.get_test_client_for_pod(
-        client_runner, client_pod, server_target=test_server.xds_uri
+        client_runner, client_pod, server_target=server_target
     )
 
     with test_client, test_server:

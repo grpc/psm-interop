@@ -14,12 +14,20 @@
 """
 Run test xds client.
 
-Gamma example:
-./run.sh bin/run_test_client.py --server_xds_host=psm-grpc-server \
-    --server_xds_port=80 \
-    --config_mesh=gketd-psm-grpc-server
-"""
 
+Typical usage examples:
+
+    # Help.
+    ./run.sh ./bin/run_test_client.py --help
+
+    # Run modes.
+    ./run.sh ./bin/run_test_client.py --mode=app_net
+    ./run.sh ./bin/run_test_client.py --mode=gamma
+    ./run.sh ./bin/run_test_client.py --mode=secure
+
+    # Cleanup: make sure to set the same mode used to create.
+    ./run.sh ./bin/run_test_client.py --mode=gamma --cmd=cleanup
+"""
 
 import logging
 import signal
@@ -30,8 +38,7 @@ from absl import flags
 from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import gcp
-from framework.infrastructure import k8s
+from framework.infrastructure import traffic_director
 
 logger = logging.getLogger(__name__)
 # Flags
@@ -44,8 +51,8 @@ _MODE = flags.DEFINE_enum(
     enum_values=[
         "default",
         "secure",
-        # Uncomment if gamma-specific changes added to the client.
-        # "gamma",
+        "app_net",
+        "gamma",
     ],
     help="Select client mode",
 )
@@ -60,11 +67,6 @@ _FOLLOW = flags.DEFINE_bool(
         "Follow pod logs. Requires --collect_app_logs or"
         " --debug_use_port_forwarding"
     ),
-)
-_CONFIG_MESH = flags.DEFINE_string(
-    "config_mesh",
-    default=None,
-    help="Optional. Supplied to bootstrap generator to indicate AppNet mesh.",
 )
 _REUSE_NAMESPACE = flags.DEFINE_bool(
     "reuse_namespace", default=True, help="Use existing namespace if exists"
@@ -81,14 +83,14 @@ flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
 
 
 @flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _CMD.name),
+    (xds_flags.SERVER_XDS_PORT, _CMD, _MODE),
     message=(
         "Run outside of a test suite, must provide"
         " the exact port value (must be greater than 0)."
     ),
 )
 def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_CMD.name] == "cleanup":
+    if flags_dict[_MODE.name] == "gamma" or flags_dict[_CMD.name] == "cleanup":
         return True
     return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
 
@@ -102,6 +104,49 @@ def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
     return sigint_handler
 
 
+def _get_run_kwargs(mode: str):
+    run_kwargs = dict(
+        qps=_QPS.value,
+        print_response=_PRINT_RESPONSE.value,
+        log_to_stdout=_FOLLOW.value,
+    )
+
+    server_target = ""
+
+    if mode == "secure":
+        run_kwargs["secure_mode"] = True
+
+    elif mode == "app_net":
+        # Minimal appnet td setup so it's possible to generate config mesh name
+        td = traffic_director.TrafficDirectorAppNetManager(**common.td_attrs())
+        run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
+
+    elif mode == "gamma":
+        run_kwargs["generate_mesh_id"] = True
+
+        # In gamma setup, the target URI is determined by the server resources.
+        # Minimal server runner just so it's possible to generate the target URI
+        server_runner = common.make_server_runner(
+            common.make_server_namespace(),
+            mode=mode,
+        )
+        server_target = (
+            f"xds:///{server_runner.frontend_service_name}"
+            f".{server_runner.k8s_namespace.name}.svc.cluster.local"
+            f":{server_runner.DEFAULT_TEST_PORT}"
+        )
+
+    if not server_target:
+        # Default server target pattern.
+        server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
+        if xds_flags.SERVER_XDS_PORT.value != 80:
+            server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
+
+    run_kwargs["server_target"] = server_target
+
+    return run_kwargs
+
+
 def main(argv):
     if len(argv) > 1:
         raise app.UsageError("Too many command-line arguments.")
@@ -109,7 +154,10 @@ def main(argv):
     # Must be called before KubernetesApiManager or GcpApiManager init.
     xds_flags.set_socket_default_timeout_from_flag()
 
-    # Log following and port forwarding.
+    # Flags.
+    mode: str = _MODE.value
+    command: str = _CMD.value
+    # Flags: log following and port forwarding.
     should_follow_logs = _FOLLOW.value and xds_flags.COLLECT_APP_LOGS.value
     should_port_forward = (
         should_follow_logs and xds_k8s_flags.DEBUG_USE_PORT_FORWARDING.value
@@ -119,39 +167,24 @@ def main(argv):
     )
 
     # Setup.
-    gcp_api_manager = gcp.api.GcpApiManager()
-    k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
-    client_namespace = common.make_client_namespace(k8s_api_manager)
     client_runner = common.make_client_runner(
-        client_namespace,
-        gcp_api_manager,
+        common.make_client_namespace(),
+        mode=mode,
         reuse_namespace=_REUSE_NAMESPACE.value,
-        mode=_MODE.value,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
     )
 
-    # Server target
-    server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
-    if xds_flags.SERVER_XDS_PORT.value != 80:
-        server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
-
-    if _CMD.value == "run":
-        logger.info("Run client, mode=%s", _MODE.value)
-        client_runner.run(
-            server_target=server_target,
-            qps=_QPS.value,
-            print_response=_PRINT_RESPONSE.value,
-            secure_mode=_MODE.value == "secure",
-            config_mesh=_CONFIG_MESH.value,
-            log_to_stdout=_FOLLOW.value,
-        )
+    if command == "run":
+        logger.info("Run client, mode=%s", mode)
+        run_kwargs = _get_run_kwargs(mode=mode)
+        client_runner.run(**run_kwargs)  # pylint: disable=missing-kwoa
         if should_follow_logs:
             print("Following pod logs. Press Ctrl+C top stop")
             signal.signal(signal.SIGINT, _make_sigint_handler(client_runner))
             signal.pause()
 
-    elif _CMD.value == "cleanup":
+    elif command == "cleanup":
         logger.info("Cleanup client")
         client_runner.cleanup(
             force=True, force_namespace=_CLEANUP_NAMESPACE.value
