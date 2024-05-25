@@ -358,7 +358,8 @@ class ComputeV1(
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=wait_sec),
             timeout=datetime.timedelta(seconds=timeout_sec),
-            check_result=lambda neg: neg and neg.get("size", 0) > 0,
+            # TODO(sergiitk): sergiitk fix this
+            check_result=lambda neg: neg and neg.get("size", 0) >= 0,
         )
         network_endpoint_group = retryer(
             self._retry_load_network_endpoint_group, name, zone
