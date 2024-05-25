@@ -301,14 +301,14 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.compute.backend_service_remove_all_backends(self.backend_service)
 
-    def wait_for_backends_healthy_status(self):
+    def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
             "Waiting for Backend Service %s to report all backends healthy: %r",
             self.backend_service.name,
             [backend.name for backend in self.backends],
         )
         self.compute.wait_for_backends_healthy_status(
-            self.backend_service, self.backends
+            self.backend_service, self.backends, replica_count=replica_count
         )
 
     def create_alternative_backend_service(

@@ -407,7 +407,9 @@ class ComputeV1(
         *,
         timeout_sec: int = _WAIT_FOR_BACKEND_SEC,
         wait_sec: int = _WAIT_FOR_BACKEND_SLEEP_SEC,
+        replica_count: int = 1,
     ) -> None:
+        # pylint: disable=too-many-locals
         if not backends:
             raise ValueError("The list of backends to wait on is empty")
 
@@ -418,8 +420,15 @@ class ComputeV1(
             check_result=lambda result: result,
         )
         pending = set(backends)
+        healthy = set()
         try:
-            retryer(self._retry_backends_health, backend_service, pending)
+            retryer(
+                self._retry_backends_health,
+                backend_service,
+                pending,
+                healthy,
+                replica_count=replica_count,
+            )
         except retryers.RetryError as retry_err:
             unhealthy_backends: str = ",".join(
                 [backend.name for backend in pending]
@@ -470,7 +479,11 @@ class ComputeV1(
             raise
 
     def _retry_backends_health(
-        self, backend_service: GcpResource, pending: Set[ZonalGcpResource]
+        self,
+        backend_service: GcpResource,
+        pending: Set[ZonalGcpResource],
+        healthy: Set[ZonalGcpResource],
+        replica_count: int = 1,
     ):
         for backend in pending:
             result = self.get_backend_service_backend_health(
@@ -504,8 +517,9 @@ class ComputeV1(
                     backend.zone,
                 )
                 pending.remove(backend)
+                healthy.add(backend)
 
-        return not pending
+        return not pending or len(healthy) >= replica_count
 
     def get_backend_service_backend_health(self, backend_service, backend):
         return (
