@@ -102,7 +102,6 @@ GammaServerRunner = gamma_server_runner.GammaServerRunner
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
-KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 BuildQueryFn = Callable[[str, str], str]
 ANY = unittest.mock.ANY
 
@@ -233,7 +232,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "Letting test client run for %d seconds to produce metric data",
                 TEST_RUN_SECS,
             )
-            if self.server_runner.should_collect_logs:
+            if self.server_runner.should_collect_logs_prometheus:
                 self._sleep_and_ping_prometheus_endpoint(
                     test_server, test_client
                 )

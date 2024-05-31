@@ -14,6 +14,7 @@
 """
 Run xDS Test Client on Kubernetes using Gamma
 """
+import dataclasses
 import datetime
 import logging
 from typing import Final, Optional
@@ -30,8 +31,12 @@ from framework.test_app.server_app import XdsTestServer
 logger = logging.getLogger(__name__)
 
 
-ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
+
+
+@dataclasses.dataclass(frozen=True)
+class ServerDeploymentArgs(k8s_xds_server_runner.ServerDeploymentArgs):
+    """Gamma Server Deployment Args"""
 
 
 class GammaServerRunner(KubernetesServerRunner):
@@ -207,17 +212,7 @@ class GammaServerRunner(KubernetesServerRunner):
             **self.deployment_args.as_dict(),
         )
 
-        # Create a PodMonitoring resource if CSM Observability is enabled
-        # This is GMP (Google Managed Prometheus)
-        if self.deployment_args.enable_csm_observability:
-            self.pod_monitoring_name = f"{self.deployment_id}-gmp"
-            self.pod_monitoring = self._create_pod_monitoring(
-                "csm/pod-monitoring.yaml",
-                namespace_name=self.k8s_namespace.name,
-                deployment_id=self.deployment_id,
-                pod_monitoring_name=self.pod_monitoring_name,
-                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
-            )
+        self._setup_csm_observability()
 
         servers = self._make_servers_for_deployment(
             replica_count,
@@ -280,32 +275,6 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_name=self.k8s_namespace.name,
             service_name=self.service_name,
             draining_timeout_sec=draining_timeout_sec,
-        )
-
-    def _xds_test_server_for_pod(
-        self,
-        pod: k8s.V1Pod,
-        *,
-        test_port: int = KubernetesServerRunner.DEFAULT_TEST_PORT,
-        maintenance_port: Optional[int] = None,
-        secure_mode: bool = False,
-        monitoring_port: Optional[int] = None,
-    ) -> XdsTestServer:
-        if self.deployment_args.enable_csm_observability:
-            if self.debug_use_port_forwarding:
-                pf = self._start_port_forwarding_pod(
-                    pod, self.DEFAULT_MONITORING_PORT
-                )
-                monitoring_port = pf.local_port
-            else:
-                monitoring_port = self.DEFAULT_MONITORING_PORT
-
-        return super()._xds_test_server_for_pod(
-            pod=pod,
-            test_port=test_port,
-            maintenance_port=maintenance_port,
-            secure_mode=secure_mode,
-            monitoring_port=monitoring_port,
         )
 
     @override

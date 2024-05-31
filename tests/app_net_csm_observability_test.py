@@ -248,7 +248,7 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                 "Letting test client run for %d seconds to produce metric data",
                 TEST_RUN_SECS,
             )
-            if self.server_runner.should_collect_logs:
+            if self.server_runner.should_collect_logs_prometheus:
                 self._sleep_and_ping_prometheus_endpoint(
                     test_server, test_client
                 )
