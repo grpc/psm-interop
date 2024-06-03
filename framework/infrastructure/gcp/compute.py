@@ -358,7 +358,7 @@ class ComputeV1(
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=wait_sec),
             timeout=datetime.timedelta(seconds=timeout_sec),
-            # TODO(sergiitk): sergiitk fix this
+            # TODO(sergiitk): we can improve this check by passing replica_count
             check_result=lambda neg: neg and neg.get("size", 0) >= 0,
         )
         network_endpoint_group = retryer(
@@ -519,6 +519,10 @@ class ComputeV1(
                 pending.remove(backend)
                 healthy.add(backend)
 
+        # - `not pending` when ALL backends are loaded and reported HEALTHY
+        # - `len(healthy) >= replica_count` to cover the case when there are
+        #   fewer endpoinds than backends. Such, backend with no endpoints
+        #   assigned will never be marked as HEALTHY, but this is expected.
         return not pending or len(healthy) >= replica_count
 
     def get_backend_service_backend_health(self, backend_service, backend):
