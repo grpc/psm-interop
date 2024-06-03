@@ -140,6 +140,13 @@ gcloud artifacts repositories add-iam-policy-binding "projects/grpc-testing/loca
   --condition=None
 ```
 
+```sh
+gcloud artifacts repositories add-iam-policy-binding "projects/grpc-testing/locations/us/repositories/trafficdirector" \
+  --member="serviceAccount:${GCE_SA}" \
+  --role="roles/artifactregistry.reader" \
+  --condition=None
+```
+
 If you get `PERMISSION_DENIED`, contact one of the repo
 [maintainers](https://github.com/grpc/psm-interop/blob/master/MAINTAINERS.md).
 
