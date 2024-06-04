@@ -356,7 +356,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def alternative_backend_service_add_neg_backends(self, name, zones):
         self.alternative_backends |= self._get_gcp_negs_in_zones(name, zones)
-        if not self.affinity_backends:
+        if not self.alternative_backends:
             raise ValueError("Unexpected: no alternative backends were loaded.")
         self.alternative_backend_service_patch_backends()
 
