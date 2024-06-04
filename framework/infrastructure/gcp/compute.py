@@ -49,6 +49,10 @@ class ComputeV1(
     class ZonalGcpResource(GcpResource):
         zone: str
 
+    @dataclasses.dataclass(frozen=True)
+    class NegGcpResource(ZonalGcpResource):
+        size: int
+
     def __init__(
         self,
         api_manager: gcp.api.GcpApiManager,
@@ -354,7 +358,7 @@ class ComputeV1(
         *,
         timeout_sec=_WAIT_FOR_BACKEND_SEC,
         wait_sec=_WAIT_FOR_BACKEND_SLEEP_SEC,
-    ):
+    ) -> NegGcpResource:
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=wait_sec),
             timeout=datetime.timedelta(seconds=timeout_sec),
@@ -364,12 +368,16 @@ class ComputeV1(
         network_endpoint_group = retryer(
             self._retry_load_network_endpoint_group, name, zone
         )
-        # TODO(sergiitk): dataclass
-        return self.ZonalGcpResource(
-            network_endpoint_group["name"],
-            network_endpoint_group["selfLink"],
-            zone,
+        neg = self.NegGcpResource(
+            name=network_endpoint_group["name"],
+            url=network_endpoint_group["selfLink"],
+            zone=zone,
+            size=network_endpoint_group["size"],
         )
+        logger.info(
+            'Loaded NEG "%s" in zone %s, size=%i', neg.name, neg.zone, neg.size
+        )
+        return neg
 
     def _retry_load_network_endpoint_group(self, name: str, zone: str):
         try:
