@@ -54,6 +54,27 @@ TEST_AFFINITY_METADATA_KEY = "xds_md"
 
 
 class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
+    # Constants
+    BACKEND_SERVICE_NAME: Final[str] = "backend-service"
+    AFFINITY_BACKEND_SERVICE_NAME: Final[str] = "backend-service-affinity"
+    ALTERNATIVE_BACKEND_SERVICE_NAME: Final[str] = "backend-service-alt"
+
+    URL_MAP_NAME: Final[str] = "url-map"
+    ALTERNATIVE_URL_MAP_NAME: Final[str] = "url-map-alt"
+
+    URL_MAP_PATH_MATCHER_NAME: Final[str] = "path-matcher"
+
+    TARGET_PROXY_NAME: Final[str] = "target-proxy"
+    ALTERNATIVE_TARGET_PROXY_NAME: Final[str] = "target-proxy-alt"
+
+    FORWARDING_RULE_NAME: Final[str] = "forwarding-rule"
+    ALTERNATIVE_FORWARDING_RULE_NAME: Final[str] = "forwarding-rule-alt"
+
+    HEALTH_CHECK_NAME: Final[str] = "health-check"
+
+    FIREWALL_RULE_NAME: Final[str] = "allow-health-checks"
+    FIREWALL_RULE_NAME_IPV6: Final[str] = "allow-health-checks-ipv6"
+
     # Class fields.
     compute: _ComputeV1
     resource_prefix: str
@@ -76,21 +97,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     # Protected
     _ensure_firewall: bool = False
-
-    # Constants
-    BACKEND_SERVICE_NAME = "backend-service"
-    ALTERNATIVE_BACKEND_SERVICE_NAME = "backend-service-alt"
-    AFFINITY_BACKEND_SERVICE_NAME = "backend-service-affinity"
-    HEALTH_CHECK_NAME = "health-check"
-    URL_MAP_NAME = "url-map"
-    ALTERNATIVE_URL_MAP_NAME = "url-map-alt"
-    URL_MAP_PATH_MATCHER_NAME = "path-matcher"
-    TARGET_PROXY_NAME = "target-proxy"
-    ALTERNATIVE_TARGET_PROXY_NAME = "target-proxy-alt"
-    FORWARDING_RULE_NAME = "forwarding-rule"
-    ALTERNATIVE_FORWARDING_RULE_NAME = "forwarding-rule-alt"
-    FIREWALL_RULE_NAME = "allow-health-checks"
-    FIREWALL_RULE_NAME_IPV6 = "allow-health-checks-ipv6"
 
     def __init__(
         self,
@@ -313,9 +319,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
-            "Waiting for Backend Service %s to report all backends healthy: %r",
+            "Waiting for Backend Service %s to report backends healthy: %r",
             self.backend_service.name,
-            [backend.name for backend in self.backends],
+            self.backends,
         )
         self.compute.wait_for_backends_healthy_status(
             self.backend_service, self.backends, replica_count=replica_count
@@ -364,7 +370,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self, *, circuit_breakers: Optional[dict[str, int]] = None
     ):
         logging.info(
-            "Adding backends to Backend Service %s: %r",
+            "Adding backends to Alternative Backend Service %s: %r",
             self.alternative_backend_service.name,
             self.alternative_backends,
         )
@@ -376,7 +382,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def alternative_backend_service_remove_all_backends(self):
         logging.info(
-            "Removing backends from Backend Service %s",
+            "Removing backends from Alternative Backend Service %s",
             self.alternative_backend_service.name,
         )
         self.compute.backend_service_remove_all_backends(
@@ -387,7 +393,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self, replica_count: int = 1
     ):
         logger.debug(
-            "Waiting for Backend Service %s to report all backends healthy %r",
+            "Waiting for Alternative Backend Service %s"
+            " to report backends healthy: %r",
             self.alternative_backend_service,
             self.alternative_backends,
         )
@@ -439,7 +446,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def affinity_backend_service_patch_backends(self):
         logging.info(
-            "Adding backends to Backend Service %s: %r",
+            "Adding backends to Affinity Backend Service %s: %r",
             self.affinity_backend_service.name,
             self.affinity_backends,
         )
@@ -449,7 +456,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def affinity_backend_service_remove_all_backends(self):
         logging.info(
-            "Removing backends from Backend Service %s",
+            "Removing backends from Affinity Backend Service %s",
             self.affinity_backend_service.name,
         )
         self.compute.backend_service_remove_all_backends(
@@ -458,7 +465,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def wait_for_affinity_backends_healthy_status(self, replica_count: int = 1):
         logger.debug(
-            "Waiting for Backend Service %s to report all backends healthy %r",
+            "Waiting for Affinity Backend Service %s"
+            " to report backends healthy: %r",
             self.affinity_backend_service,
             self.affinity_backends,
         )
