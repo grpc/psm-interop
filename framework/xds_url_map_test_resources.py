@@ -336,9 +336,15 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             neg_name_affinity, neg_zones_affinity
         )
         # Wait for healthy backends
-        self.td.wait_for_backends_healthy_status()
-        self.td.wait_for_alternative_backends_healthy_status()
-        self.td.wait_for_affinity_backends_healthy_status()
+        self.td.wait_for_backends_healthy_status(
+            replica_count=self.test_server_runner.replica_count
+        )
+        self.td.wait_for_alternative_backends_healthy_status(
+            replica_count=self.test_server_alternative_runner.replica_count
+        )
+        self.td.wait_for_affinity_backends_healthy_status(
+            replica_count=self.test_server_affinity_runner.replica_count
+        )
 
     def cleanup(self) -> None:
         if self.strategy not in ["create"]:

@@ -377,14 +377,18 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.alternative_backend_service
         )
 
-    def wait_for_alternative_backends_healthy_status(self):
+    def wait_for_alternative_backends_healthy_status(
+        self, replica_count: int = 1
+    ):
         logger.debug(
             "Waiting for Backend Service %s to report all backends healthy %r",
             self.alternative_backend_service,
             self.alternative_backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.alternative_backend_service, self.alternative_backends
+            self.alternative_backend_service,
+            self.alternative_backends,
+            replica_count=replica_count,
         )
 
     def create_affinity_backend_service(
@@ -450,14 +454,16 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.affinity_backend_service
         )
 
-    def wait_for_affinity_backends_healthy_status(self):
+    def wait_for_affinity_backends_healthy_status(self, replica_count: int = 1):
         logger.debug(
             "Waiting for Backend Service %s to report all backends healthy %r",
             self.affinity_backend_service,
             self.affinity_backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.affinity_backend_service, self.affinity_backends
+            self.affinity_backend_service,
+            self.affinity_backends,
+            replica_count=replica_count,
         )
 
     @staticmethod
