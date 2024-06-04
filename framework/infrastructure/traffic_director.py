@@ -14,7 +14,7 @@
 import functools
 import logging
 import random
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 import googleapiclient.errors
 from typing_extensions import TypeAlias
@@ -266,9 +266,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.backend_service = None
 
     def backend_service_add_neg_backends(
-        self, name, zones, max_rate_per_endpoint: Optional[int] = None
-    ):
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
+        self,
+        name: str,
+        zones: list[str],
+        *,
+        max_rate_per_endpoint: Optional[int] = None,
+    ) -> None:
         self.backends |= self._get_gcp_negs_in_zones(name, zones)
         if not self.backends:
             raise ValueError("Unexpected: no backends were loaded.")
@@ -277,7 +280,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def _get_gcp_negs_in_zones(
         self, name: str, zones: list[str]
     ) -> set[NegGcpResource]:
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
+        logger.info("Loading Network Endpoint Groups in zones %s.", zones)
         backends: set[NegGcpResource] = set()
         for zone in zones:
             neg = self.compute.wait_for_network_endpoint_group(name, zone)

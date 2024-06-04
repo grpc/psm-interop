@@ -51,7 +51,10 @@ class ComputeV1(
 
     @dataclasses.dataclass(frozen=True)
     class NegGcpResource(ZonalGcpResource):
+        id: str
         size: int
+        network_endpoint_type: str
+        description: str
 
     def __init__(
         self,
@@ -358,32 +361,32 @@ class ComputeV1(
         *,
         timeout_sec=_WAIT_FOR_BACKEND_SEC,
         wait_sec=_WAIT_FOR_BACKEND_SLEEP_SEC,
-    ) -> NegGcpResource:
+    ) -> "NegGcpResource":
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=wait_sec),
             timeout=datetime.timedelta(seconds=timeout_sec),
-            # TODO(sergiitk): we can improve this check by passing replica_count
-            check_result=lambda neg: neg and neg.get("size", 0) >= 0,
+            check_result=lambda _neg: "size" in _neg,
         )
-        network_endpoint_group = retryer(
-            self._retry_load_network_endpoint_group, name, zone
-        )
+        result = retryer(self._retry_load_network_endpoint_group, name, zone)
         neg = self.NegGcpResource(
-            name=network_endpoint_group["name"],
-            url=network_endpoint_group["selfLink"],
+            id=result.get("id", ""),
+            name=result["name"],
+            url=result["selfLink"],
+            description=result.get("description", ""),
             zone=zone,
-            size=network_endpoint_group["size"],
+            size=result["size"],
+            network_endpoint_type=result.get("networkEndpointType", ""),
         )
         logger.info(
-            'Loaded NEG "%s" in zone %s, size=%i', neg.name, neg.zone, neg.size
+            'Loaded NEG "%s", zone=%s, size=%i', neg.name, neg.zone, neg.size
         )
         return neg
 
-    def _retry_load_network_endpoint_group(self, name: str, zone: str):
+    def _retry_load_network_endpoint_group(self, name: str, zone: str) -> dict:
         try:
             neg = self.get_network_endpoint_group(name, zone)
             logger.debug(
-                "Waiting for endpoints: NEG %s in zone %s, current count %s",
+                "Waiting for NEG %s, zone=%s, size=%s",
                 neg["name"],
                 zone,
                 neg.get("size"),
