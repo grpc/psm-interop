@@ -412,6 +412,11 @@ class ComputeV1(
         # pylint: disable=too-many-locals
         if not backends:
             raise ValueError("The list of backends to wait on is empty")
+        if not replica_count:
+            raise ValueError(
+                "The list of backends to wait on can't be populated with 0"
+                " replicas."
+            )
 
         timeout = datetime.timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
