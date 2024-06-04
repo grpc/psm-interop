@@ -71,6 +71,7 @@ class ComputeV1(
         GRPC = enum.auto()
 
     class BackendServiceProtocol(enum.Enum):
+        UNSET = enum.auto()
         HTTP2 = enum.auto()
         GRPC = enum.auto()
 

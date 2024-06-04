@@ -14,7 +14,7 @@
 import functools
 import logging
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Final, List, Optional
 
 import googleapiclient.errors
 from typing_extensions import TypeAlias
@@ -32,7 +32,8 @@ HealthCheckProtocol = _ComputeV1.HealthCheckProtocol
 ZonalGcpResource = _ComputeV1.ZonalGcpResource
 NegGcpResource: TypeAlias = _ComputeV1.NegGcpResource
 BackendServiceProtocol = _ComputeV1.BackendServiceProtocol
-_BackendGRPC = BackendServiceProtocol.GRPC
+_BackendGRPC: Final[BackendServiceProtocol] = BackendServiceProtocol.GRPC
+_BackendUnset: Final[BackendServiceProtocol] = BackendServiceProtocol.UNSET
 _HealthCheckGRPC = HealthCheckProtocol.GRPC
 
 # Network Security
@@ -58,9 +59,20 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     resource_prefix: str
     resource_suffix: str
 
+    # Backends
     backends: set[NegGcpResource]
     affinity_backends: set[NegGcpResource]
     alternative_backends: set[NegGcpResource]
+
+    # Backend Serivices
+    backend_service: Optional[GcpResource] = None
+    affinity_backend_service: Optional[GcpResource] = None
+    alternative_backend_service: Optional[GcpResource] = None
+
+    # TODO(sergiitk): move these flags to backend service dataclass
+    backend_service_protocol: BackendServiceProtocol = _BackendUnset
+    affinity_backend_service_protocol: BackendServiceProtocol = _BackendUnset
+    alternative_backend_service_protocol: BackendServiceProtocol = _BackendUnset
 
     # Protected
     _ensure_firewall: bool = False
@@ -119,25 +131,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
         # Backends.
         self.backends = set()
-        self.backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.backend_service_protocol: Optional[BackendServiceProtocol] = None
-
-        # Alternatice Backends.
         self.alternative_backends = set()
-        self.alternative_backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.alternative_backend_service_protocol: Optional[
-            BackendServiceProtocol
-        ] = None
-
-        # Affinity Backends.
         self.affinity_backends = set()
-        self.affinity_backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.affinity_backend_service_protocol: Optional[
-            BackendServiceProtocol
-        ] = None
 
     @property
     def network_url(self):
