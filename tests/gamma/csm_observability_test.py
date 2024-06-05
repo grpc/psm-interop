@@ -177,6 +177,8 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             return config.version_gte("v1.62.x")
         elif config.client_lang == _Lang.GO:
             return config.version_gte("v1.65.x")
+        elif config.client_lang == _Lang.JAVA:
+            return config.version_gte("v1.65.x")
         return False
 
     @classmethod
