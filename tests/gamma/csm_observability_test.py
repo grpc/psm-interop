@@ -304,7 +304,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
-            self.filter_label_based_on_lang(
+            self.filter_label_matcher_based_on_lang(
                 self.lang_spec.client_lang, expected_metric_labels
             )
             for metric in HISTOGRAM_CLIENT_METRICS:
@@ -332,7 +332,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
-            self.filter_label_based_on_lang(
+            self.filter_label_matcher_based_on_lang(
                 self.lang_spec.server_lang, expected_metric_labels
             )
             for metric in HISTOGRAM_SERVER_METRICS:
@@ -351,7 +351,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
-            self.filter_label_based_on_lang(
+            self.filter_label_matcher_based_on_lang(
                 self.lang_spec.client_lang, expected_metric_labels
             )
             for metric in COUNTER_CLIENT_METRICS:
@@ -369,7 +369,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
-            self.filter_label_based_on_lang(
+            self.filter_label_matcher_based_on_lang(
                 self.lang_spec.server_lang, expected_metric_labels
             )
             for metric in COUNTER_SERVER_METRICS:
@@ -473,19 +473,17 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f'resource.labels.namespace = "{namespace}"'
         )
 
-    @staticmethod
-    def filter_label_based_on_lang(
-        language: _Lang, labels: dict[str, Any]
+    @classmethod
+    def filter_label_matcher_based_on_lang(
+        cls, language: _Lang, label_matcher: dict[str, Any]
     ) -> None:
         """
-        Filter labels to check based on language.
+        Filter label_matcher based on language.
         """
         if language == _Lang.PYTHON:
             # TODO(xuanwn): Remove this once https://github.com/open-telemetry/opentelemetry-python/issues/3072 is fixed.
-            if "otel_scope_version" in labels:
-                del labels["otel_scope_version"]
-            if "otel_scope_name" in labels:
-                del labels["otel_scope_name"]
+            label_matcher.pop("otel_scope_version", None)
+            label_matcher.pop("otel_scope_name", None)
 
     def query_metrics(
         self,
