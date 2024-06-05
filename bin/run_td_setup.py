@@ -262,7 +262,9 @@ def _cmd_backends_add(td, server_name, server_namespace, server_port):
     )
     td.load_backend_service()
     td.backend_service_add_neg_backends(neg_name, neg_zones)
-    td.wait_for_backends_healthy_status()
+    td.wait_for_backends_healthy_status(
+        replica_count=common.SERVER_REPLICA_COUNT.value
+    )
 
 
 def _cmd_backends_cleanup(td):

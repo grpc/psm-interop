@@ -14,9 +14,10 @@
 import functools
 import logging
 import random
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Final, List, Optional
 
 import googleapiclient.errors
+from typing_extensions import TypeAlias
 
 from framework import xds_flags
 from framework.infrastructure import gcp
@@ -29,8 +30,10 @@ _ComputeV1 = gcp.compute.ComputeV1
 GcpResource = _ComputeV1.GcpResource
 HealthCheckProtocol = _ComputeV1.HealthCheckProtocol
 ZonalGcpResource = _ComputeV1.ZonalGcpResource
+NegGcpResource: TypeAlias = _ComputeV1.NegGcpResource
 BackendServiceProtocol = _ComputeV1.BackendServiceProtocol
-_BackendGRPC = BackendServiceProtocol.GRPC
+_BackendGRPC: Final[BackendServiceProtocol] = BackendServiceProtocol.GRPC
+_BackendUnset: Final[BackendServiceProtocol] = BackendServiceProtocol.UNSET
 _HealthCheckGRPC = HealthCheckProtocol.GRPC
 
 # Network Security
@@ -51,24 +54,49 @@ TEST_AFFINITY_METADATA_KEY = "xds_md"
 
 
 class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
+    # Constants
+    BACKEND_SERVICE_NAME: Final[str] = "backend-service"
+    AFFINITY_BACKEND_SERVICE_NAME: Final[str] = "backend-service-affinity"
+    ALTERNATIVE_BACKEND_SERVICE_NAME: Final[str] = "backend-service-alt"
+
+    URL_MAP_NAME: Final[str] = "url-map"
+    ALTERNATIVE_URL_MAP_NAME: Final[str] = "url-map-alt"
+
+    URL_MAP_PATH_MATCHER_NAME: Final[str] = "path-matcher"
+
+    TARGET_PROXY_NAME: Final[str] = "target-proxy"
+    ALTERNATIVE_TARGET_PROXY_NAME: Final[str] = "target-proxy-alt"
+
+    FORWARDING_RULE_NAME: Final[str] = "forwarding-rule"
+    ALTERNATIVE_FORWARDING_RULE_NAME: Final[str] = "forwarding-rule-alt"
+
+    HEALTH_CHECK_NAME: Final[str] = "health-check"
+
+    FIREWALL_RULE_NAME: Final[str] = "allow-health-checks"
+    FIREWALL_RULE_NAME_IPV6: Final[str] = "allow-health-checks-ipv6"
+
+    # Class fields.
     compute: _ComputeV1
     resource_prefix: str
     resource_suffix: str
-    _ensure_firewall: bool = False
 
-    BACKEND_SERVICE_NAME = "backend-service"
-    ALTERNATIVE_BACKEND_SERVICE_NAME = "backend-service-alt"
-    AFFINITY_BACKEND_SERVICE_NAME = "backend-service-affinity"
-    HEALTH_CHECK_NAME = "health-check"
-    URL_MAP_NAME = "url-map"
-    ALTERNATIVE_URL_MAP_NAME = "url-map-alt"
-    URL_MAP_PATH_MATCHER_NAME = "path-matcher"
-    TARGET_PROXY_NAME = "target-proxy"
-    ALTERNATIVE_TARGET_PROXY_NAME = "target-proxy-alt"
-    FORWARDING_RULE_NAME = "forwarding-rule"
-    ALTERNATIVE_FORWARDING_RULE_NAME = "forwarding-rule-alt"
-    FIREWALL_RULE_NAME = "allow-health-checks"
-    FIREWALL_RULE_NAME_IPV6 = "allow-health-checks-ipv6"
+    # Backends
+    backends: set[NegGcpResource]
+    affinity_backends: set[NegGcpResource]
+    alternative_backends: set[NegGcpResource]
+
+    # Backend Serivices
+    backend_service: Optional[GcpResource] = None
+    affinity_backend_service: Optional[GcpResource] = None
+    alternative_backend_service: Optional[GcpResource] = None
+
+    # TODO(sergiitk): move these flags to backend service dataclass
+    backend_service_protocol: BackendServiceProtocol = _BackendUnset
+    affinity_backend_service_protocol: BackendServiceProtocol = _BackendUnset
+    alternative_backend_service_protocol: BackendServiceProtocol = _BackendUnset
+
+    # Protected
+    _ensure_firewall: bool = False
 
     def __init__(
         self,
@@ -96,9 +124,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
         # Managed resources
         self.health_check: Optional[GcpResource] = None
-        self.backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.backend_service_protocol: Optional[BackendServiceProtocol] = None
         self.url_map: Optional[GcpResource] = None
         self.alternative_url_map: Optional[GcpResource] = None
         self.firewall_rule: Optional[GcpResource] = None
@@ -109,19 +134,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.alternative_target_proxy: Optional[GcpResource] = None
         self.forwarding_rule: Optional[GcpResource] = None
         self.alternative_forwarding_rule: Optional[GcpResource] = None
-        self.backends: Set[ZonalGcpResource] = set()
-        self.alternative_backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.alternative_backend_service_protocol: Optional[
-            BackendServiceProtocol
-        ] = None
-        self.alternative_backends: Set[ZonalGcpResource] = set()
-        self.affinity_backend_service: Optional[GcpResource] = None
-        # TODO(sergiitk): remove this flag once backend service resource loaded
-        self.affinity_backend_service_protocol: Optional[
-            BackendServiceProtocol
-        ] = None
-        self.affinity_backends: Set[ZonalGcpResource] = set()
+
+        # Backends.
+        self.backends = set()
+        self.alternative_backends = set()
+        self.affinity_backends = set()
 
     @property
     def network_url(self):
@@ -250,30 +267,29 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.backend_service = None
 
     def backend_service_add_neg_backends(
-        self, name, zones, max_rate_per_endpoint: Optional[int] = None
-    ):
-        self.backend_service_load_neg_backends(name, zones)
+        self,
+        name: str,
+        zones: list[str],
+        *,
+        max_rate_per_endpoint: Optional[int] = None,
+    ) -> None:
+        self.backends |= self._get_gcp_negs_in_zones(name, zones)
         if not self.backends:
             raise ValueError("Unexpected: no backends were loaded.")
         self.backend_service_patch_backends(max_rate_per_endpoint)
 
-    def backend_service_load_neg_backends(self, name, zones):
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
+    def _get_gcp_negs_in_zones(
+        self, name: str, zones: list[str]
+    ) -> set[NegGcpResource]:
+        logger.info("Loading Network Endpoint Groups in zones %s.", zones)
+        backends: set[NegGcpResource] = set()
         for zone in zones:
-            backend = self.compute.wait_for_network_endpoint_group(name, zone)
-            logger.info(
-                'Loaded NEG "%s" in zone %s', backend.name, backend.zone
-            )
-            self.backends.add(backend)
+            neg = self.compute.wait_for_network_endpoint_group(name, zone)
+            backends.add(neg)
+        return backends
 
     def backend_service_remove_neg_backends(self, name, zones):
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
-        for zone in zones:
-            backend = self.compute.wait_for_network_endpoint_group(name, zone)
-            logger.info(
-                'Loaded NEG "%s" in zone %s', backend.name, backend.zone
-            )
-            self.backends.remove(backend)
+        self.backends -= self._get_gcp_negs_in_zones(name, zones)
         self.backend_service_patch_backends()
 
     def backend_service_patch_backends(
@@ -301,14 +317,14 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.compute.backend_service_remove_all_backends(self.backend_service)
 
-    def wait_for_backends_healthy_status(self):
+    def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
-            "Waiting for Backend Service %s to report all backends healthy: %r",
+            "Waiting for Backend Service %s to report backends healthy: %r",
             self.backend_service.name,
-            [backend.name for backend in self.backends],
+            self.backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.backend_service, self.backends
+            self.backend_service, self.backends, replica_count=replica_count
         )
 
     def create_alternative_backend_service(
@@ -345,20 +361,16 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.alternative_backend_service = None
 
     def alternative_backend_service_add_neg_backends(self, name, zones):
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
-        for zone in zones:
-            backend = self.compute.wait_for_network_endpoint_group(name, zone)
-            logger.info(
-                'Loaded NEG "%s" in zone %s', backend.name, backend.zone
-            )
-            self.alternative_backends.add(backend)
+        self.alternative_backends |= self._get_gcp_negs_in_zones(name, zones)
+        if not self.alternative_backends:
+            raise ValueError("Unexpected: no alternative backends were loaded.")
         self.alternative_backend_service_patch_backends()
 
     def alternative_backend_service_patch_backends(
         self, *, circuit_breakers: Optional[dict[str, int]] = None
     ):
         logging.info(
-            "Adding backends to Backend Service %s: %r",
+            "Adding backends to Alternative Backend Service %s: %r",
             self.alternative_backend_service.name,
             self.alternative_backends,
         )
@@ -370,21 +382,26 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def alternative_backend_service_remove_all_backends(self):
         logging.info(
-            "Removing backends from Backend Service %s",
+            "Removing backends from Alternative Backend Service %s",
             self.alternative_backend_service.name,
         )
         self.compute.backend_service_remove_all_backends(
             self.alternative_backend_service
         )
 
-    def wait_for_alternative_backends_healthy_status(self):
+    def wait_for_alternative_backends_healthy_status(
+        self, replica_count: int = 1
+    ):
         logger.debug(
-            "Waiting for Backend Service %s to report all backends healthy %r",
+            "Waiting for Alternative Backend Service %s"
+            " to report backends healthy: %r",
             self.alternative_backend_service,
             self.alternative_backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.alternative_backend_service, self.alternative_backends
+            self.alternative_backend_service,
+            self.alternative_backends,
+            replica_count=replica_count,
         )
 
     def create_affinity_backend_service(
@@ -422,18 +439,14 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.affinity_backend_service = None
 
     def affinity_backend_service_add_neg_backends(self, name, zones):
-        logger.info("Waiting for Network Endpoint Groups to load endpoints.")
-        for zone in zones:
-            backend = self.compute.wait_for_network_endpoint_group(name, zone)
-            logger.info(
-                'Loaded NEG "%s" in zone %s', backend.name, backend.zone
-            )
-            self.affinity_backends.add(backend)
+        self.affinity_backends |= self._get_gcp_negs_in_zones(name, zones)
+        if not self.affinity_backends:
+            raise ValueError("Unexpected: no affinity backends were loaded.")
         self.affinity_backend_service_patch_backends()
 
     def affinity_backend_service_patch_backends(self):
         logging.info(
-            "Adding backends to Backend Service %s: %r",
+            "Adding backends to Affinity Backend Service %s: %r",
             self.affinity_backend_service.name,
             self.affinity_backends,
         )
@@ -443,21 +456,24 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def affinity_backend_service_remove_all_backends(self):
         logging.info(
-            "Removing backends from Backend Service %s",
+            "Removing backends from Affinity Backend Service %s",
             self.affinity_backend_service.name,
         )
         self.compute.backend_service_remove_all_backends(
             self.affinity_backend_service
         )
 
-    def wait_for_affinity_backends_healthy_status(self):
+    def wait_for_affinity_backends_healthy_status(self, replica_count: int = 1):
         logger.debug(
-            "Waiting for Backend Service %s to report all backends healthy %r",
+            "Waiting for Affinity Backend Service %s"
+            " to report backends healthy: %r",
             self.affinity_backend_service,
             self.affinity_backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.affinity_backend_service, self.affinity_backends
+            self.affinity_backend_service,
+            self.affinity_backends,
+            replica_count=replica_count,
         )
 
     @staticmethod

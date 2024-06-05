@@ -71,6 +71,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
 
     # Below is mutable state associated with the current run.
     service: Optional[k8s.V1Service] = None
+    replica_count: int = 0
 
     # A map from pod names to the server app.
     pods_to_servers: dict[str, XdsTestServer]
@@ -151,6 +152,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         super()._reset_state()
         self.service = None
         self.pods_to_servers = {}
+        self.replica_count = 0
 
     def run(  # pylint: disable=arguments-differ,too-many-branches
         self,
@@ -278,6 +280,8 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             self.deployment_name, replica_count
         )
         self._start_completed()
+        # TODO(sergiitk): move to super()._start_completed
+        self.replica_count = replica_count
 
         servers: List[XdsTestServer] = []
         for pod in self.pods_started.values():

@@ -49,6 +49,13 @@ class ComputeV1(
     class ZonalGcpResource(GcpResource):
         zone: str
 
+    @dataclasses.dataclass(frozen=True)
+    class NegGcpResource(ZonalGcpResource):
+        id: str
+        size: int
+        network_endpoint_type: str
+        description: str
+
     def __init__(
         self,
         api_manager: gcp.api.GcpApiManager,
@@ -64,6 +71,7 @@ class ComputeV1(
         GRPC = enum.auto()
 
     class BackendServiceProtocol(enum.Enum):
+        UNSET = enum.auto()
         HTTP2 = enum.auto()
         GRPC = enum.auto()
 
@@ -354,27 +362,32 @@ class ComputeV1(
         *,
         timeout_sec=_WAIT_FOR_BACKEND_SEC,
         wait_sec=_WAIT_FOR_BACKEND_SLEEP_SEC,
-    ):
+    ) -> "NegGcpResource":
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=wait_sec),
             timeout=datetime.timedelta(seconds=timeout_sec),
-            check_result=lambda neg: neg and neg.get("size", 0) > 0,
+            check_result=lambda _neg: "size" in _neg,
         )
-        network_endpoint_group = retryer(
-            self._retry_load_network_endpoint_group, name, zone
+        result = retryer(self._retry_load_network_endpoint_group, name, zone)
+        neg = self.NegGcpResource(
+            id=result.get("id", ""),
+            name=result["name"],
+            url=result["selfLink"],
+            description=result.get("description", ""),
+            zone=zone,
+            size=result["size"],
+            network_endpoint_type=result.get("networkEndpointType", ""),
         )
-        # TODO(sergiitk): dataclass
-        return self.ZonalGcpResource(
-            network_endpoint_group["name"],
-            network_endpoint_group["selfLink"],
-            zone,
+        logger.info(
+            'Loaded NEG "%s", zone=%s, size=%i', neg.name, neg.zone, neg.size
         )
+        return neg
 
-    def _retry_load_network_endpoint_group(self, name: str, zone: str):
+    def _retry_load_network_endpoint_group(self, name: str, zone: str) -> dict:
         try:
             neg = self.get_network_endpoint_group(name, zone)
             logger.debug(
-                "Waiting for endpoints: NEG %s in zone %s, current count %s",
+                "Waiting for NEG %s, zone=%s, size=%s",
                 neg["name"],
                 zone,
                 neg.get("size"),
@@ -406,9 +419,16 @@ class ComputeV1(
         *,
         timeout_sec: int = _WAIT_FOR_BACKEND_SEC,
         wait_sec: int = _WAIT_FOR_BACKEND_SLEEP_SEC,
+        replica_count: int = 1,
     ) -> None:
+        # pylint: disable=too-many-locals
         if not backends:
             raise ValueError("The list of backends to wait on is empty")
+        if not replica_count:
+            raise ValueError(
+                "The list of backends to wait on can't be populated with 0"
+                " replicas."
+            )
 
         timeout = datetime.timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
@@ -417,8 +437,15 @@ class ComputeV1(
             check_result=lambda result: result,
         )
         pending = set(backends)
+        healthy = set()
         try:
-            retryer(self._retry_backends_health, backend_service, pending)
+            retryer(
+                self._retry_backends_health,
+                backend_service,
+                pending,
+                healthy,
+                replica_count=replica_count,
+            )
         except retryers.RetryError as retry_err:
             unhealthy_backends: str = ",".join(
                 [backend.name for backend in pending]
@@ -469,7 +496,11 @@ class ComputeV1(
             raise
 
     def _retry_backends_health(
-        self, backend_service: GcpResource, pending: Set[ZonalGcpResource]
+        self,
+        backend_service: GcpResource,
+        pending: Set[ZonalGcpResource],
+        healthy: Set[ZonalGcpResource],
+        replica_count: int = 1,
     ):
         for backend in pending:
             result = self.get_backend_service_backend_health(
@@ -503,8 +534,13 @@ class ComputeV1(
                     backend.zone,
                 )
                 pending.remove(backend)
+                healthy.add(backend)
 
-        return not pending
+        # - `not pending` when ALL backends are loaded and reported HEALTHY
+        # - `len(healthy) >= replica_count` to cover the case when there are
+        #   fewer endpoinds than backends. Such, backend with no endpoints
+        #   assigned will never be marked as HEALTHY, but this is expected.
+        return not pending or len(healthy) >= replica_count
 
     def get_backend_service_backend_health(self, backend_service, backend):
         return (

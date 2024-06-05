@@ -15,7 +15,7 @@
 
 import functools
 import inspect
-from typing import Any, Iterable, Mapping, Tuple
+from typing import Any, Final, Iterable, Mapping, Tuple
 
 from absl import flags
 from absl import logging
@@ -140,6 +140,12 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
     All resources are intended to be used across test cases and multiple runs
     (except the client K8s deployment).
     """
+
+    TEST_SERVER_REPLICA_COUNT: Final[int] = 1
+    TEST_SERVER_ALTERNATIVE_REPLICA_COUNT: Final[int] = 1
+    # Kubernetes Test Server Affinity: 3 endpoints to test that only the picked
+    # sub-channel is connected.
+    TEST_SERVER_AFFINITY_REPLICA_COUNT: Final[int] = 3
 
     # This class dynamically set, so disable "no-member" check.
     # pylint: disable=no-member
@@ -297,18 +303,20 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
         self.test_server_runner.run(
             test_port=self.server_port,
             maintenance_port=self.server_maintenance_port,
+            replica_count=self.TEST_SERVER_REPLICA_COUNT,
         )
         # Kubernetes Test Server Alternative
         self.test_server_alternative_runner.run(
             test_port=self.server_port,
             maintenance_port=self.server_maintenance_port,
+            replica_count=self.TEST_SERVER_ALTERNATIVE_REPLICA_COUNT,
         )
         # Kubernetes Test Server Affinity. 3 endpoints to test that only the
         # picked sub-channel is connected.
         self.test_server_affinity_runner.run(
             test_port=self.server_port,
             maintenance_port=self.server_maintenance_port,
-            replica_count=3,
+            replica_count=self.TEST_SERVER_AFFINITY_REPLICA_COUNT,
         )
         # Add backend to default backend service
         neg_name, neg_zones = self.k8s_namespace.parse_service_neg_status(
@@ -336,9 +344,15 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             neg_name_affinity, neg_zones_affinity
         )
         # Wait for healthy backends
-        self.td.wait_for_backends_healthy_status()
-        self.td.wait_for_alternative_backends_healthy_status()
-        self.td.wait_for_affinity_backends_healthy_status()
+        self.td.wait_for_backends_healthy_status(
+            replica_count=self.TEST_SERVER_REPLICA_COUNT,
+        )
+        self.td.wait_for_alternative_backends_healthy_status(
+            replica_count=self.TEST_SERVER_ALTERNATIVE_REPLICA_COUNT,
+        )
+        self.td.wait_for_affinity_backends_healthy_status(
+            replica_count=self.TEST_SERVER_AFFINITY_REPLICA_COUNT,
+        )
 
     def cleanup(self) -> None:
         if self.strategy not in ["create"]:

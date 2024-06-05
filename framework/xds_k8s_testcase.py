@@ -343,7 +343,9 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             neg_name, neg_zones, max_rate_per_endpoint=max_rate_per_endpoint
         )
         if wait_for_healthy_status:
-            self.td.wait_for_backends_healthy_status()
+            self.td.wait_for_backends_healthy_status(
+                replica_count=server_runner.replica_count
+            )
 
     def removeServerBackends(self, *, server_runner=None):
         if server_runner is None:
