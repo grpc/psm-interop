@@ -176,9 +176,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP:
             return config.version_gte("v1.62.x")
-        elif config.client_lang == _Lang.GO:
-            return config.version_gte("v1.65.x")
-        elif config.client_lang == _Lang.JAVA:
+        elif config.client_lang in _Lang.GO | _Lang.JAVA:
             return config.version_gte("v1.65.x")
         return False
 
