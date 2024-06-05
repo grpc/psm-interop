@@ -43,8 +43,9 @@ _Lang = skips.Lang
 
 # Testing consts
 TEST_RUN_SECS = 90
-REQUEST_PAYLOAD_SIZE = 271828
-RESPONSE_PAYLOAD_SIZE = 314159
+CLIENT_QPS = 1
+REQUEST_PAYLOAD_SIZE = 27182
+RESPONSE_PAYLOAD_SIZE = 31415
 GRPC_METHOD_NAME = "grpc.testing.TestService/UnaryCall"
 CSM_WORKLOAD_NAME_SERVER = "csm_workload_name_from_server"
 CSM_WORKLOAD_NAME_CLIENT = "csm_workload_name_from_client"
@@ -216,6 +217,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         with self.subTest("2_start_test_client"):
             test_client: _XdsTestClient = self.startTestClient(
                 test_server,
+                qps=CLIENT_QPS,
                 request_payload_size=REQUEST_PAYLOAD_SIZE,
                 response_payload_size=RESPONSE_PAYLOAD_SIZE,
             )
