@@ -173,8 +173,7 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.CPP and config.server_lang == _Lang.CPP:
-            # CSM Observability Test is only supported for CPP for now.
+        if config.client_lang == _Lang.CPP:
             return config.version_gte("v1.62.x")
         return False
 
