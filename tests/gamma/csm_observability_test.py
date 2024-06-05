@@ -43,7 +43,7 @@ _Lang = skips.Lang
 
 # Testing consts
 TEST_RUN_SECS = 90
-CLIENT_QPS=1
+CLIENT_QPS = 1
 REQUEST_PAYLOAD_SIZE = 27182
 RESPONSE_PAYLOAD_SIZE = 31415
 GRPC_METHOD_NAME = "grpc.testing.TestService/UnaryCall"
