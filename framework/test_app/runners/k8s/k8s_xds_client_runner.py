@@ -199,7 +199,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
                 namespace_name=self.k8s_namespace.name,
                 deployment_id=self.deployment_id,
                 pod_monitoring_name=self.pod_monitoring_name,
-                pod_monitoring_port=self.DEFAULT_MONITORING_PORT,
+                pod_monitoring_port=self.DEFAULT_POD_MONITORING_PORT,
             )
 
         # We don't support for multiple client replicas at the moment.
@@ -236,13 +236,13 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             rpc_port, rpc_host = pf.local_port, pf.local_address
             if self.deployment_args.enable_csm_observability:
                 pf = self._start_port_forwarding_pod(
-                    pod, self.DEFAULT_MONITORING_PORT
+                    pod, self.DEFAULT_POD_MONITORING_PORT
                 )
                 monitoring_port = pf.local_port
         else:
             rpc_port, rpc_host = self.stats_port, None
             if self.deployment_args.enable_csm_observability:
-                monitoring_port = self.DEFAULT_MONITORING_PORT
+                monitoring_port = self.DEFAULT_POD_MONITORING_PORT
 
         return client_app.XdsTestClient(
             ip=pod.status.pod_ip,

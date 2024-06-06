@@ -221,6 +221,7 @@ psm::csm::get_tests() {
     "gamma.affinity_session_drain_test"
     "gamma.csm_observability_test"
     "app_net_ssa_test"
+    "app_net_csm_observability_test"
   )
 }
 
