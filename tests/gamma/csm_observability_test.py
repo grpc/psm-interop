@@ -14,7 +14,7 @@
 import dataclasses
 import logging
 import time
-from typing import Callable, Iterable, TextIO
+from typing import Any, Callable, Iterable, TextIO
 import unittest.mock
 
 from absl import flags
@@ -176,7 +176,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang == _Lang.CPP:
             return config.version_gte("v1.62.x")
-        elif config.client_lang in _Lang.GO | _Lang.JAVA:
+        elif config.client_lang in _Lang.GO | _Lang.JAVA | _Lang.PYTHON:
             return config.version_gte("v1.65.x")
         return False
 
@@ -302,6 +302,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
+            self.filter_label_matcher_based_on_lang(
+                self.lang_spec.client_lang, expected_metric_labels
+            )
             for metric in HISTOGRAM_CLIENT_METRICS:
                 actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
@@ -327,6 +330,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
+            self.filter_label_matcher_based_on_lang(
+                self.lang_spec.server_lang, expected_metric_labels
+            )
             for metric in HISTOGRAM_SERVER_METRICS:
                 actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
@@ -343,6 +349,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_client.hostname,
             }
+            self.filter_label_matcher_based_on_lang(
+                self.lang_spec.client_lang, expected_metric_labels
+            )
             for metric in COUNTER_CLIENT_METRICS:
                 actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
@@ -358,6 +367,9 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 "otel_scope_version": ANY,
                 "pod": test_server.hostname,
             }
+            self.filter_label_matcher_based_on_lang(
+                self.lang_spec.server_lang, expected_metric_labels
+            )
             for metric in COUNTER_SERVER_METRICS:
                 actual_metric_labels = all_results[metric].metric_labels
                 self.assertDictEqual(
@@ -458,6 +470,18 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
             f'resource.labels.namespace = "{namespace}"'
         )
+
+    @classmethod
+    def filter_label_matcher_based_on_lang(
+        cls, language: _Lang, label_matcher: dict[str, Any]
+    ) -> None:
+        """
+        Filter label_matcher based on language.
+        """
+        if language == _Lang.PYTHON:
+            # TODO(xuanwn): Remove this once https://github.com/open-telemetry/opentelemetry-python/issues/3072 is fixed.
+            label_matcher.pop("otel_scope_version", None)
+            label_matcher.pop("otel_scope_name", None)
 
     def query_metrics(
         self,
