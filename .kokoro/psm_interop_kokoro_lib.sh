@@ -348,7 +348,7 @@ psm::run::test() {
     PSM_TEST_FLAGS+=("--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}")
   elif [[ "${GRPC_LANGUAGE}" == "node"  ]]; then
     # TODO(b/261911148): To be replaced with --server_image_use_canonical when implemented.
-    PSM_TEST_FLAGS+=("--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:canonical")
+    PSM_TEST_FLAGS+=("--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:canonical-v1.65")
   fi
 
   # So far, only LB test uses secondary GKE cluster.
