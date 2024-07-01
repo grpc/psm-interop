@@ -11,7 +11,8 @@ from absl import logging
 import grpc
 from mako.template import Template
 
-import docker
+import docker.types as docker_types
+import docker.errors as docker_errors
 from docker import DockerClient
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
@@ -41,8 +42,7 @@ class Bootstrap:
         for i in range(100):
             # Date time to string
             run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-            id = f"_{i}" if i > 0 else ""
-            self.__mount_dir = base / f"testrun_{run_id}{id}"
+            self.__mount_dir = base / f"testrun_{run_id}"
             if not self.__mount_dir.exists():
                 logging.debug(f"Creating %s", self.__mount_dir)
                 self.mount_dir().mkdir(parents=True)
@@ -50,7 +50,7 @@ class Bootstrap:
         raise Exception("Couldn't find a free working directory")
 
     def mount_dir(self) -> Path:
-        if self.__mount_dir == None:
+        if self.__mount_dir is None:
             raise RuntimeError("Working dir was not created yet")
         return self.__mount_dir.absolute()
 
@@ -143,17 +143,20 @@ class DockerProcess:
         image: str,
         name: str,
         manager: ProcessManager,
-        **config: docker.types.ContainerConfig,
+        **config: docker_types.ContainerConfig,
     ):
-        self.__manager = manager
-        self.__container = None
         self.name = name
         self.__config = Configure(
             config, image=image, name=name, verbosity=manager.verbosity
         )
+        self.__container = None
+        self.__manager = manager
+        self.__thread = None
 
     def __enter__(self):
-        self.__container = self.__manager.dockerClient.containers.run(**self.__config)
+        self.__container = self.__manager.dockerClient.containers.run(
+            **self.__config
+        )
         self.__thread = Thread(
             target=lambda process: process.LogReaderLoop(),
             args=(self,),
@@ -165,7 +168,7 @@ class DockerProcess:
         try:
             self.__container.stop()
             self.__container.wait()
-        except docker.errors.NotFound:
+        except docker_errors.NotFound:
             # Ok, container was auto removed
             pass
         finally:
@@ -179,6 +182,7 @@ class DockerProcess:
             for l in s[: s.rfind("\n")].splitlines():
                 self.__manager.OnMessage(self.name, _Sanitize(l))
 
+
 class GrpcProcess:
 
     def __init__(
@@ -189,7 +193,7 @@ class GrpcProcess:
         ports,
         image: str,
         command: List[str],
-        volumes={},
+        volumes=None,
     ):
         self.__process = DockerProcess(
             image,
@@ -198,7 +202,7 @@ class GrpcProcess:
             command=" ".join(command),
             hostname=name,
             ports=ports,
-            volumes=volumes,
+            volumes=volumes if volumes is not None else {},
         )
         self.__manager = manager
         self.__port = port
@@ -209,16 +213,22 @@ class GrpcProcess:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.__grpc_channel != None:
+        if self.__grpc_channel is not None:
             self.__grpc_channel.close()
-        self.__process.__exit__(exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb)
+        self.__process.__exit__(
+            exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb
+        )
 
     def ExpectOutput(self, message: str, timeout_s=5) -> bool:
-        return self.__manager.ExpectOutput(self.__process.name, message, timeout_s)
+        return self.__manager.ExpectOutput(
+            self.__process.name, message, timeout_s
+        )
 
     def channel(self) -> grpc.Channel:
-        if self.__grpc_channel == None:
-            self.__grpc_channel = grpc.insecure_channel(f"localhost:{self.__port}")
+        if self.__grpc_channel is None:
+            self.__grpc_channel = grpc.insecure_channel(
+                f"localhost:{self.__port}"
+            )
         return self.__grpc_channel
 
     def port(self):
@@ -228,7 +238,12 @@ class GrpcProcess:
 class ControlPlane(GrpcProcess):
 
     def __init__(
-        self, manager: ProcessManager, name: str, port: int, upstream: str, image: str
+        self,
+        manager: ProcessManager,
+        name: str,
+        port: int,
+        upstream: str,
+        image: str,
     ):
         super().__init__(
             manager=manager,
@@ -266,7 +281,12 @@ class ControlPlane(GrpcProcess):
 class Client(GrpcProcess):
 
     def __init__(
-        self, manager: ProcessManager, port: int, name: str, url: str, image: str
+        self,
+        manager: ProcessManager,
+        port: int,
+        name: str,
+        url: str,
+        image: str,
     ):
         super().__init__(
             manager=manager,
