@@ -8,11 +8,11 @@ from threading import Thread
 from typing import List
 
 from absl import logging
+import docker.errors as docker_errors
+import docker.types as docker_types
 import grpc
 from mako.template import Template
 
-import docker.types as docker_types
-import docker.errors as docker_errors
 from docker import DockerClient
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc

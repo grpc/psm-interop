@@ -59,12 +59,12 @@ class FallbackTest(unittest.TestCase):
 
     def StartClient(self, port: int = None, name: str = None):
         logging.debug("Starting client process")
-        if name == None:
+        if name is None:
             name = CLIENT_NAME.value
         return Client(
             manager=self.__process_manager,
             name=name,
-            port=GetFreePort() if port == None else port,
+            port=GetFreePort() if port is None else port,
             url="xds:///listener_0",
             image=CLIENT_IMAGE.value,
         )
@@ -82,7 +82,7 @@ class FallbackTest(unittest.TestCase):
 
     def StartServer(self, name: str, port: int = None):
         logging.debug(f'Starting server "%s"', name)
-        port = GetFreePort() if port == None else port
+        port = GetFreePort() if port is None else port
         return GrpcProcess(
             name=name,
             port=port,
