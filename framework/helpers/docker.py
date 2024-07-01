@@ -1,23 +1,22 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from math import ceil
-from pathlib import Path, PosixPath
+from pathlib import Path
+from pathlib import PosixPath
 from queue import Queue
 from threading import Thread
 from typing import List
 
 from absl import logging
-
-from docker import DockerClient
-import docker
 import grpc
+from mako.template import Template
 
+import docker
+from docker import DockerClient
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
-from protos.grpc.testing.xdsconfig import (
-    control_pb2,
-    service_pb2_grpc,
-)
-from mako.template import Template
+from protos.grpc.testing.xdsconfig import control_pb2
+from protos.grpc.testing.xdsconfig import service_pb2_grpc
 
 
 class Bootstrap:
