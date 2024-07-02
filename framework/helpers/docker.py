@@ -10,13 +10,15 @@ import mako.template
 
 import docker
 from protos.grpc.testing import messages_pb2
+from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig.control_pb2 import StopOnRequestRequest
 from protos.grpc.testing.xdsconfig.control_pb2 import UpsertResourcesRequest
-import protos.grpc.testing.xdsconfig.service_pb2_grpc
+from protos.grpc.testing.xdsconfig.service_pb2_grpc import (
+    XdsConfigControlServiceStub,
+)
 
 
 class Bootstrap:
-
     def __init__(self, base: str, ports: list[int], host_name: str):
         self.base = pathlib.PosixPath(base)
         self.host_name = host_name
@@ -130,7 +132,6 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
-
     def __init__(
         self,
         image: str,
@@ -175,7 +176,6 @@ class DockerProcess:
 
 
 class GrpcProcess:
-
     def __init__(
         self,
         manager: ProcessManager,
@@ -239,9 +239,7 @@ class ControlPlane(GrpcProcess):
         )
 
     def StopOnResourceRequest(self, resource_type: str, resource_name: str):
-        stub = protos.grpc.testing.xdsconfig.service_pb2_grpc.XdsConfigControlServiceStub(
-            self.channel()
-        )
+        stub = XdsConfigControlServiceStub(self.channel())
         res = stub.StopOnRequest(
             StopOnRequestRequest(
                 resource_type=resource_type, resource_name=resource_name
@@ -252,9 +250,7 @@ class ControlPlane(GrpcProcess):
     def UpdateResources(
         self, cluster: str, upstream_port: int, upstream_host="localhost"
     ):
-        stub = protos.grpc.testing.xdsconfig.service_pb2_grpc.XdsConfigControlServiceStub(
-            self.channel()
-        )
+        stub = XdsConfigControlServiceStub(self.channel())
         return stub.UpsertResources(
             UpsertResourcesRequest(
                 cluster=cluster,
@@ -290,9 +286,7 @@ class Client(GrpcProcess):
 
     def GetStats(self, num_rpcs: int):
         absl.logging.debug(f"Sending {num_rpcs} requests")
-        stub = protos.grpc.testing.test_pb2_grpc.LoadBalancerStatsServiceStub(
-            self.channel()
-        )
+        stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(
                 num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 1.5)
