@@ -8,12 +8,12 @@ from threading import Thread
 from typing import List
 
 from absl import logging
+from docker import DockerClient
 import docker.errors as docker_errors
 import docker.types as docker_types
 import grpc
 from mako.template import Template
 
-from docker import DockerClient
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig import control_pb2
@@ -21,7 +21,6 @@ from protos.grpc.testing.xdsconfig import service_pb2_grpc
 
 
 class Bootstrap:
-
     def __init__(self, base: str, ports: List[int], host_name: str):
         self.__base = PosixPath(base)
         self.__host_name = host_name
@@ -71,7 +70,6 @@ class ChildProcessEvent:
 
 
 class ProcessManager:
-
     def __init__(
         self,
         bootstrap: Bootstrap,
@@ -137,7 +135,6 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
-
     def __init__(
         self,
         image: str,
@@ -184,7 +181,6 @@ class DockerProcess:
 
 
 class GrpcProcess:
-
     def __init__(
         self,
         manager: ProcessManager,
@@ -236,7 +232,6 @@ class GrpcProcess:
 
 
 class ControlPlane(GrpcProcess):
-
     def __init__(
         self,
         manager: ProcessManager,
@@ -279,7 +274,6 @@ class ControlPlane(GrpcProcess):
 
 
 class Client(GrpcProcess):
-
     def __init__(
         self,
         manager: ProcessManager,
