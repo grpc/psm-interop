@@ -72,3 +72,6 @@ venv/
 venv-*/
 out/
 protos/**/*_pb2*
+
+### Intermitten build result
+fallback-control-plane
