@@ -53,6 +53,8 @@ jobs:
           protos/grpc/testing/empty.proto
           protos/grpc/testing/messages.proto
           protos/grpc/testing/test.proto
+          protos/grpc/testing/xdsconfig/control.proto
+          protos/grpc/testing/xdsconfig/service.proto
 
       - name: "Run unit tests"
         run: python -m tests.unit
