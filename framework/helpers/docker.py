@@ -9,9 +9,11 @@ import grpc
 import mako.template
 
 import docker
-import protos.grpc.testing
-import protos.grpc.testing.xdsconfig.control_pb2
+from protos.grpc.testing import messages_pb2
+from protos.grpc.testing.xdsconfig.control_pb2 import StopOnRequestRequest
+from protos.grpc.testing.xdsconfig.control_pb2 import UpsertResourcesRequest
 import protos.grpc.testing.xdsconfig.service_pb2_grpc
+
 
 class Bootstrap:
 
@@ -27,20 +29,17 @@ class Bootstrap:
             servers=[f"{self.host_name}:{port}" for port in self.ports]
         )
         destination = self.get_mount_dir() / "bootstrap.json"
-        with open(destination, "w") as f:
+        with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
-            absl.logging.debug(f"Generated bootstrap file at %s", destination)
+            absl.logging.debug("Generated bootstrap file at %s", destination)
 
     def MakeWorkingDir(self, base: str):
-        for i in range(100):
-            # Date time to string
-            run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.mount_dir = base / f"testrun_{run_id}"
-            if not self.mount_dir.exists():
-                absl.logging.debug(f"Creating %s", self.mount_dir)
-                self.get_mount_dir().mkdir(parents=True)
-                return
-        raise Exception("Couldn't find a free working directory")
+        # Date time to string
+        run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.mount_dir = base / f"testrun_{run_id}"
+        if not self.mount_dir.exists():
+            absl.logging.debug("Creating %s", self.mount_dir)
+            self.get_mount_dir().mkdir(parents=True)
 
     def get_mount_dir(self):
         if self.mount_dir is None:
@@ -81,14 +80,14 @@ class ProcessManager:
         event: ChildProcessEvent = self.queue.get(timeout=timeout)
         source = event.source
         message = event.data
-        absl.logging.info(f"[%s] %s", source, message)
+        absl.logging.info("[%s] %s", source, message)
         if not source in self.outputs:
             self.outputs[source] = []
         self.outputs[source].append(message)
         return event
 
     def ExpectOutput(self, source: str, message: str, timeout_s=5) -> bool:
-        absl.logging.debug(f'Waiting for message "%s" on %s', message, source)
+        absl.logging.debug('Waiting for message "%s" on %s', message, source)
         if source in self.outputs:
             for m in self.outputs[source]:
                 if m.find(message) >= 0:
@@ -239,14 +238,12 @@ class ControlPlane(GrpcProcess):
             command=["--upstream", str(upstream), "--node", manager.nodeId],
         )
 
-    def StopOnResourceRequest(
-        self, resource_type: str, resource_name: str
-    ) -> protos.grpc.testing.xdsconfig.control_pb2.StopOnRequestResponse:
+    def StopOnResourceRequest(self, resource_type: str, resource_name: str):
         stub = protos.grpc.testing.xdsconfig.service_pb2_grpc.XdsConfigControlServiceStub(
             self.channel()
         )
         res = stub.StopOnRequest(
-            protos.grpc.testing.xdsconfig.control_pb2.StopOnRequestRequest(
+            StopOnRequestRequest(
                 resource_type=resource_type, resource_name=resource_name
             )
         )
@@ -259,7 +256,7 @@ class ControlPlane(GrpcProcess):
             self.channel()
         )
         return stub.UpsertResources(
-            protos.grpc.testing.xdsconfig.control_pb2.UpsertResourcesRequest(
+            UpsertResourcesRequest(
                 cluster=cluster,
                 upstream_host=upstream_host,
                 upstream_port=upstream_port,
@@ -297,7 +294,7 @@ class Client(GrpcProcess):
             self.channel()
         )
         res = stub.GetClientStats(
-            protos.grpc.testing.messages_pb2.LoadBalancerStatsRequest(
+            messages_pb2.LoadBalancerStatsRequest(
                 num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 1.5)
             )
         )
