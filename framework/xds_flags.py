@@ -190,6 +190,14 @@ GFE_DEBUG_HEADER = flags.DEFINE_enum(
     help="Whether to enable GFE debug headers and what value to use.",
 )
 
+ADD_DUALSTACK_SUPPORT = flags.DEFINE_bool(
+    "add_dualstack_support",
+    default=False,
+    help=(
+        f"Add support for Dual Stack resources to the framework."
+    ),
+)
+
 
 def set_socket_default_timeout_from_flag() -> None:
     """A helper to configure default socket timeout from a flag.

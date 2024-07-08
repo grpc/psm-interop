@@ -39,6 +39,7 @@ class ComputeV1(
     _WAIT_FOR_BACKEND_SLEEP_SEC = 4
     _WAIT_FOR_OPERATION_SEC = 60 * 10
     gfe_debug_header: Optional[str]
+    add_dualstack_support: Optional[bool]
 
     @dataclasses.dataclass(frozen=True)
     class GcpResource:
@@ -61,10 +62,12 @@ class ComputeV1(
         api_manager: gcp.api.GcpApiManager,
         project: str,
         gfe_debug_header: Optional[str] = None,
+        add_dualstack_support: Optional[bool] = False,
         version: str = "v1",
     ):
         super().__init__(api_manager.compute(version), project)
         self.gfe_debug_header = gfe_debug_header
+        self.add_dualstack_support = add_dualstack_support
 
     class HealthCheckProtocol(enum.Enum):
         TCP = enum.auto()
@@ -160,6 +163,10 @@ class ComputeV1(
             "healthChecks": [health_check.url],
             "protocol": protocol.name,
         }
+        # If add dualstack support is specified True, config the backend service
+        # to support IPv6
+        if self.add_dualstack_support:
+            body["ipAddressSelectionPolicy"] = "PREFER_IPV6"
         # If affinity header is specified, config the backend service to support
         # affinity, and set affinity header to the one given.
         if affinity_header:
