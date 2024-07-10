@@ -30,11 +30,14 @@ var (
 	upstream = flag.String("upstream", "localhost:3000", "upstream server")
 )
 
+// init configures debug logging based on command line flag value
 func init() {
 	l = example.Logger{}
 	flag.BoolVar(&l.Debug, "debug", false, "Enable xDS server debug logging")
 }
 
+// ControlService provides a gRPC API to configure test-specific control plane
+// behaviors
 type ControlService struct {
 	cs.UnsafeXdsConfigControlServiceServer
 	version   uint32
@@ -45,6 +48,8 @@ type ControlService struct {
 	mu        sync.Mutex
 }
 
+// StopOnRequest instructs the control plane to stop if any xDS client request
+// the specific resource.
 func (srv *ControlService) StopOnRequest(_ context.Context, req *cs.StopOnRequestRequest) (*cs.StopOnRequestResponse, error) {
 	srv.Cb.AddFilter(req.GetResourceType(), req.GetResourceName())
 	res := cs.StopOnRequestResponse{}
@@ -54,6 +59,9 @@ func (srv *ControlService) StopOnRequest(_ context.Context, req *cs.StopOnReques
 	return &res, nil
 }
 
+// UpsertResources allows the test to provide a new or replace existing xDS
+// resource. Notification will be sent to any control plane clients watching
+// the resource being updated.
 func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertResourcesRequest) (*cs.UpsertResourcesResponse, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -88,6 +96,8 @@ func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 	return res, nil
 }
 
+// MakeSnapshot builds xDS configuration snapshot that will be served
+// to clients.
 func (srv *ControlService) MakeSnapshot() (*cache.Snapshot, error) {
 	listeners := make([]types.Resource, len(srv.listeners))
 	i := 0
@@ -137,6 +147,8 @@ func (srv *ControlService) MakeSnapshot() (*cache.Snapshot, error) {
 	return snapshot, nil
 }
 
+// main entry point. Configures and starts a gRPC server that serves xDS traffic
+// and provides an interface for tests to manage control plane behavior
 func main() {
 	flag.Parse()
 	sep := strings.LastIndex(*upstream, ":")
