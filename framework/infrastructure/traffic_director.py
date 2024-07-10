@@ -179,7 +179,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
         if self.add_dualstack_support:
             self.create_target_proxy(ipv6=True)
-            self.create_forwarding_rule(service_port, ipv6=True)
+            self.create_forwarding_rule(
+                service_port, ipv6=True, ip_address="::"
+            )
 
     def cleanup(self, *, force=False):
         # Cleanup in the reverse order of creation
@@ -721,22 +723,31 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         # TODO(sergiitk): custom exception
         raise RuntimeError("Couldn't find unused forwarding rule port")
 
-    def create_forwarding_rule(self, src_port: int, ipv6=False):
+    def create_forwarding_rule(
+        self, src_port: int, ipv6=False, ip_address="0.0.0.0"
+    ):
         if ipv6:
             name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
+            target_proxy = self.target_proxy_v6
         else:
             name = self.make_resource_name(self.FORWARDING_RULE_NAME)
+            target_proxy = self.target_proxy
 
         src_port = int(src_port)
         logging.info(
-            'Creating forwarding rule "%s" in network "%s": 0.0.0.0:%s -> %s',
+            'Creating forwarding rule "%s" in network "%s": %s:%s -> %s',
             name,
             self.network,
             src_port,
-            self.target_proxy.url,
+            ip_address,
+            target_proxy.url,
         )
         resource = self.compute.create_forwarding_rule(
-            name, src_port, self.target_proxy, self.network_url
+            name,
+            src_port,
+            target_proxy,
+            self.network_url,
+            ip_address=ip_address,
         )
 
         if ipv6:
