@@ -65,9 +65,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     URL_MAP_PATH_MATCHER_NAME: Final[str] = "path-matcher"
 
     TARGET_PROXY_NAME: Final[str] = "target-proxy"
+    TARGET_PROXY_NAME_IPV6: Final[str] = "target-proxy-ipv6"
     ALTERNATIVE_TARGET_PROXY_NAME: Final[str] = "target-proxy-alt"
 
     FORWARDING_RULE_NAME: Final[str] = "forwarding-rule"
+    FORWARDING_RULE_NAME_IPV6: Final[str] = "forwarding-rule-ipv6"
     ALTERNATIVE_FORWARDING_RULE_NAME: Final[str] = "forwarding-rule-alt"
 
     HEALTH_CHECK_NAME: Final[str] = "health-check"
@@ -114,7 +116,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             project,
             version=compute_api_version,
             gfe_debug_header=xds_flags.GFE_DEBUG_HEADER.value,
-            add_dualstack_support=xds_flags.ADD_DUALSTACK_SUPPORT.value
+            add_dualstack_support=xds_flags.ADD_DUALSTACK_SUPPORT.value,
         )
 
         # Settings
@@ -137,6 +139,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.forwarding_rule: Optional[GcpResource] = None
         self.forwarding_rule_v6: Optional[GcpResource] = None
         self.alternative_forwarding_rule: Optional[GcpResource] = None
+        self.add_dualstack_support = xds_flags.ADD_DUALSTACK_SUPPORT.value
 
         # Backends.
         self.backends = set()
@@ -604,12 +607,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.compute.delete_url_map(name)
         self.url_map = None
 
-    def create_target_proxy(self, ipv6=False):    
+    def create_target_proxy(self, ipv6=False):
         if ipv6:
-            name = self.make_resource_name(self.TARGET_PROXY_NAME + "-v6")
+            name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
         else:
             name = self.make_resource_name(self.TARGET_PROXY_NAME)
-        
+
         if self.backend_service_protocol is BackendServiceProtocol.GRPC:
             target_proxy_type = "GRPC"
             create_proxy_fn = self.compute.create_target_grpc_proxy
@@ -627,32 +630,32 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             target_proxy_type,
             self.url_map.name,
         )
-        
+
         if ipv6:
             self.target_proxy_v6 = create_proxy_fn(name, self.url_map)
         else:
             self.target_proxy = create_proxy_fn(name, self.url_map)
 
-    def delete_target_grpc_proxy(self, force=False):
+    def delete_target_grpc_proxy(self, force=False, ipv6=False):
         if force:
             if ipv6:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME)
             else:
-                name = self.make_resource_name(self.TARGET_PROXY_NAME + "-v6")
+                name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
         elif self.target_proxy:
             name = self.target_proxy.name
         elif self.target_proxy_v6:
-             name = self.target_proxy_v6.name
+            name = self.target_proxy_v6.name
         else:
             return
-        
+
         logger.info('Deleting Target GRPC proxy "%s"', name)
         self.compute.delete_target_grpc_proxy(name)
         if ipv6:
             self.target_proxy_v6 = None
         else:
             self.target_proxy = None
-        
+
         self.target_proxy_is_http = False
 
     def delete_target_http_proxy(self, force=False, ipv6=False):
@@ -660,21 +663,21 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             if ipv6:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME)
             else:
-                name = self.make_resource_name(self.TARGET_PROXY_NAME + "-v6")
+                name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
         elif self.target_proxy and self.target_proxy_is_http:
             name = self.target_proxy.name
         elif self.target_proxy_v6 and self.target_proxy_is_http:
             name = self.target_proxy_v6.name
         else:
             return
-        
+
         logger.info('Deleting HTTP Target proxy "%s"', name)
         self.compute.delete_target_http_proxy(name)
         if ipv6:
             self.target_proxy_v6 = None
         else:
             self.target_proxy = None
-        
+
         self.target_proxy_is_http = False
 
     def create_alternative_target_proxy(self):
@@ -719,11 +722,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         raise RuntimeError("Couldn't find unused forwarding rule port")
 
     def create_forwarding_rule(self, src_port: int, ipv6=False):
-        if ipPv6:
-            name = self.make_resource_name(self.FORWARDING_RULE_NAME + "-v6")
+        if ipv6:
+            name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
         else:
             name = self.make_resource_name(self.FORWARDING_RULE_NAME)
-        
+
         src_port = int(src_port)
         logging.info(
             'Creating forwarding rule "%s" in network "%s": 0.0.0.0:%s -> %s',
@@ -735,12 +738,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         resource = self.compute.create_forwarding_rule(
             name, src_port, self.target_proxy, self.network_url
         )
-        
+
         if ipv6:
             self.forwarding_rule_v6 = resource
         else:
             self.forwarding_rule = resource
-        
+
         return resource
 
     def delete_forwarding_rule(self, force=False, ipv6=False):
@@ -748,14 +751,14 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             if ipv6:
                 name = self.make_resource_name(self.FORWARDING_RULE_NAME)
             else:
-                name = self.make_resource_name(self.FORWARDING_RULE_NAME + "-v6")
+                name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
         elif self.forwarding_rule:
             name = self.forwarding_rule.name
         elif self.forwarding_rule_v6:
             name = self.forwarding_rule_v6.name
         else:
             return
-        
+
         logger.info('Deleting Forwarding rule "%s"', name)
         self.compute.delete_forwarding_rule(name)
         if ipv6:

@@ -39,7 +39,7 @@ class ComputeV1(
     _WAIT_FOR_BACKEND_SLEEP_SEC = 4
     _WAIT_FOR_OPERATION_SEC = 60 * 10
     gfe_debug_header: Optional[str]
-    add_dualstack_support: Optional[bool]
+    add_dualstack_support: bool = False
 
     @dataclasses.dataclass(frozen=True)
     class GcpResource:
@@ -62,7 +62,7 @@ class ComputeV1(
         api_manager: gcp.api.GcpApiManager,
         project: str,
         gfe_debug_header: Optional[str] = None,
-        add_dualstack_support: Optional[bool] = False,
+        add_dualstack_support: bool = False,
         version: str = "v1",
     ):
         super().__init__(api_manager.compute(version), project)
