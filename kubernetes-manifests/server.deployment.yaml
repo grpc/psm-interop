@@ -42,9 +42,6 @@ spec:
           ${prestop_hook.main_lifecycle() if pre_stop_hook else ''}
           args:
             - "--port=${test_port}"
-            % if add_dualstack_support:
-            - "--address_type=IPV4"
-            % endif
             % if enable_csm_observability:
             - "--enable_csm_observability=true"
             % endif
