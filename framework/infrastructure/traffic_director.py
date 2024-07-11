@@ -190,7 +190,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_alternative_forwarding_rule(force=force)
         self.delete_target_http_proxy(force=force)
         self.delete_target_grpc_proxy(force=force)
-        self.delete_forwarding_rule(force=force)
         if self.add_dualstack_support:
             self.delete_target_http_proxy(force=force, ipv6=True)
             self.delete_forwarding_rule(force=force, ipv6=True)
@@ -644,10 +643,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
                 name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
             else:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME)
+        elif ipv6:
+            if self.target_proxy_v6:
+                name = self.target_proxy_v6.name
         elif self.target_proxy:
             name = self.target_proxy.name
-        elif self.target_proxy_v6:
-            name = self.target_proxy_v6.name
         else:
             return
 
@@ -666,10 +666,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
                 name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
             else:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME)
+        elif ipv6:
+            if self.target_proxy_v6 and self.target_proxy_is_http:
+                name = self.target_proxy_v6.name
         elif self.target_proxy and self.target_proxy_is_http:
             name = self.target_proxy.name
-        elif self.target_proxy_v6 and self.target_proxy_is_http:
-            name = self.target_proxy_v6.name
         else:
             return
 
@@ -763,10 +764,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
                 name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
             else:
                 name = self.make_resource_name(self.FORWARDING_RULE_NAME)
+        elif ipv6:
+            if self.forwarding_rule_v6:
+                name = self.forwarding_rule_v6.name
         elif self.forwarding_rule:
             name = self.forwarding_rule.name
-        elif self.forwarding_rule_v6:
-            name = self.forwarding_rule_v6.name
         else:
             return
 
