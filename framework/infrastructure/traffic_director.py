@@ -641,9 +641,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def delete_target_grpc_proxy(self, force=False, ipv6=False):
         if force:
             if ipv6:
-                name = self.make_resource_name(self.TARGET_PROXY_NAME)
-            else:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
+            else:
+                name = self.make_resource_name(self.TARGET_PROXY_NAME)
         elif self.target_proxy:
             name = self.target_proxy.name
         elif self.target_proxy_v6:
@@ -663,9 +663,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def delete_target_http_proxy(self, force=False, ipv6=False):
         if force:
             if ipv6:
-                name = self.make_resource_name(self.TARGET_PROXY_NAME)
-            else:
                 name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
+            else:
+                name = self.make_resource_name(self.TARGET_PROXY_NAME)
         elif self.target_proxy and self.target_proxy_is_http:
             name = self.target_proxy.name
         elif self.target_proxy_v6 and self.target_proxy_is_http:
@@ -760,9 +760,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def delete_forwarding_rule(self, force=False, ipv6=False):
         if force:
             if ipv6:
-                name = self.make_resource_name(self.FORWARDING_RULE_NAME)
-            else:
                 name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
+            else:
+                name = self.make_resource_name(self.FORWARDING_RULE_NAME)
         elif self.forwarding_rule:
             name = self.forwarding_rule.name
         elif self.forwarding_rule_v6:
