@@ -1,4 +1,4 @@
-package testcontrolplane
+package controlplane
 
 import (
 	"context"

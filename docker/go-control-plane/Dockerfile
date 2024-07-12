@@ -1,3 +1,4 @@
+#[eostroukhov] TODO migrate to Alpine to decrease image size
 FROM golang:1.22.3-bookworm
 
 WORKDIR /usr/src/app
@@ -18,7 +19,6 @@ ENV BASE=/usr
 # Copy into path
 RUN cp ./proto/bin/protoc ${BASE}/bin/
 RUN cp -R ./proto/include/* ${BASE}/include/
-
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY docker/go-control-plane/go.mod docker/go-control-plane/go.sum ./

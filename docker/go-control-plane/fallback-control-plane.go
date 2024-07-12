@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/eugeneo/fallback-control-plane/controlplane"
 	cs "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
-	"github.com/eugeneo/fallback-control-plane/testcontrolplane"
 
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
@@ -18,13 +18,12 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
-	example "github.com/eugeneo/fallback-control-plane/envoy"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
-	l        example.Logger
+	l        controlplane.Logger
 	port     = flag.Uint("port", 3333, "Port to listen on")
 	nodeID   = flag.String("node", "test-id", "Node ID")
 	upstream = flag.String("upstream", "localhost:3000", "upstream server")
@@ -32,7 +31,7 @@ var (
 
 // init configures debug logging based on command line flag value
 func init() {
-	l = example.Logger{}
+	l = controlplane.Logger{}
 	flag.BoolVar(&l.Debug, "debug", false, "Enable xDS server debug logging")
 }
 
@@ -44,7 +43,7 @@ type ControlService struct {
 	clusters  map[string]*cluster.Cluster
 	listeners map[string]*listener.Listener
 	cache     cache.SnapshotCache
-	Cb        *testcontrolplane.Callbacks
+	Cb        *controlplane.Callbacks
 	mu        sync.Mutex
 }
 
@@ -66,12 +65,12 @@ func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 	srv.version++
-	listener := example.ListenerName
+	listener := controlplane.ListenerName
 	if req.Listener != nil {
 		listener = *req.Listener
 	}
-	srv.clusters[req.Cluster] = example.MakeCluster(req.Cluster, req.UpstreamHost, req.UpstreamPort)
-	srv.listeners[listener] = example.MakeHTTPListener(listener, req.Cluster)
+	srv.clusters[req.Cluster] = controlplane.MakeCluster(req.Cluster, req.UpstreamHost, req.UpstreamPort)
+	srv.listeners[listener] = controlplane.MakeHTTPListener(listener, req.Cluster)
 	snapshot, err := srv.MakeSnapshot()
 	if err != nil {
 		l.Errorf("snapshot inconsistency: %+v", err)
@@ -161,11 +160,11 @@ func main() {
 		l.Errorf("Bad upstream port: %+v\n%+v", (*upstream)[sep+1:], err)
 		os.Exit(1)
 	}
-	cb := &testcontrolplane.Callbacks{Debug: l.Debug, Filters: make(map[string]map[string]bool)}
+	cb := &controlplane.Callbacks{Debug: l.Debug, Filters: make(map[string]map[string]bool)}
 	// The type needs to be checked
 	controlService := &ControlService{Cb: cb, version: 1,
-		clusters:  map[string]*cluster.Cluster{example.ListenerName: example.MakeCluster(example.ClusterName, (*upstream)[:sep], uint32(upstreamPort))},
-		listeners: map[string]*listener.Listener{example.ListenerName: example.MakeHTTPListener(example.ListenerName, example.ClusterName)},
+		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, (*upstream)[:sep], uint32(upstreamPort))},
+		listeners: map[string]*listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
 		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, l),
 	}
 	// Create a cache
@@ -183,5 +182,5 @@ func main() {
 	// Run the xDS server
 	ctx := context.Background()
 	srv := server.NewServer(ctx, controlService.cache, cb)
-	example.RunServer(srv, controlService, *port)
+	controlplane.RunServer(srv, controlService, *port)
 }
