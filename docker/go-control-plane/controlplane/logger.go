@@ -18,9 +18,8 @@ import (
 	"log"
 )
 
-// An example of a logger that implements `pkg/log/Logger`.  Logs to
-// stdout.  If Debug == false then Debugf() and Infof() won't output
-// anything.
+// A logger that implements `pkg/log/Logger`. Logs to stdout.
+// Debugf() and Infof() only print if Debug == true.
 type Logger struct {
 	Debug bool
 }
@@ -28,23 +27,23 @@ type Logger struct {
 // Log to stdout only if Debug is true.
 func (l Logger) Debugf(format string, args ...interface{}) {
 	if l.Debug {
-		log.Printf(format+"\n", args...)
+		log.Printf(format, args...)
 	}
 }
 
 // Log to stdout only if Debug is true.
 func (l Logger) Infof(format string, args ...interface{}) {
 	if l.Debug {
-		log.Printf(format+"\n", args...)
+		log.Printf(format, args...)
 	}
 }
 
 // Log to stdout always.
 func (l Logger) Warnf(format string, args ...interface{}) {
-	log.Printf(format+"\n", args...)
+	log.Printf(format, args...)
 }
 
 // Log to stdout always.
 func (l Logger) Errorf(format string, args ...interface{}) {
-	log.Printf(format+"\n", args...)
+	log.Printf(format, args...)
 }

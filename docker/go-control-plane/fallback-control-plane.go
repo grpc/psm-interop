@@ -29,14 +29,14 @@ var (
 	upstream = flag.String("upstream", "localhost:3000", "upstream server")
 )
 
-// init configures debug logging based on command line flag value
+// Init configures debug logging based on command line flag value.
 func init() {
 	l = controlplane.Logger{}
 	flag.BoolVar(&l.Debug, "debug", false, "Enable xDS server debug logging")
 }
 
 // ControlService provides a gRPC API to configure test-specific control plane
-// behaviors
+// behaviors.
 type ControlService struct {
 	cs.UnsafeXdsConfigControlServiceServer
 	version   uint32
@@ -73,7 +73,7 @@ func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 	srv.listeners[listener] = controlplane.MakeHTTPListener(listener, req.Cluster)
 	snapshot, err := srv.MakeSnapshot()
 	if err != nil {
-		l.Errorf("snapshot inconsistency: %+v", err)
+		l.Errorf("snapshot inconsistency: %+v\n", err)
 		return nil, err
 	}
 	srv.cache.SetSnapshot(context.Background(), *nodeID, snapshot)
@@ -117,14 +117,14 @@ func (srv *ControlService) MakeSnapshot() (*cache.Snapshot, error) {
 		return nil, error
 	}
 	if err := snapshot.Consistent(); err != nil {
-		l.Errorf("snapshot inconsistency: %+v", err)
+		l.Errorf("snapshot inconsistency: %+v\n", err)
 		for _, r := range snapshot.Resources {
 			for name, resource := range r.Items {
 				bytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(resource.Resource)
 				if err != nil {
-					l.Errorf("Can't marshal %s", name)
+					l.Errorf("Can't marshal %s\n", name)
 				} else {
-					l.Errorf("Resource: %s\n%s",
+					l.Errorf("Resource: %s\n%s\n",
 						resource.Resource,
 						string(bytes))
 				}
@@ -132,32 +132,32 @@ func (srv *ControlService) MakeSnapshot() (*cache.Snapshot, error) {
 		}
 		return nil, err
 	}
-	l.Debugf("will serve snapshot:")
+	l.Debugf("will serve snapshot:\n")
 	for _, values := range snapshot.Resources {
 		for name, item := range values.Items {
 			text, err := prototext.MarshalOptions{Multiline: true}.Marshal(item.Resource)
 			if err != nil {
-				l.Errorf("Resource %+v, error: %+v", name, err)
+				l.Errorf("Resource %+v, error: %+v\n", name, err)
 			} else {
-				l.Debugf("%+v => %+v", name, string(text))
+				l.Debugf("%+v => %+v\n", name, string(text))
 			}
 		}
 	}
 	return snapshot, nil
 }
 
-// main entry point. Configures and starts a gRPC server that serves xDS traffic
-// and provides an interface for tests to manage control plane behavior
+// Main entry point. Configures and starts a gRPC server that serves xDS traffic
+// and provides an interface for tests to manage control plane behavior.
 func main() {
 	flag.Parse()
 	sep := strings.LastIndex(*upstream, ":")
 	if sep < 0 {
-		l.Errorf("Incorrect upstream host name: %+v", upstream)
+		l.Errorf("Incorrect upstream host name: %+v\n", upstream)
 		os.Exit(1)
 	}
 	upstreamPort, err := strconv.Atoi((*upstream)[sep+1:])
 	if err != nil {
-		l.Errorf("Bad upstream port: %+v\n%+v", (*upstream)[sep+1:], err)
+		l.Errorf("Bad upstream port: %+v\n%+v\n", (*upstream)[sep+1:], err)
 		os.Exit(1)
 	}
 	cb := &controlplane.Callbacks{Debug: l.Debug, Filters: make(map[string]map[string]bool)}
@@ -170,12 +170,12 @@ func main() {
 	// Create a cache
 	snapshot, err := controlService.MakeSnapshot()
 	if err != nil {
-		l.Errorf("snapshot error %q for %+v", err, snapshot)
+		l.Errorf("snapshot error %q for %+v\n", err, snapshot)
 		os.Exit(1)
 	}
 	// Add the snapshot to the cache
 	if err := controlService.cache.SetSnapshot(context.Background(), *nodeID, snapshot); err != nil {
-		l.Errorf("snapshot error %q for %+v", err, snapshot)
+		l.Errorf("snapshot error %q for %+v\n", err, snapshot)
 		os.Exit(1)
 	}
 

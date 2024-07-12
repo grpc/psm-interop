@@ -41,7 +41,8 @@ const (
 
 var snapshot_version int = 1;
 
-// MakeCluster builds a CDS resource for serving to xDS clients
+// MakeCluster builds a CDS resource with a given clusterName that points
+// the users to upstreamHost:upstreamPort
 func MakeCluster(clusterName, upstreamHost string, upstreamPort uint32) *clusterpb.Cluster {
 	return &clusterpb.Cluster{
 		Name:                 clusterName,
@@ -78,12 +79,10 @@ func makeEndpoint(clusterName, upstreamHost string, upstreamPort uint32) *endpoi
 	}
 }
 
-// MakeHTTPListener builds a LDS resource for serving to xDS clients
+// MakeHTTPListener builds a LDS resource that routes traffic to a given
+// cluster.
 func MakeHTTPListener(listenerName, cluster string) *listenerpb.Listener {
-	any_route, err := anypb.New(&routerpb.Router{})
-	if err != nil {
-		panic(err)
-	}
+	any_route, _ := anypb.New(&routerpb.Router{})
 	httpcm := &hcmpb.HttpConnectionManager{
 		RouteSpecifier: &hcmpb.HttpConnectionManager_RouteConfig{
 			RouteConfig: &routepb.RouteConfiguration{
@@ -129,7 +128,7 @@ func MakeHTTPListener(listenerName, cluster string) *listenerpb.Listener {
 	}
 }
 
-// GenerateSnapshot prepares a new xDS config snapshot for serving to clients
+// GenerateSnapshot prepares a new xDS config snapshot for serving to clients.
 func GenerateSnapshot(upstreamHost string, upstreamPort uint32) *cache.Snapshot {
 	snap, _ := cache.NewSnapshot(strconv.Itoa(snapshot_version), map[resource.Type][]types.Resource{
 		resource.ClusterType:  {MakeCluster(ClusterName, upstreamHost, upstreamPort)},
