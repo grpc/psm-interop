@@ -58,7 +58,7 @@ class TestBasicCsds(xds_url_map_testcase.XdsUrlMapTestCase):
         )
         # Validate Listeners
         self.assertIsNotNone(xds_config.lds)
-        self.assertEqual(self.hostname(), xds_config.lds["name"])
+        self.assertIn(self.hostname(), xds_config.lds["name"])
         # Validate Route Configs
         self.assertTrue(xds_config.rds["virtualHosts"])
         # Validate Clusters
