@@ -1,3 +1,20 @@
+/*
+ *
+ * Copyright 2024 gRPC authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 package main
 
 import (
@@ -35,9 +52,9 @@ func init() {
 	flag.BoolVar(&l.Debug, "debug", false, "Enable xDS server debug logging")
 }
 
-// ControlService provides a gRPC API to configure test-specific control plane
+// controlService provides a gRPC API to configure test-specific control plane
 // behaviors.
-type ControlService struct {
+type controlService struct {
 	cs.UnsafeXdsConfigControlServiceServer
 	version   uint32
 	clusters  map[string]*cluster.Cluster
@@ -49,7 +66,7 @@ type ControlService struct {
 
 // StopOnRequest instructs the control plane to stop if any xDS client request
 // the specific resource.
-func (srv *ControlService) StopOnRequest(_ context.Context, req *cs.StopOnRequestRequest) (*cs.StopOnRequestResponse, error) {
+func (srv *controlService) StopOnRequest(_ context.Context, req *cs.StopOnRequestRequest) (*cs.StopOnRequestResponse, error) {
 	srv.Cb.AddFilter(req.GetResourceType(), req.GetResourceName())
 	res := cs.StopOnRequestResponse{}
 	for _, f := range srv.Cb.GetFilters() {
@@ -61,7 +78,7 @@ func (srv *ControlService) StopOnRequest(_ context.Context, req *cs.StopOnReques
 // UpsertResources allows the test to provide a new or replace existing xDS
 // resource. Notification will be sent to any control plane clients watching
 // the resource being updated.
-func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertResourcesRequest) (*cs.UpsertResourcesResponse, error) {
+func (srv *controlService) UpsertResources(_ context.Context, req *cs.UpsertResourcesRequest) (*cs.UpsertResourcesResponse, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 	srv.version++
@@ -97,7 +114,7 @@ func (srv *ControlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 
 // MakeSnapshot builds xDS configuration snapshot that will be served
 // to clients.
-func (srv *ControlService) MakeSnapshot() (*cache.Snapshot, error) {
+func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 	listeners := make([]types.Resource, len(srv.listeners))
 	i := 0
 	for _, l := range srv.listeners {
@@ -162,7 +179,7 @@ func main() {
 	}
 	cb := &controlplane.Callbacks{Debug: l.Debug, Filters: make(map[string]map[string]bool)}
 	// The type needs to be checked
-	controlService := &ControlService{Cb: cb, version: 1,
+	controlService := &controlService{Cb: cb, version: 1,
 		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, (*upstream)[:sep], uint32(upstreamPort))},
 		listeners: map[string]*listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
 		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, l),
@@ -182,5 +199,9 @@ func main() {
 	// Run the xDS server
 	ctx := context.Background()
 	srv := server.NewServer(ctx, controlService.cache, cb)
-	controlplane.RunServer(srv, controlService, *port)
+	err = controlplane.RunServer(srv, controlService, *port)
+	if err != nil {
+		l.Errorf("Server startup failed: %q\n", err)
+		os.Exit(1)
+	}
 }

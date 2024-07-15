@@ -23,18 +23,11 @@ import (
 
 	"google.golang.org/grpc"
 	channelz "google.golang.org/grpc/channelz/service"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	cs "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
 
-	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
 	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
-	endpointservice "github.com/envoyproxy/go-control-plane/envoy/service/endpoint/v3"
-	listenerservice "github.com/envoyproxy/go-control-plane/envoy/service/listener/v3"
-	routeservice "github.com/envoyproxy/go-control-plane/envoy/service/route/v3"
-	runtimeservice "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
-	secretservice "github.com/envoyproxy/go-control-plane/envoy/service/secret/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
@@ -62,43 +55,35 @@ func NewServer(ctx context.Context, cache cache.Cache, cb *test.Callbacks) *Serv
 func registerServer(grpcServer *grpc.Server, server server.Server) {
 	// register services
 	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-	endpointservice.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
-	clusterservice.RegisterClusterDiscoveryServiceServer(grpcServer, server)
-	routeservice.RegisterRouteDiscoveryServiceServer(grpcServer, server)
-	listenerservice.RegisterListenerDiscoveryServiceServer(grpcServer, server)
-	secretservice.RegisterSecretDiscoveryServiceServer(grpcServer, server)
-	runtimeservice.RegisterRuntimeDiscoveryServiceServer(grpcServer, server)
+	// endpointservice.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
+	// clusterservice.RegisterClusterDiscoveryServiceServer(grpcServer, server)
+	// routeservice.RegisterRouteDiscoveryServiceServer(grpcServer, server)
+	// listenerservice.RegisterListenerDiscoveryServiceServer(grpcServer, server)
+	// secretservice.RegisterSecretDiscoveryServiceServer(grpcServer, server)
+	// runtimeservice.RegisterRuntimeDiscoveryServiceServer(grpcServer, server)
 }
 
-// RunServer starts an xDS server at the given port.
-func RunServer(srv server.Server, controlService cs.XdsConfigControlServiceServer, port uint) {
+// RunServer starts an xDS server at the given port. Blocks while the server is
+// running
+func RunServer(srv server.Server, controlService cs.XdsConfigControlServiceServer, port uint) error {
 	// gRPC golang library sets a very small upper bound for the number gRPC/h2
 	// streams over a single TCP connection. If a proxy multiplexes requests over
 	// a single connection to the management server, then it might lead to
 	// availability problems. Keepalive timeouts based on connection_keepalive parameter https://www.envoyproxy.io/docs/envoy/latest/configuration/overview/examples#dynamic
 	var grpcOptions []grpc.ServerOption
-	grpcOptions = append(grpcOptions,
-		grpc.MaxConcurrentStreams(grpcMaxConcurrentStreams),
-		grpc.KeepaliveParams(keepalive.ServerParameters{
-			Time:    grpcKeepaliveTime,
-			Timeout: grpcKeepaliveTimeout,
-		}),
-		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-			MinTime:             grpcKeepaliveMinTime,
-			PermitWithoutStream: true,
-		}),
-	)
+	grpcOptions = append(grpcOptions)
 	grpcServer := grpc.NewServer(grpcOptions...)
 	reflection.Register(grpcServer)
 	channelz.RegisterChannelzServiceToServer(grpcServer)
 	cs.RegisterXdsConfigControlServiceServer(grpcServer, controlService)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	registerServer(grpcServer, srv)
 	log.Printf("management server listening on %d\n", port)
 	if err = grpcServer.Serve(lis); err != nil {
 		log.Println(err)
 	}
+	return nil
 }

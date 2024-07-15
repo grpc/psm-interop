@@ -20,7 +20,10 @@ option go_package = "grpc/interop/grpc_testing/xdsconfig";
 
 import "protos/grpc/testing/xdsconfig/control.proto";
 
+// Service to control the control plane from the test script
 service XdsConfigControlService {
+  // Instructs the server to stop when given resource is requested
   rpc StopOnRequest(StopOnRequestRequest) returns (StopOnRequestResponse);
+  // Adds or updates LDS and CDS resources.
   rpc UpsertResources(UpsertResourcesRequest) returns (UpsertResourcesResponse);
 };

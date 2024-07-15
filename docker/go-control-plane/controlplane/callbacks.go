@@ -1,3 +1,22 @@
+/*
+ *
+ * Copyright 2024 gRPC authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+// Package controlplane provides components for the common control plane used
+// for testing
 package controlplane
 
 import (
@@ -11,6 +30,8 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 )
 
+// Implementation of the server.Callbacks interface that implements the behavior
+// required by our tests.
 type Callbacks struct {
 	Signal         chan struct{}
 	Debug          bool
@@ -28,35 +49,37 @@ var _ server.Callbacks = &Callbacks{}
 func (cb *Callbacks) Report() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	log.Printf("server callbacks fetches=%d requests=%d responses=%d\n", cb.Fetches, cb.Requests, cb.Responses)
+	log.Printf("Server callbacks fetches=%d requests=%d responses=%d\n", cb.Fetches, cb.Requests, cb.Responses)
 }
 
 func (cb *Callbacks) OnStreamOpen(_ context.Context, id int64, typ string) error {
 	if cb.Debug {
-		log.Printf("stream %d open for %s\n", id, typ)
+		log.Printf("Stream %d open for %s\n", id, typ)
 	}
 	return nil
 }
 
 func (cb *Callbacks) OnStreamClosed(id int64, node *core.Node) {
 	if cb.Debug {
-		log.Printf("stream %d of node %s closed\n", id, node.Id)
+		log.Printf("Stream %d of node %s closed\n", id, node.Id)
 	}
 }
 
 func (cb *Callbacks) OnDeltaStreamOpen(_ context.Context, id int64, typ string) error {
 	if cb.Debug {
-		log.Printf("delta stream %d open for %s\n", id, typ)
+		log.Printf("Delta stream %d open for %s\n", id, typ)
 	}
 	return nil
 }
 
 func (cb *Callbacks) OnDeltaStreamClosed(id int64, node *core.Node) {
 	if cb.Debug {
-		log.Printf("delta stream %d of node %s closed\n", id, node.Id)
+		log.Printf("Delta stream %d of node %s closed\n", id, node.Id)
 	}
 }
 
+// Abruptly stops the server when the client requests a resource that the test
+// marked as one that should trigger this behavior
 func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) error {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -66,7 +89,7 @@ func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) 
 		cb.Signal = nil
 	}
 	if cb.Debug {
-		log.Printf("received request for %s on stream %d: %v:%v\n", req.GetTypeUrl(), id, req.VersionInfo, req.ResourceNames)
+		log.Printf("Received request for %s on stream %d: %v:%v\n", req.GetTypeUrl(), id, req.VersionInfo, req.ResourceNames)
 	}
 	filtered := cb.Filters[req.GetTypeUrl()]
 	if filtered != nil {
@@ -85,7 +108,7 @@ func (cb *Callbacks) OnStreamResponse(ctx context.Context, id int64, req *discov
 	defer cb.mu.Unlock()
 	cb.Responses++
 	if cb.Debug {
-		log.Printf("responding to request for %s on stream %d\n", req.GetTypeUrl(), id)
+		log.Printf("Responding to request for %s on stream %d\n", req.GetTypeUrl(), id)
 	}
 }
 
@@ -119,6 +142,8 @@ func (cb *Callbacks) OnFetchRequest(context.Context, *discovery.DiscoveryRequest
 
 func (cb *Callbacks) OnFetchResponse(*discovery.DiscoveryRequest, *discovery.DiscoveryResponse) {}
 
+// Adds a resource type/name to the list of resources that stop the server
+// if a client requests them
 func (cb *Callbacks) AddFilter(resource_type string, resource_name string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
@@ -134,6 +159,7 @@ type Filter struct {
 	ResourceName string
 }
 
+// Returns a list of resource name/types that stop the server when requested
 func (cb *Callbacks) GetFilters() []Filter {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
