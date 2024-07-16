@@ -998,9 +998,12 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("Waiting for pod %s to start", name)
         self.k8s_namespace.wait_for_pod_started(name, **kwargs)
         pod = self.k8s_namespace.get_pod(name)
-        logger.info(
-            "Pod %s ready, IP: %s", pod.metadata.name, pod.status.pod_ip_s
-        )
+
+        if hasattr(pod.status, "pod_ip_s"):  # if running with dualstack support
+            pod_ip_s = pod.status.pod_ip_s
+        else:
+            pod_ip_s = pod.status.pod_ip
+        logger.info("Pod %s ready, IP: %s", pod.metadata.name, pod_ip_s)
         return pod
 
     def _pod_started_logic(self, pod: k8s.V1Pod) -> bool:
