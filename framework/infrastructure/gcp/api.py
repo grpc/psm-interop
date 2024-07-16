@@ -155,6 +155,8 @@ class GcpApiManager:
 
         if version == "v1":
             return self._build_from_discovery_v1(api_name, version)
+        elif version == "v1beta" or version == "v1beta1":
+            return self._build_from_discovery_v1(api_name, "beta")
         elif version == "v1alpha":
             return self._build_from_discovery_v1(api_name, "alpha")
 

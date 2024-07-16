@@ -42,6 +42,7 @@ spec:
           ${prestop_hook.main_lifecycle() if pre_stop_hook else ''}
           args:
             - "--port=${test_port}"
+            - "--address_type=IPV4"
             % if enable_csm_observability:
             - "--enable_csm_observability=true"
             % endif
@@ -53,6 +54,10 @@ spec:
             - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
               value: "true"
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
