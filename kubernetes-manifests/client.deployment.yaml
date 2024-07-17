@@ -66,7 +66,7 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
-            % if add_dualstack_support:
+            % if enable_dualstack:
             - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
