@@ -136,7 +136,6 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
-
     def __init__(
         self,
         image: str,
