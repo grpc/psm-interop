@@ -1,16 +1,16 @@
 import datetime
+import logging
 import math
 import pathlib
 import queue
 import threading
 
-import logging
-
-import absl
+from docker.client import DockerClient
+from docker.errors import NotFound
+from docker.types import ContainerConfig
 import grpc
 import mako.template
 
-import docker.client
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig.control_pb2 import StopOnRequestRequest
@@ -75,7 +75,7 @@ class ProcessManager:
         node_id: str,
         verbosity="info",
     ):
-        self.docker_client = docker.client.DockerClient.from_env()
+        self.docker_client = DockerClient.from_env()
         self.node_id = node_id
         self.outputs = {}
         self.queue = queue.Queue()
@@ -136,12 +136,13 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
+
     def __init__(
         self,
         image: str,
         name: str,
         manager: ProcessManager,
-        **config: docker.types.ContainerConfig,
+        **config: ContainerConfig,
     ):
         self.name = name
         self.config = Configure(
@@ -166,7 +167,7 @@ class DockerProcess:
         try:
             self.container.stop()
             self.container.wait()
-        except docker.errors.NotFound:
+        except NotFound:
             # Ok, container was auto removed
             pass
         finally:
@@ -291,7 +292,7 @@ class Client(GrpcProcess):
         )
 
     def get_stats(self, num_rpcs: int):
-        logger.debug(f"Sending {num_rpcs} requests")
+        logger.debug("Sending %d requests", num_rpcs)
         stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(

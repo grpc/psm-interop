@@ -46,7 +46,7 @@ class FallbackTest(absltest.TestCase):
         )
 
     def setUp(self):
-        logger.info(f"Starting {self.id()}")
+        logger.info("Starting %s", self.id())
         self.process_manager = framework.helpers.docker.ProcessManager(
             bootstrap=FallbackTest.bootstrap,
             node_id=_NODE_ID.value,
@@ -65,9 +65,7 @@ class FallbackTest(absltest.TestCase):
         )
 
     def start_control_plane(self, name: str, index: int, upstream_port: int):
-        logger.debug(
-            f'Starting control plane "{name}"',
-        )
+        logger.debug('Starting control plane "%s"', name)
         port = self.bootstrap.xds_config_server_port(index)
         return framework.helpers.docker.ControlPlane(
             self.process_manager,
@@ -78,7 +76,7 @@ class FallbackTest(absltest.TestCase):
         )
 
     def start_server(self, name: str, port: int = None):
-        logger.debug(f'Starting server "{name}"')
+        logger.debug('Starting server "%s"', name)
         port = get_free_port() if port is None else port
         return framework.helpers.docker.GrpcProcess(
             name=name,
