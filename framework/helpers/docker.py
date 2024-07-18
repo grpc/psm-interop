@@ -4,11 +4,13 @@ import pathlib
 import queue
 import threading
 
+import logging
+
 import absl
 import grpc
 import mako.template
 
-import docker
+import docker.client
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig.control_pb2 import StopOnRequestRequest
@@ -17,14 +19,16 @@ from protos.grpc.testing.xdsconfig.service_pb2_grpc import (
     XdsConfigControlServiceStub,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class Bootstrap:
-    def __init__(self, base: str, ports: list[int], host_name: str):
-        self.base = pathlib.PosixPath(base)
+    def __init__(self, base: pathlib.Path, ports: list[int], host_name: str):
+        self.base = base
         self.host_name = host_name
         self.ports = ports
         self.mount_dir: pathlib.Path = None
-        self.MakeWorkingDir(self.base)
+        self.make_working_dir(self.base)
         # Use Mako
         template = mako.template.Template(filename="templates/bootstrap.json")
         file = template.render(
@@ -33,14 +37,14 @@ class Bootstrap:
         destination = self.get_mount_dir() / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
-            absl.logging.debug("Generated bootstrap file at %s", destination)
+            logger.debug("Generated bootstrap file at %s", destination)
 
-    def MakeWorkingDir(self, base: str):
+    def make_working_dir(self, base: str):
         # Date time to string
         run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.mount_dir = base / f"testrun_{run_id}"
         if not self.mount_dir.exists():
-            absl.logging.debug("Creating %s", self.mount_dir)
+            logger.debug("Creating %s", self.mount_dir)
             self.get_mount_dir().mkdir(parents=True)
 
     def get_mount_dir(self):
@@ -68,28 +72,28 @@ class ProcessManager:
     def __init__(
         self,
         bootstrap: Bootstrap,
-        nodeId: str,
+        node_id: str,
         verbosity="info",
     ):
-        self.dockerClient = docker.DockerClient.from_env()
-        self.nodeId = nodeId
+        self.docker_client = docker.client.DockerClient.from_env()
+        self.node_id = node_id
         self.outputs = {}
         self.queue = queue.Queue()
         self.bootstrap = bootstrap
         self.verbosity = verbosity
 
-    def NextEvent(self, timeout: int) -> ChildProcessEvent:
+    def next_event(self, timeout: int) -> ChildProcessEvent:
         event: ChildProcessEvent = self.queue.get(timeout=timeout)
         source = event.source
         message = event.data
-        absl.logging.info("[%s] %s", source, message)
+        logger.info("[%s] %s", source, message)
         if not source in self.outputs:
             self.outputs[source] = []
         self.outputs[source].append(message)
         return event
 
-    def ExpectOutput(self, source: str, message: str, timeout_s=5) -> bool:
-        absl.logging.debug('Waiting for message "%s" on %s', message, source)
+    def expect_output(self, source: str, message: str, timeout_s=5) -> bool:
+        logger.debug('Waiting for message "%s" on %s', message, source)
         if source in self.outputs:
             for m in self.outputs[source]:
                 if m.find(message) >= 0:
@@ -98,12 +102,12 @@ class ProcessManager:
             seconds=timeout_s
         )
         while datetime.datetime.now() <= deadline:
-            event = self.NextEvent(timeout_s)
+            event = self.next_event(timeout_s)
             if event.source == source and event.data.find(message) >= 0:
                 return True
         return False
 
-    def OnMessage(self, source: str, message: str):
+    def on_message(self, source: str, message: str):
         self.queue.put(ChildProcessEvent(source, message))
 
     def get_mount_dir(self):
@@ -148,9 +152,11 @@ class DockerProcess:
         self.thread = None
 
     def __enter__(self):
-        self.container = self.manager.dockerClient.containers.run(**self.config)
+        self.container = self.manager.docker_client.containers.run(
+            **self.config
+        )
         self.thread = threading.Thread(
-            target=lambda process: process.LogReaderLoop(),
+            target=lambda process: process.log_reader_loop(),
             args=(self,),
         )
         self.thread.start()
@@ -166,13 +172,13 @@ class DockerProcess:
         finally:
             self.thread.join()
 
-    def LogReaderLoop(self):
+    def log_reader_loop(self):
         prefix = ""
         for log in self.container.logs(stream=True):
             s = str(prefix + log.decode("utf-8"))
             prefix = "" if s[-1] == "\n" else s[s.rfind("\n") :]
             for l in s[: s.rfind("\n")].splitlines():
-                self.manager.OnMessage(self.name, _Sanitize(l))
+                self.manager.on_message(self.name, _Sanitize(l))
 
 
 class GrpcProcess:
@@ -208,8 +214,8 @@ class GrpcProcess:
             self.grpc_channel.close()
         self.process.__exit__(exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb)
 
-    def ExpectOutput(self, message: str, timeout_s=5) -> bool:
-        return self.manager.ExpectOutput(self.process.name, message, timeout_s)
+    def expect_output(self, message: str, timeout_s=5) -> bool:
+        return self.manager.expect_output(self.process.name, message, timeout_s)
 
     def channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
@@ -235,10 +241,10 @@ class ControlPlane(GrpcProcess):
             port=port,
             image=image,
             ports={3333: port},
-            command=["--upstream", str(upstream), "--node", manager.nodeId],
+            command=["--upstream", str(upstream), "--node", manager.node_id],
         )
 
-    def StopOnResourceRequest(self, resource_type: str, resource_name: str):
+    def stop_on_resource_request(self, resource_type: str, resource_name: str):
         stub = XdsConfigControlServiceStub(self.channel())
         res = stub.StopOnRequest(
             StopOnRequestRequest(
@@ -247,7 +253,7 @@ class ControlPlane(GrpcProcess):
         )
         return res
 
-    def UpdateResources(
+    def update_resources(
         self, cluster: str, upstream_port: int, upstream_host="localhost"
     ):
         stub = XdsConfigControlServiceStub(self.channel())
@@ -284,8 +290,8 @@ class Client(GrpcProcess):
             },
         )
 
-    def GetStats(self, num_rpcs: int):
-        absl.logging.debug(f"Sending {num_rpcs} requests")
+    def get_stats(self, num_rpcs: int):
+        logger.debug(f"Sending {num_rpcs} requests")
         stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(
