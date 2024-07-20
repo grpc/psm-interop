@@ -109,6 +109,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         resource_suffix: str,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         # API
         self.compute = _ComputeV1(
@@ -123,6 +124,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.network: str = network
         self.resource_prefix: str = resource_prefix
         self.resource_suffix: str = resource_suffix
+        self.enable_dualstack: bool = enable_dualstack
 
         # Managed resources
         self.health_check: Optional[GcpResource] = None
@@ -138,7 +140,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.forwarding_rule: Optional[GcpResource] = None
         self.forwarding_rule_ipv6: Optional[GcpResource] = None
         self.alternative_forwarding_rule: Optional[GcpResource] = None
-        self.enable_dualstack = xds_flags.ENABLE_DUALSTACK.value
 
         # Backends.
         self.backends = set()
@@ -189,6 +190,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_target_grpc_proxy(force=force)
         if self.enable_dualstack:
             self.delete_target_proxy_ipv6(force=force)
+            self.delete_forwarding_rule_ipv6(force=force)
         self.delete_alternative_target_grpc_proxy(force=force)
         self.delete_url_map(force=force)
         self.delete_alternative_url_map(force=force)
@@ -740,7 +742,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def create_forwarding_rule_ipv6(self, src_port: int):
         name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
-        src_port = int(src_port)
         logging.info(
             'Creating forwarding rule "%s" in network "%s": [::]:%s -> %s',
             name,
@@ -762,17 +763,23 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def delete_forwarding_rule(self, force=False):
         if force:
             name = self.make_resource_name(self.FORWARDING_RULE_NAME)
-            name_ipv6 = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
         elif self.forwarding_rule:
             name = self.forwarding_rule.name
-            name_ipv6 = self.forwarding_rule_ipv6.name
         else:
             return
         logger.info('Deleting Forwarding rule "%s"', name)
         self.compute.delete_forwarding_rule(name)
         self.forwarding_rule = None
-        logger.info('Deleting Forwarding rule "%s"', name_ipv6)
-        self.compute.delete_forwarding_rule(name_ipv6)
+
+    def delete_forwarding_rule_ipv6(self, force=False):
+        if force:
+            name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
+        elif self.forwarding_rule_ipv6:
+            name = self.forwarding_rule_ipv6.name
+        else:
+            return
+        logger.info('Deleting Forwarding rule "%s"', name)
+        self.compute.delete_forwarding_rule(name)
         self.forwarding_rule_ipv6 = None
 
     def create_alternative_forwarding_rule(
@@ -914,6 +921,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         resource_suffix: Optional[str] = None,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         super().__init__(
             gcp_api_manager,
@@ -922,6 +930,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             resource_suffix=resource_suffix,
             network=network,
             compute_api_version=compute_api_version,
+            enable_dualstack=enable_dualstack,
         )
 
         # API
@@ -1038,6 +1047,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         resource_suffix: Optional[str] = None,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         super().__init__(
             gcp_api_manager,
@@ -1046,6 +1056,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             resource_suffix=resource_suffix,
             network=network,
             compute_api_version=compute_api_version,
+            enable_dualstack=enable_dualstack,
         )
 
         # API

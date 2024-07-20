@@ -193,7 +193,7 @@ GFE_DEBUG_HEADER = flags.DEFINE_enum(
 ENABLE_DUALSTACK = flags.DEFINE_bool(
     "enable_dualstack",
     default=False,
-    help=("Enable support for Dual Stack resources to the framework."),
+    help="Enable support for Dual Stack resources to the framework.",
 )
 
 
