@@ -737,7 +737,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             name, src_port, self.target_proxy, self.network_url
         )
         self.forwarding_rule = resource
-
         return resource
 
     def create_forwarding_rule_ipv6(self, src_port: int):
