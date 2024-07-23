@@ -756,7 +756,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             ip_address="::",
         )
         self.forwarding_rule_ipv6 = resource
-
         return resource
 
     def delete_forwarding_rule(self, force=False):
