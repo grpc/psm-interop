@@ -638,7 +638,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         create_proxy_fn = self.compute.create_target_http_proxy
 
         logger.info(
-            'Creating target %s proxy "%s" to URL map %s',
+            'Creating IPv6 target %s proxy "%s" to URL map %s',
             name,
             target_proxy_type,
             self.url_map.name,
