@@ -677,10 +677,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             name = self.target_proxy_ipv6.name
         else:
             return
+        # TODO: Delete Target GRPC Proxy when added in create_target_proxy_ipv6.
         logger.info('Deleting IPv6 Target HTTP proxy "%s"', name)
-        self.compute.delete_target_http_proxy(
-            name
-        )  # TODO: Support GRPC target proxy as well
+        self.compute.delete_target_http_proxy(name)
         self.target_proxy_ipv6 = None
 
     def create_alternative_target_proxy(self):
