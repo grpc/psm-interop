@@ -66,6 +66,12 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
+            % if enable_dualstack:
+            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
+              value: "true"
+            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}

@@ -31,6 +31,7 @@ class ClientDeploymentArgs:
     enable_csm_observability: bool = False
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
+    enable_dualstack: bool = False
 
     def as_dict(self):
         return dataclasses.asdict(self)

@@ -65,9 +65,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     URL_MAP_PATH_MATCHER_NAME: Final[str] = "path-matcher"
 
     TARGET_PROXY_NAME: Final[str] = "target-proxy"
+    TARGET_PROXY_NAME_IPV6: Final[str] = "target-proxy-ipv6"
     ALTERNATIVE_TARGET_PROXY_NAME: Final[str] = "target-proxy-alt"
 
     FORWARDING_RULE_NAME: Final[str] = "forwarding-rule"
+    FORWARDING_RULE_NAME_IPV6: Final[str] = "forwarding-rule-ipv6"
     ALTERNATIVE_FORWARDING_RULE_NAME: Final[str] = "forwarding-rule-alt"
 
     HEALTH_CHECK_NAME: Final[str] = "health-check"
@@ -107,6 +109,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         resource_suffix: str,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         # API
         self.compute = _ComputeV1(
@@ -121,6 +124,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.network: str = network
         self.resource_prefix: str = resource_prefix
         self.resource_suffix: str = resource_suffix
+        self.enable_dualstack: bool = enable_dualstack
 
         # Managed resources
         self.health_check: Optional[GcpResource] = None
@@ -129,10 +133,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.firewall_rule: Optional[GcpResource] = None
         self.firewall_rule_ipv6: Optional[GcpResource] = None
         self.target_proxy: Optional[GcpResource] = None
+        self.target_proxy_ipv6: Optional[GcpResource] = None
         # TODO(sergiitk): remove this flag once target proxy resource loaded
         self.target_proxy_is_http: bool = False
         self.alternative_target_proxy: Optional[GcpResource] = None
         self.forwarding_rule: Optional[GcpResource] = None
+        self.forwarding_rule_ipv6: Optional[GcpResource] = None
         self.alternative_forwarding_rule: Optional[GcpResource] = None
 
         # Backends.
@@ -171,6 +177,10 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.create_target_proxy()
         self.create_forwarding_rule(service_port)
 
+        if self.enable_dualstack:
+            self.create_target_proxy_ipv6()
+            self.create_forwarding_rule_ipv6(service_port)
+
     def cleanup(self, *, force=False):
         # Cleanup in the reverse order of creation
         self.delete_firewall_rules(force=force)
@@ -178,6 +188,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_alternative_forwarding_rule(force=force)
         self.delete_target_http_proxy(force=force)
         self.delete_target_grpc_proxy(force=force)
+        if self.enable_dualstack:
+            self.delete_forwarding_rule_ipv6(force=force)
+            self.delete_target_proxy_ipv6(force=force)
         self.delete_alternative_target_grpc_proxy(force=force)
         self.delete_url_map(force=force)
         self.delete_alternative_url_map(force=force)
@@ -246,6 +259,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             affinity_header=affinity_header,
             locality_lb_policies=locality_lb_policies,
             outlier_detection=outlier_detection,
+            enable_dualstack=self.enable_dualstack,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
@@ -337,7 +351,10 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             'Creating %s Alternative Backend Service "%s"', protocol.name, name
         )
         resource = self.compute.create_backend_service_traffic_director(
-            name, health_check=self.health_check, protocol=protocol
+            name,
+            health_check=self.health_check,
+            protocol=protocol,
+            enable_dualstack=self.enable_dualstack,
         )
         self.alternative_backend_service = resource
         self.alternative_backend_service_protocol = protocol
@@ -418,6 +435,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             health_check=self.health_check,
             protocol=protocol,
             affinity_header=TEST_AFFINITY_METADATA_KEY,
+            enable_dualstack=self.enable_dualstack,
         )
         self.affinity_backend_service = resource
         self.affinity_backend_service_protocol = protocol
@@ -614,6 +632,20 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.target_proxy = create_proxy_fn(name, self.url_map)
 
+    def create_target_proxy_ipv6(self):
+        name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
+        # TODO(lsafran): Support GRPC target proxy as well
+        target_proxy_type = "HTTP"
+        create_proxy_fn = self.compute.create_target_http_proxy
+
+        logger.info(
+            'Creating IPv6 target %s proxy "%s" to URL map %s',
+            name,
+            target_proxy_type,
+            self.url_map.name,
+        )
+        self.target_proxy_ipv6 = create_proxy_fn(name, self.url_map)
+
     def delete_target_grpc_proxy(self, force=False):
         if force:
             name = self.make_resource_name(self.TARGET_PROXY_NAME)
@@ -637,6 +669,18 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.compute.delete_target_http_proxy(name)
         self.target_proxy = None
         self.target_proxy_is_http = False
+
+    def delete_target_proxy_ipv6(self, force=False):
+        if force:
+            name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
+        elif self.target_proxy_ipv6:
+            name = self.target_proxy_ipv6.name
+        else:
+            return
+        # TODO: Delete Target GRPC Proxy when added in create_target_proxy_ipv6.
+        logger.info('Deleting IPv6 Target HTTP proxy "%s"', name)
+        self.compute.delete_target_http_proxy(name)
+        self.target_proxy_ipv6 = None
 
     def create_alternative_target_proxy(self):
         name = self.make_resource_name(self.ALTERNATIVE_TARGET_PROXY_NAME)
@@ -695,6 +739,25 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.forwarding_rule = resource
         return resource
 
+    def create_forwarding_rule_ipv6(self, src_port: int):
+        name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
+        logging.info(
+            'Creating IPv6 forwarding rule "%s" in network "%s": [::]:%s -> %s',
+            name,
+            self.network,
+            src_port,
+            self.target_proxy_ipv6.url,
+        )
+        resource = self.compute.create_forwarding_rule(
+            name,
+            src_port,
+            self.target_proxy_ipv6,
+            self.network_url,
+            ip_address="::",
+        )
+        self.forwarding_rule_ipv6 = resource
+        return resource
+
     def delete_forwarding_rule(self, force=False):
         if force:
             name = self.make_resource_name(self.FORWARDING_RULE_NAME)
@@ -705,6 +768,17 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         logger.info('Deleting Forwarding rule "%s"', name)
         self.compute.delete_forwarding_rule(name)
         self.forwarding_rule = None
+
+    def delete_forwarding_rule_ipv6(self, force=False):
+        if force:
+            name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
+        elif self.forwarding_rule_ipv6:
+            name = self.forwarding_rule_ipv6.name
+        else:
+            return
+        logger.info('Deleting IPv6 Forwarding rule "%s"', name)
+        self.compute.delete_forwarding_rule(name)
+        self.forwarding_rule_ipv6 = None
 
     def create_alternative_forwarding_rule(
         self, src_port: int, ip_address="0.0.0.0"
@@ -845,6 +919,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         resource_suffix: Optional[str] = None,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         super().__init__(
             gcp_api_manager,
@@ -853,6 +928,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             resource_suffix=resource_suffix,
             network=network,
             compute_api_version=compute_api_version,
+            enable_dualstack=enable_dualstack,
         )
 
         # API
@@ -969,6 +1045,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         resource_suffix: Optional[str] = None,
         network: str = "default",
         compute_api_version: str = "v1",
+        enable_dualstack: bool = False,
     ):
         super().__init__(
             gcp_api_manager,
@@ -977,6 +1054,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             resource_suffix=resource_suffix,
             network=network,
             compute_api_version=compute_api_version,
+            enable_dualstack=enable_dualstack,
         )
 
         # API
