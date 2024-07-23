@@ -634,7 +634,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def create_target_proxy_ipv6(self):
         name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
-        target_proxy_type = "HTTP"  # TODO: Support GRPC target proxy as well
+        # TODO(lsafran): Support GRPC target proxy as well
+        target_proxy_type = "HTTP"
         create_proxy_fn = self.compute.create_target_http_proxy
 
         logger.info(
