@@ -189,8 +189,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_target_http_proxy(force=force)
         self.delete_target_grpc_proxy(force=force)
         if self.enable_dualstack:
-            self.delete_target_proxy_ipv6(force=force)
             self.delete_forwarding_rule_ipv6(force=force)
+            self.delete_target_proxy_ipv6(force=force)
         self.delete_alternative_target_grpc_proxy(force=force)
         self.delete_url_map(force=force)
         self.delete_alternative_url_map(force=force)
