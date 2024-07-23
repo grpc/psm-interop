@@ -742,7 +742,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def create_forwarding_rule_ipv6(self, src_port: int):
         name = self.make_resource_name(self.FORWARDING_RULE_NAME_IPV6)
         logging.info(
-            'Creating forwarding rule "%s" in network "%s": [::]:%s -> %s',
+            'Creating IPv6 forwarding rule "%s" in network "%s": [::]:%s -> %s',
             name,
             self.network,
             src_port,
