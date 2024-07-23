@@ -777,7 +777,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             name = self.forwarding_rule_ipv6.name
         else:
             return
-        logger.info('Deleting Forwarding rule "%s"', name)
+        logger.info('Deleting IPv6 Forwarding rule "%s"', name)
         self.compute.delete_forwarding_rule(name)
         self.forwarding_rule_ipv6 = None
 
