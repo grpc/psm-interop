@@ -19,6 +19,7 @@ from absl.testing import absltest
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
+from framework.infrastructure import k8s
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from typing import List
 
@@ -34,7 +35,7 @@ _Lang = skips.Lang
 _QPS = 100
 
 
-class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
+class DualStackTest(xds_k8s_testcase.DualstackXdsKubernetesTestCase):
     @classmethod
     def setUpClass(cls):
         """Force the canonical test server for all languages.
@@ -44,8 +45,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
-        self.enable_dualstack = True
         super().setUp()
+
         self.v4_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v4",
@@ -59,7 +60,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             reuse_namespace=True,
             reuse_service=True,
-            enable_dualstack=True,
         )
         self.v6_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
@@ -74,7 +74,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             reuse_namespace=True,
             reuse_service=True,
-            enable_dualstack=True,
         )
 
     def cleanup(self):
@@ -95,11 +94,17 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("01_create_backend_services"):
             self.td.create_backend_service()
 
-        with self.subTest("02_setup_routing_rule_map_for_grpc"):
-            self.td.setup_routing_rule_map_for_grpc(self.server_xds_host, self.server_xds_port)
+        with self.subTest("02_create_url_map"):
+            self.td.create_url_map(self.server_xds_host, self.server_xds_port)
+
+        with self.subTest("03_create_target_proxy"):
+            self.td.create_target_proxy()
+
+        with self.subTest("04_create_forwarding_rule"):
+            self.td.create_forwarding_rule(self.server_xds_port)
 
         test_servers: List[_XdsTestServer] = []
-        with self.subTest("03_start_test_servers"):
+        with self.subTest("05_start_test_servers"):
             test_servers.append(self.startTestServers()[0])
             test_servers.append(self.startTestServers(
                 server_runner=self.v4_server_runner,
@@ -109,24 +114,22 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 server_runner=self.v6_server_runner,
                 address_type="ipv6",
             )[0])
-            logger.info(f"Test servers: {test_servers}") # TODO: change to debug
 
-        with self.subTest("04_add_server_backends_to_backend_services"):
+        with self.subTest("06_add_server_backends_to_backend_services"):
             self.setupServerBackends()
             self.setupServerBackends(server_runner=self.v4_server_runner)
-            self.setupServerBackends(server_runner=self.v6_server_runner)
 
         test_client: _XdsTestClient
-        with self.subTest("05_start_test_client"):
+        with self.subTest("07_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("06_test_client_xds_config_exists"):
+        with self.subTest("08_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)
 
-        with self.subTest("07_test_server_received_rpcs_from_test_client"):
+        with self.subTest("09_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("08_round_robin"):
+        with self.subTest("10_round_robin"):
             num_rpcs = 100
             expected_rpcs_per_replica = num_rpcs / len(test_servers)
 
