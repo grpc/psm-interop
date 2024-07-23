@@ -1,0 +1,130 @@
+<%namespace name="prestop_hook" file="prestop-hook.yaml" />
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${deployment_name}
+  namespace: ${namespace_name}
+  labels:
+    app: ${deployment_name}
+    deployment_id: ${deployment_id}
+    owner: xds-k8s-interop-test
+spec:
+  replicas: ${replica_count}
+  selector:
+    matchLabels:
+      app: ${deployment_name}
+      deployment_id: ${deployment_id}
+  template:
+    metadata:
+      labels:
+        app: ${deployment_name}
+        deployment_id: ${deployment_id}
+        owner: xds-k8s-interop-test
+    spec:
+      % if service_account_name:
+      serviceAccountName: ${service_account_name}
+      % endif
+      % if termination_grace_period_seconds:
+      terminationGracePeriodSeconds: ${termination_grace_period_seconds}
+      % endif
+      containers:
+        - name: ${deployment_name}
+          image: ${image_name}
+          imagePullPolicy: Always
+          startupProbe:
+            tcpSocket:
+              port: ${test_port}
+            periodSeconds: 3
+            ## Extend the number of probes well beyond the duration of the test
+            ## driver waiting for the container to start.
+            failureThreshold: 1000
+          ${prestop_hook.main_lifecycle() if pre_stop_hook else ''}
+          args:
+            - "--port=${test_port}"
+            % if address_type:
+            - "--address_type=${address_type}"
+            % endif
+            % if enable_csm_observability:
+            - "--enable_csm_observability=true"
+            % endif
+          ports:
+            - containerPort: ${test_port}
+          env:
+            - name: GRPC_XDS_BOOTSTRAP
+              value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
+            - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
+              value: "true"
+            % if csm_workload_name:
+            - name: CSM_WORKLOAD_NAME
+              value: ${csm_workload_name}
+            % endif
+            % if csm_canonical_service_name:
+            - name: CSM_CANONICAL_SERVICE_NAME
+              value: ${csm_canonical_service_name}
+            % endif
+            % if enable_csm_observability:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+            % endif
+          volumeMounts:
+            - mountPath: /tmp/grpc-xds/
+              name: grpc-td-conf
+              readOnly: true
+            ${prestop_hook.volume_mount() if pre_stop_hook else ''}
+          resources:
+            limits:
+              cpu: 800m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+      initContainers:
+        - name: grpc-td-init
+          image: ${td_bootstrap_image}
+          imagePullPolicy: Always
+          args:
+            - "--output=/tmp/bootstrap/td-grpc-bootstrap.json"
+            - "--vpc-network-name=${network}"
+            % if xds_server_uri:
+            - "--xds-server-uri=${xds_server_uri}"
+            % endif
+            % if bootstrap_version=="v0.11.0" or bootstrap_version=="v0.12.0":
+            - "--node-metadata-experimental=app=${namespace_name}-${deployment_name}"
+            % else:
+            - "--node-metadata=app=${namespace_name}-${deployment_name}"
+            % endif
+            % if generate_mesh_id:
+            - "--generate-mesh-id-experimental"
+            % endif
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /tmp/bootstrap/
+              name: grpc-td-conf
+        ${prestop_hook.init_container() if pre_stop_hook else ''}
+      volumes:
+        - name: grpc-td-conf
+          emptyDir:
+            medium: Memory
+        ${prestop_hook.volume() if pre_stop_hook else ''}
+...

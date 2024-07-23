@@ -170,6 +170,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         test_port: int = DEFAULT_TEST_PORT,
         maintenance_port: Optional[int] = None,
         secure_mode: bool = False,
+        address_type: str = "",
         replica_count: int = 1,
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
@@ -260,6 +261,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             test_port=test_port,
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
+            address_type=address_type,
             bootstrap_version=bootstrap_version,
             **self.deployment_args.as_dict(),
         )

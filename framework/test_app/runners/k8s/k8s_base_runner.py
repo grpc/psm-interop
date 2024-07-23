@@ -143,6 +143,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         gcp_ui_url: str,
         namespace_template: Optional[str] = "namespace.yaml",
         reuse_namespace: bool = False,
+        address_type: Optional[str] = None,
     ):
         super().__init__()
 
@@ -153,6 +154,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Maps GCP service account to Kubernetes service account
         self.gcp_service_account = gcp_service_account
         self.gcp_ui_url = gcp_ui_url
+        self.address_type = address_type
 
         # Kubernetes namespace resources manager.
         self.k8s_namespace = k8s_namespace
