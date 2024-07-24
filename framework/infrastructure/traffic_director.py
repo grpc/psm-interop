@@ -176,7 +176,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.create_url_map(service_host, service_port)
         self.create_target_proxy()
         self.create_forwarding_rule(service_port)
-
         if self.enable_dualstack:
             self.create_target_proxy_ipv6()
             self.create_forwarding_rule_ipv6(service_port)

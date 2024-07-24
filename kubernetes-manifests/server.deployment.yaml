@@ -45,6 +45,9 @@ spec:
             % if enable_csm_observability:
             - "--enable_csm_observability=true"
             % endif
+            % if address_type:
+            - "--address_type=${address_type}"
+            % endif
           ports:
             - containerPort: ${test_port}
           env:
