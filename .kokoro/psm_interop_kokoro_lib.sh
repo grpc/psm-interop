@@ -195,9 +195,7 @@ psm::dualstack::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
   PSM_TEST_FLAGS+=(
-    "--resource_prefix=psm-ds
-     --enable_dualstack
-     --noenable_workload_identity"
+    "--flagfile=config/common-dualstack.cfg"
   )
 
   psm::run::finalize_test_flags "${test_name}"
