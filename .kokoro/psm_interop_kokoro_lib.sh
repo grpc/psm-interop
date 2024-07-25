@@ -165,8 +165,8 @@ psm::security::run_test() {
 # Outputs:
 #   Prints activated cluster names.
 #######################################
-psm::dual_stack::setup() {
-  activate_gke_cluster GKE_CLUSTER_DUAL_STACK
+psm::dualstack::setup() {
+  activate_gke_cluster GKE_CLUSTER_DUALSTACK
 }
 
 #######################################
@@ -174,9 +174,9 @@ psm::dual_stack::setup() {
 # Globals:
 #   TESTS: Populated with tests in PSM DualStack test suite.
 #######################################
-psm::dual_stack::get_tests() {
+psm::dualstack::get_tests() {
   TESTS=(
-    "test_dual_stack"
+    "test_dualstack"
   )
 }
 
@@ -191,13 +191,14 @@ psm::dual_stack::get_tests() {
 #   Writes the output of test execution to stdout, stderr
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
-psm::dual_stack::run_test() {
+psm::dualstack::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
-  # Only java supports extra checks for certificate matches (via channelz socket info).
-  if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
-    PSM_TEST_FLAGS+=("--nocheck_local_certs")
-  fi
+  PSM_TEST_FLAGS+=(
+    "--resource_prefix=psm-ds
+     --enable_dualstack
+     --noenable_workload_identity"
+  )
 
   psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
@@ -739,10 +740,10 @@ activate_gke_cluster() {
       GKE_CLUSTER_NAME="interop-test-psm-basic"
       GKE_CLUSTER_ZONE="us-central1-c"
       ;;
-    GKE_CLUSTER_DUAL_STACK)
-          GKE_CLUSTER_NAME="psm-interop-lb-primary-ds"
-          GKE_CLUSTER_ZONE="us-central1-a"
-          ;;
+    GKE_CLUSTER_DUALSTACK)
+      GKE_CLUSTER_NAME="psm-interop-dualstack"
+      GKE_CLUSTER_ZONE="us-central1-a"
+      ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
       exit 1
