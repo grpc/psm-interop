@@ -176,7 +176,7 @@ psm::dualstack::setup() {
 #######################################
 psm::dualstack::get_tests() {
   TESTS=(
-    "test_dualstack"
+    "dualstack_test"
   )
 }
 
