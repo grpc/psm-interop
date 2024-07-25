@@ -1,3 +1,4 @@
+from collections import defaultdict
 import datetime
 import logging
 import math
@@ -19,44 +20,43 @@ from protos.grpc.testing.xdsconfig.service_pb2_grpc import (
     XdsConfigControlServiceStub,
 )
 
+# bootstrap.json template
+BOOTSTRAP_JSON_TEMPLATE = "templates/bootstrap.json"
+
 logger = logging.getLogger(__name__)
 
 
+def _make_working_dir(base: pathlib.Path) -> str:
+    # Date time to string
+    run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    mount_dir = base / f"testrun_{run_id}"
+    if not mount_dir.exists():
+        logger.debug("Creating %s", mount_dir)
+        mount_dir.mkdir(parents=True)
+    return mount_dir.absolute()
+
+
 class Bootstrap:
+
     def __init__(self, base: pathlib.Path, ports: list[int], host_name: str):
-        self.base = base
-        self.host_name = host_name
         self.ports = ports
-        self.mount_dir: pathlib.Path = None
-        self.make_working_dir(self.base)
+        self.mount_dir = _make_working_dir(base)
         # Use Mako
-        template = mako.template.Template(filename="templates/bootstrap.json")
+        template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
         file = template.render(
-            servers=[f"{self.host_name}:{port}" for port in self.ports]
+            servers=[f"{host_name}:{port}" for port in self.ports]
         )
-        destination = self.get_mount_dir() / "bootstrap.json"
+        destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
             logger.debug("Generated bootstrap file at %s", destination)
 
-    def make_working_dir(self, base: str):
-        # Date time to string
-        run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.mount_dir = base / f"testrun_{run_id}"
-        if not self.mount_dir.exists():
-            logger.debug("Creating %s", self.mount_dir)
-            self.get_mount_dir().mkdir(parents=True)
-
-    def get_mount_dir(self):
-        if self.mount_dir is None:
-            raise RuntimeError("Working dir was not created yet")
-        return self.mount_dir.absolute()
-
-    def xds_config_server_port(self, n: int):
-        return self.ports[n]
+    def xds_config_server_port(self, server_id: int):
+        return self.ports[server_id]
 
 
 class ChildProcessEvent:
+
     def __init__(self, source: str, data: str):
         self.source = source
         self.data = data
@@ -77,7 +77,7 @@ class ProcessManager:
     ):
         self.docker_client = DockerClient.from_env()
         self.node_id = node_id
-        self.outputs = {}
+        self.outputs = defaultdict(list)
         self.queue = queue.Queue()
         self.bootstrap = bootstrap
         self.verbosity = verbosity
@@ -86,32 +86,47 @@ class ProcessManager:
         event: ChildProcessEvent = self.queue.get(timeout=timeout)
         source = event.source
         message = event.data
-        logger.info("[%s] %s", source, message)
-        if not source in self.outputs:
-            self.outputs[source] = []
         self.outputs[source].append(message)
         return event
 
-    def expect_output(self, source: str, message: str, timeout_s=5) -> bool:
-        logger.debug('Waiting for message "%s" on %s', message, source)
-        if source in self.outputs:
-            for m in self.outputs[source]:
-                if m.find(message) >= 0:
-                    return True
+    def expect_output(
+        self, process_name: str, expected_message: str, timeout_s: int
+    ) -> bool:
+        """
+        Checks if the specified message appears in the output of a given process within a timeout.
+
+        Returns:
+            True if the expected message is found in the process's output within the timeout, False otherwise.
+
+        Behavior:
+            - If the process has already produced output, it checks there first.
+            - Otherwise, it waits for new events from the process, up to the specified timeout.
+            - If an event from the process contains the expected message, it returns True.
+            - If the timeout is reached without finding the message, it returns False.
+        """
+        logger.debug(
+            'Waiting for message "%s" from %s', expected_message, process_name
+        )
+        if any(
+            m
+            for m in self.outputs[process_name]
+            if m.find(expected_message) >= 0
+        ):
+            return True
         deadline = datetime.datetime.now() + datetime.timedelta(
             seconds=timeout_s
         )
         while datetime.datetime.now() <= deadline:
             event = self.next_event(timeout_s)
-            if event.source == source and event.data.find(message) >= 0:
+            if (
+                event.source == process_name
+                and event.data.find(expected_message) >= 0
+            ):
                 return True
         return False
 
     def on_message(self, source: str, message: str):
         self.queue.put(ChildProcessEvent(source, message))
-
-    def get_mount_dir(self):
-        return self.bootstrap.get_mount_dir()
 
 
 def _Sanitize(l: str) -> str:
@@ -178,7 +193,9 @@ class DockerProcess:
             s = str(prefix + log.decode("utf-8"))
             prefix = "" if s[-1] == "\n" else s[s.rfind("\n") :]
             for l in s[: s.rfind("\n")].splitlines():
-                self.manager.on_message(self.name, _Sanitize(l))
+                message = _Sanitize(l)
+                logger.info("[%s] %s", self.name, message)
+                self.manager.on_message(self.name, message)
 
 
 class GrpcProcess:
@@ -214,8 +231,12 @@ class GrpcProcess:
             self.grpc_channel.close()
         self.process.__exit__(exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb)
 
-    def expect_output(self, message: str, timeout_s=5) -> bool:
-        return self.manager.expect_output(self.process.name, message, timeout_s)
+    def expect_message_in_output(
+        self, expected_message: str, timeout_s: int = 5
+    ) -> bool:
+        return self.manager.expect_output(
+            self.process.name, expected_message, timeout_s
+        )
 
     def channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
@@ -283,7 +304,7 @@ class Client(GrpcProcess):
             command=[f"--server={url}", "--print_response"],
             ports={50052: port},
             volumes={
-                manager.get_mount_dir(): {
+                manager.bootstrap.mount_dir: {
                     "bind": "/grpc",
                     "mode": "ro",
                 }

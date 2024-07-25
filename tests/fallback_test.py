@@ -1,5 +1,6 @@
 import logging
 import socket
+import unittest
 
 import absl
 from absl import flags
@@ -94,7 +95,9 @@ class FallbackTest(absltest.TestCase):
             self.start_client() as client,
         ):
             self.assertTrue(
-                client.expect_output("UNAVAILABLE: xDS channel for server")
+                client.expect_message_in_output(
+                    "UNAVAILABLE: xDS channel for server"
+                )
             )
             self.assertEqual(client.get_stats(5).num_failures, 5)
             # Fallback control plane start, send traffic to server2
@@ -111,8 +114,8 @@ class FallbackTest(absltest.TestCase):
                     upstream_port=server1.get_port(),
                 ):
                     self.assertTrue(
-                        client.expect_output(
-                            "parsed Cluster example_proxy_cluster"
+                        client.expect_message_in_output(
+                            "parsed Cluster example_proxy_cluster", timeout_s=30
                         )
                     )
                     stats = client.get_stats(10)
@@ -147,7 +150,9 @@ class FallbackTest(absltest.TestCase):
             # Wait for control plane to start up, stop when the client asks for
             # a cluster from the primary server
             self.assertTrue(
-                primary.expect_output("management server listening on")
+                primary.expect_message_in_output(
+                    "management server listening on"
+                )
             )
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
@@ -155,7 +160,9 @@ class FallbackTest(absltest.TestCase):
             )
             # Run client
             with (self.start_client() as client,):
-                self.assertTrue(client.expect_output("creating xds client"))
+                self.assertTrue(
+                    client.expect_message_in_output("creating xds client")
+                )
                 # Secondary xDS config start, send traffic to server2
                 stats = client.get_stats(5)
                 self.assertEqual(stats.num_failures, 0)
@@ -168,7 +175,9 @@ class FallbackTest(absltest.TestCase):
                     server1.get_port(),
                 ):
                     self.assertTrue(
-                        primary.expect_output("management server listening on")
+                        primary.expect_message_in_output(
+                            "management server listening on"
+                        )
                     )
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
@@ -188,7 +197,9 @@ class FallbackTest(absltest.TestCase):
             ),
             self.start_client() as client,
         ):
-            self.assertTrue(client.expect_output("creating xds client"))
+            self.assertTrue(
+                client.expect_message_in_output("creating xds client")
+            )
             # Secondary xDS config start, send traffic to server2
             stats = client.get_stats(5)
             self.assertGreater(stats.rpcs_by_peer["server1"], 0)
@@ -211,7 +222,9 @@ class FallbackTest(absltest.TestCase):
                 upstream_port=server3.get_port(),
             ) as primary2:
                 self.assertTrue(
-                    primary2.expect_output("management server listening on")
+                    primary2.expect_message_in_output(
+                        "management server listening on"
+                    )
                 )
                 stats = client.get_stats(20)
                 self.assertEqual(stats.num_failures, 0)
