@@ -158,6 +158,51 @@ psm::security::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- DualStack TESTS ------------------
+
+#######################################
+# DualStack Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::dual_stack::setup() {
+  psm-interop-lb-primary-ds GKE_CLUSTER_PSM_SECURITY
+}
+
+#######################################
+# Prepares the list of tests in DualStack test suite.
+# Globals:
+#   TESTS: Populated with tests in PSM DualStack test suite.
+#######################################
+psm::dual_stack::get_tests() {
+  TESTS=(
+    "test_dual_stack"
+  )
+}
+
+#######################################
+# Executes DualStack test case
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::dual_stack::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+
+  # Only java supports extra checks for certificate matches (via channelz socket info).
+  if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
+    PSM_TEST_FLAGS+=("--nocheck_local_certs")
+  fi
+
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- URL Map TESTS ------------------
 
 #######################################
