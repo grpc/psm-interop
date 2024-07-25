@@ -741,7 +741,7 @@ activate_gke_cluster() {
       ;;
     GKE_CLUSTER_DUAL_STACK)
           GKE_CLUSTER_NAME="psm-interop-lb-primary-ds"
-          GKE_CLUSTER_ZONE="us-central1-c"
+          GKE_CLUSTER_ZONE="us-central1-a"
           ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
