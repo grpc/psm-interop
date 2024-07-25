@@ -166,7 +166,7 @@ psm::security::run_test() {
 #   Prints activated cluster names.
 #######################################
 psm::dual_stack::setup() {
-  psm-interop-lb-primary-ds GKE_CLUSTER_PSM_SECURITY
+  activate_gke_cluster GKE_CLUSTER_DUAL_STACK
 }
 
 #######################################
@@ -739,6 +739,10 @@ activate_gke_cluster() {
       GKE_CLUSTER_NAME="interop-test-psm-basic"
       GKE_CLUSTER_ZONE="us-central1-c"
       ;;
+    GKE_CLUSTER_DUAL_STACK)
+          GKE_CLUSTER_NAME="psm-interop-lb-primary-ds"
+          GKE_CLUSTER_ZONE="us-central1-c"
+          ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
       exit 1
