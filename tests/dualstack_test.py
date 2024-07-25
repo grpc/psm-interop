@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from typing import List
 
 from absl import flags
 from absl.testing import absltest
@@ -20,7 +21,6 @@ from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.test_app.runners.k8s import k8s_xds_server_runner
-from typing import List
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -109,7 +109,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 address_type="ipv6",
             )[0])
 
-        logger.info(f"Test servers: {test_servers}") # TODO: change to debug
+        logger.info(f"Test servers: {test_servers}")  # TODO: change to debug
 
         with self.subTest("04_add_server_backends_to_backend_services"):
             self.setupServerBackends()
