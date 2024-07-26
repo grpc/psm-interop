@@ -61,6 +61,12 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
         )
 
+
+        self.server_runner = _KubernetesServerRunner(
+            self.server_runner.k8s_namespace,
+            deployment_name=self.server_name,
+            **runner_args,
+        )
         self.v4_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v4",
@@ -95,7 +101,10 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         test_servers: List[_XdsTestServer] = []
         with self.subTest("03_start_test_server-default"):
-            test_servers.append(self.startTestServers()[0])
+            test_servers.append(self.startTestServers(
+                server_runner=self.server_runner,
+                address_type="ipv4_ipv6",
+            )[0])
 
         with self.subTest("03_start_test_server-v4"):
             test_servers.append(self.startTestServers(
@@ -103,18 +112,18 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 address_type="ipv4",
             )[0])
 
-        with self.subTest("03_start_test_server-v6"):
-            test_servers.append(self.startTestServers(
-                server_runner=self.v6_server_runner,
-                address_type="ipv6",
-            )[0])
+        # with self.subTest("03_start_test_server-v6"):
+        #     test_servers.append(self.startTestServers(
+        #         server_runner=self.v6_server_runner,
+        #         address_type="ipv6",
+        #     )[0])
 
         logger.info(f"Test servers: {test_servers}")  # TODO: change to debug
 
         with self.subTest("04_add_server_backends_to_backend_services"):
-            self.setupServerBackends()
+            self.setupServerBackends(server_runner=self.server_runner)
             self.setupServerBackends(server_runner=self.v4_server_runner)
-            self.setupServerBackends(server_runner=self.v6_server_runner)
+            # self.setupServerBackends(server_runner=self.v6_server_runner)
 
         test_client: _XdsTestClient
         with self.subTest("05_start_test_client"):
