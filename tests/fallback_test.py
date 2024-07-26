@@ -102,7 +102,7 @@ class FallbackTest(absltest.TestCase):
             self.assertEqual(client.get_stats(5).num_failures, 5)
             # Fallback control plane start, send traffic to server2
             with self.start_control_plane(
-                "fallback_xds_config", 1, server2.get_port()
+                "fallback_xds_config", 1, server2.port
             ):
                 stats = client.get_stats(5)
                 self.assertGreater(stats.rpcs_by_peer["server2"], 0)
@@ -111,7 +111,7 @@ class FallbackTest(absltest.TestCase):
                 with self.start_control_plane(
                     name="primary_xds_config",
                     index=0,
-                    upstream_port=server1.get_port(),
+                    upstream_port=server1.port,
                 ):
                     self.assertTrue(
                         client.expect_message_in_output(
@@ -137,15 +137,9 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
             self.start_control_plane(
-                "primary_xds_config_run_1",
-                0,
-                server1.get_port(),
+                "primary_xds_config_run_1", 0, server1.port
             ) as primary,
-            self.start_control_plane(
-                "fallback_xds_config",
-                1,
-                server2.get_port(),
-            ),
+            self.start_control_plane("fallback_xds_config", 1, server2.port),
         ):
             # Wait for control plane to start up, stop when the client asks for
             # a cluster from the primary server
@@ -170,9 +164,7 @@ class FallbackTest(absltest.TestCase):
                 self.assertNotIn("server1", stats.rpcs_by_peer)
                 # Rerun primary control plane
                 with self.start_control_plane(
-                    "primary_xds_config_run_2",
-                    0,
-                    server1.get_port(),
+                    "primary_xds_config_run_2", 0, server1.port
                 ):
                     self.assertTrue(
                         primary.expect_message_in_output(
@@ -190,11 +182,9 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server2") as server2,
             self.start_server(name="server3") as server3,
             self.start_control_plane(
-                "primary_xds_config_run_1", 0, server1.get_port()
+                "primary_xds_config_run_1", 0, server1.port
             ) as primary,
-            self.start_control_plane(
-                "fallback_xds_config", 1, server2.get_port()
-            ),
+            self.start_control_plane("fallback_xds_config", 1, server2.port),
             self.start_client() as client,
         ):
             self.assertTrue(
@@ -209,7 +199,7 @@ class FallbackTest(absltest.TestCase):
             )
             primary.update_resources(
                 cluster="test_cluster_2",
-                upstream_port=server3.get_port(),
+                upstream_port=server3.port,
                 upstream_host=_HOST_NAME.value,
             )
             stats = client.get_stats(10)
@@ -219,7 +209,7 @@ class FallbackTest(absltest.TestCase):
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
                 index=0,
-                upstream_port=server3.get_port(),
+                upstream_port=server3.port,
             ) as primary2:
                 self.assertTrue(
                     primary2.expect_message_in_output(

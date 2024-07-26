@@ -173,21 +173,30 @@ class DockerProcess:
         self.thread = threading.Thread(
             target=lambda process: process.log_reader_loop(),
             args=(self,),
+            daemon=True,
         )
         self.thread.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def exit(self):
         try:
             self.container.stop()
             self.container.wait()
         except NotFound:
-            # Ok, container was auto removed
-            pass
+            # It is ok, container was auto removed
+            logger.debug(
+                f"Container {self.name} was autoremoved, most likely because "
+                "the app crashed"
+            )
         finally:
             self.thread.join()
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit()
+
     def log_reader_loop(self):
+        # We only process full strings that end in '\n'. Incomplete strings are
+        # stored in the prefix.
         prefix = ""
         for log in self.container.logs(stream=True):
             s = str(prefix + log.decode("utf-8"))
@@ -199,52 +208,50 @@ class DockerProcess:
 
 
 class GrpcProcess:
+
     def __init__(
         self,
         manager: ProcessManager,
         name: str,
         port: int,
-        ports,
+        ports: dict[int, int],
         image: str,
         command: list[str],
         volumes=None,
     ):
-        self.process = DockerProcess(
+        self.docker_process = DockerProcess(
             image,
             name,
             manager,
             command=" ".join(command),
             hostname=name,
             ports=ports,
-            volumes=volumes if volumes is not None else {},
+            volumes=volumes or {},
         )
         self.manager = manager
         self.port = port
         self.grpc_channel: grpc.Channel = None
 
     def __enter__(self):
-        self.process.__enter__()
+        self.docker_process.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.grpc_channel is not None:
+        if self.grpc_channel:
             self.grpc_channel.close()
-        self.process.__exit__(exc_type=exc_type, exc_val=exc_val, exc_tb=exc_tb)
+        self.docker_process.exit()
 
     def expect_message_in_output(
         self, expected_message: str, timeout_s: int = 5
     ) -> bool:
         return self.manager.expect_output(
-            self.process.name, expected_message, timeout_s
+            self.docker_process.name, expected_message, timeout_s
         )
 
     def channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
             self.grpc_channel = grpc.insecure_channel(f"localhost:{self.port}")
         return self.grpc_channel
-
-    def get_port(self):
-        return self.port
 
 
 class ControlPlane(GrpcProcess):
