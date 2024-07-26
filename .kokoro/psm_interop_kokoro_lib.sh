@@ -301,7 +301,7 @@ psm::csm::run_test() {
 #   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
 #     in the source repo.
 # Arguments:
-#   Test suite name, one of (lb, security, url_map, csm)
+#   Test suite name, one of (lb, security, dualstack, url_map, csm)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
@@ -316,7 +316,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    lb | security | url_map | csm)
+    lb | security | dualstack | url_map | csm)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
