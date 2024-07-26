@@ -96,7 +96,8 @@ class ProcessManager:
         Checks if the specified message appears in the output of a given process within a timeout.
 
         Returns:
-            True if the expected message is found in the process's output within the timeout, False otherwise.
+            True if the expected message is found in the process's output within
+            the timeout, False otherwise.
 
         Behavior:
             - If the process has already produced output, it checks there first.
@@ -185,8 +186,8 @@ class DockerProcess:
         except NotFound:
             # It is ok, container was auto removed
             logger.debug(
-                f"Container {self.name} was autoremoved, most likely because "
-                "the app crashed"
+                "Container %s was autoremoved, most likely because the app crashed"
+                % self.name
             )
         finally:
             self.thread.join()
