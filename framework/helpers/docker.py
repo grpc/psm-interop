@@ -22,6 +22,8 @@ from protos.grpc.testing.xdsconfig.service_pb2_grpc import (
 
 # bootstrap.json template
 BOOTSTRAP_JSON_TEMPLATE = "templates/bootstrap.json"
+DEFAULT_CONTROL_PLANE_PORT = 3333
+DEFAULT_GRPC_CLIENT_PORT = 50052
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +270,7 @@ class ControlPlane(GrpcProcess):
             name=name,
             port=port,
             image=image,
-            ports={3333: port},
+            ports={DEFAULT_CONTROL_PLANE_PORT: port},
             command=["--upstream", str(upstream), "--node", manager.node_id],
         )
 
@@ -309,7 +311,7 @@ class Client(GrpcProcess):
             image=image,
             name=name,
             command=[f"--server={url}", "--print_response"],
-            ports={50052: port},
+            ports={DEFAULT_GRPC_CLIENT_PORT: port},
             volumes={
                 manager.bootstrap.mount_dir: {
                     "bind": "/grpc",

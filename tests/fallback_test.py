@@ -55,23 +55,20 @@ class FallbackTest(absltest.TestCase):
 
     def start_client(self, port: int = None, name: str = None):
         logger.debug("Starting client process")
-        if name is None:
-            name = framework.xds_flags.CLIENT_NAME.value
         return framework.helpers.docker.Client(
             manager=self.process_manager,
-            name=name,
-            port=get_free_port() if port is None else port,
+            name=name or framework.xds_flags.CLIENT_NAME.value,
+            port=port or get_free_port(),
             url="xds:///listener_0",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
         )
 
     def start_control_plane(self, name: str, index: int, upstream_port: int):
         logger.debug('Starting control plane "%s"', name)
-        port = self.bootstrap.xds_config_server_port(index)
         return framework.helpers.docker.ControlPlane(
             self.process_manager,
             name=name,
-            port=port,
+            port=self.bootstrap.xds_config_server_port(index),
             upstream=f"{_HOST_NAME.value}:{upstream_port}",
             image=_CONTROL_PLANE_IMAGE.value,
         )
