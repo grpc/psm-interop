@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List
+from typing import Final, List
 
 from absl import flags
 from absl.testing import absltest
@@ -31,8 +31,7 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 _Lang = skips.Lang
 
-_QPS = 100
-_SERVERS_APP_LABEL = "psm-interop-dualstack"
+_SERVERS_APP_LABEL: Final[str] = "psm-interop-dualstack"
 
 
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
@@ -122,11 +121,13 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 )[0]
             )
 
-        # with self.subTest("03_start_test_server-v6"):
-        #     test_servers.append(self.startTestServers(
-        #         server_runner=self.v6_server_runner,
-        #         address_type="ipv6",
-        #     )[0])
+        with self.subTest("03_start_test_server-v6"):
+            test_servers.append(
+                self.startTestServers(
+                    server_runner=self.v6_server_runner,
+                    address_type="ipv6",
+                )[0]
+            )
 
         logger.info(f"Test servers: {test_servers}")  # TODO: change to debug
 
@@ -145,10 +146,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.td.wait_for_backends_healthy_status(
                 replica_count=len(test_servers)
             )
-
-            # self.setupServerBackends(server_runner=self.server_runner)
-            # self.setupServerBackends(server_runner=self.v4_server_runner)
-            # self.setupServerBackends(server_runner=self.v6_server_runner)
 
         test_client: _XdsTestClient
         with self.subTest("05_start_test_client"):

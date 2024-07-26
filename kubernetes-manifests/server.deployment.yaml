@@ -32,6 +32,7 @@ spec:
         - name: ${deployment_name}
           image: ${image_name}
           imagePullPolicy: Always
+          % if address_type != "ipv6":
           startupProbe:
             tcpSocket:
               port: ${test_port}
@@ -39,6 +40,7 @@ spec:
             ## Extend the number of probes well beyond the duration of the test
             ## driver waiting for the container to start.
             failureThreshold: 1000
+          % endif
           ${prestop_hook.main_lifecycle() if pre_stop_hook else ''}
           args:
             - "--port=${test_port}"
