@@ -39,7 +39,6 @@ def _make_working_dir(base: pathlib.Path) -> str:
 
 
 class Bootstrap:
-
     def __init__(self, base: pathlib.Path, ports: list[int], host_name: str):
         self.ports = ports
         self.mount_dir = _make_working_dir(base)
@@ -58,7 +57,6 @@ class Bootstrap:
 
 
 class ChildProcessEvent:
-
     def __init__(self, source: str, data: str):
         self.source = source
         self.data = data
@@ -210,7 +208,6 @@ class DockerProcess:
 
 
 class GrpcProcess:
-
     def __init__(
         self,
         manager: ProcessManager,
