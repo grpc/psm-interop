@@ -68,11 +68,13 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.v4_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v4",
+            service_name=self.server_runner.service_name,
             **runner_args,
         )
         self.v6_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v6",
+            service_name=self.server_runner.service_name,
             **runner_args,
         )
 
