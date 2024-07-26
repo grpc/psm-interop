@@ -186,8 +186,8 @@ class DockerProcess:
         except NotFound:
             # It is ok, container was auto removed
             logger.debug(
-                "Container %s was autoremoved, most likely because the app crashed"
-                % self.name
+                "Container %s was autoremoved, most likely because the app crashed",
+                self.name,
             )
         finally:
             self.thread.join()
