@@ -90,7 +90,7 @@ _TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
 
 def evaluate_test_config(
-        check: Callable[[skips.TestConfig], bool]
+    check: Callable[[skips.TestConfig], bool]
 ) -> skips.TestConfig:
     """Evaluates the test config check against Abseil flags.
 
@@ -236,11 +236,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
     @classmethod
     def _pretty_accumulated_stats(
-            cls,
-            accumulated_stats: _LoadBalancerAccumulatedStatsResponse,
-            *,
-            ignore_empty: bool = False,
-            highlight: bool = True,
+        cls,
+        accumulated_stats: _LoadBalancerAccumulatedStatsResponse,
+        *,
+        ignore_empty: bool = False,
+        highlight: bool = True,
     ) -> str:
         stats_yaml = helpers_grpc.accumulated_stats_pretty(
             accumulated_stats, ignore_empty=ignore_empty
@@ -275,7 +275,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def handle_sigint(
-            self, signalnum: _SignalNum, frame: Optional[FrameType]
+        self, signalnum: _SignalNum, frame: Optional[FrameType]
     ) -> None:
         # TODO(sergiitk): move to base_testcase.BaseTestCase
         if self._handling_sigint:
@@ -325,11 +325,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def setupServerBackends(
-            self,
-            *,
-            wait_for_healthy_status=True,
-            server_runner=None,
-            max_rate_per_endpoint: Optional[int] = None,
+        self,
+        *,
+        wait_for_healthy_status=True,
+        server_runner=None,
+        max_rate_per_endpoint: Optional[int] = None,
     ):
         if server_runner is None:
             server_runner = self.server_runner
@@ -365,7 +365,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
     def assertSuccessfulRpcs(
-            self, test_client: XdsTestClient, num_rpcs: int = 100
+        self, test_client: XdsTestClient, num_rpcs: int = 100
     ) -> _LoadBalancerStatsResponse:
         lb_stats = self.getClientRpcStats(test_client, num_rpcs)
         self.assertAllBackendsReceivedRpcs(lb_stats)
@@ -379,8 +379,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
     @staticmethod
     def diffAccumulatedStatsPerMethod(
-            before: _LoadBalancerAccumulatedStatsResponse,
-            after: _LoadBalancerAccumulatedStatsResponse,
+        before: _LoadBalancerAccumulatedStatsResponse,
+        after: _LoadBalancerAccumulatedStatsResponse,
     ) -> _LoadBalancerAccumulatedStatsResponse:
         """Only diffs stats_per_method, as the other fields are deprecated."""
         diff = _LoadBalancerAccumulatedStatsResponse()
@@ -392,8 +392,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 if count > 0:
                     diff.stats_per_method[method].result[status] = count
             rpcs_started = (
-                    method_stats.rpcs_started
-                    - before.stats_per_method[method].rpcs_started
+                method_stats.rpcs_started
+                - before.stats_per_method[method].rpcs_started
             )
             if rpcs_started < 0:
                 raise AssertionError("Diff of count shouldn't be negative")
@@ -401,13 +401,13 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         return diff
 
     def assertRpcStatusCodes(
-            self,
-            test_client: XdsTestClient,
-            *,
-            expected_status: grpc.StatusCode,
-            duration: _timedelta,
-            method: str,
-            stray_rpc_limit: int = 0,
+        self,
+        test_client: XdsTestClient,
+        *,
+        expected_status: grpc.StatusCode,
+        duration: _timedelta,
+        method: str,
+        stray_rpc_limit: int = 0,
     ) -> None:
         """Assert all RPCs for a method are completing with a certain status."""
         # pylint: disable=too-many-locals
@@ -484,13 +484,13 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def assertRpcsEventuallyGoToGivenServers(
-            self,
-            test_client: XdsTestClient,
-            servers: Sequence[XdsTestServer],
-            num_rpcs: int = 100,
-            *,
-            retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
-            retry_wait: dt.timedelta = dt.timedelta(seconds=1),
+        self,
+        test_client: XdsTestClient,
+        servers: Sequence[XdsTestServer],
+        num_rpcs: int = 100,
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=1),
     ) -> None:
         # TODO(sergiitk): force num_rpcs to be a kwarg
         retryer = retryers.constant_retryer(
@@ -511,10 +511,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def _assertRpcsEventuallyGoToGivenServers(
-            self,
-            test_client: XdsTestClient,
-            servers: Sequence[XdsTestServer],
-            num_rpcs: int,
+        self,
+        test_client: XdsTestClient,
+        servers: Sequence[XdsTestServer],
+        num_rpcs: int,
     ):
         server_hostnames = [server.hostname for server in servers]
         logger.info("Verifying RPCs go to servers %s", server_hostnames)
@@ -556,13 +556,13 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             if re.search(r"\.Listener$", generic_xds_config.type_url):
                 seen.add("listener_config")
             elif re.search(
-                    r"\.RouteConfiguration$", generic_xds_config.type_url
+                r"\.RouteConfiguration$", generic_xds_config.type_url
             ):
                 seen.add("route_config")
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
             elif re.search(
-                    r"\.ClusterLoadAssignment$", generic_xds_config.type_url
+                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
             ):
                 seen.add("endpoint_config")
         logger.debug(
@@ -572,11 +572,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         self.assertSameElements(want, seen)
 
     def assertRouteConfigUpdateTrafficHandoff(
-            self,
-            test_client: XdsTestClient,
-            previous_route_config_version: str,
-            retry_wait_second: int,
-            timeout_second: int,
+        self,
+        test_client: XdsTestClient,
+        previous_route_config_version: str,
+        retry_wait_second: int,
+        timeout_second: int,
     ):
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=retry_wait_second),
@@ -623,13 +623,13 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             raise retry_error
 
     def assertDrainingEndpointsCount(
-            self,
-            test_client: XdsTestClient,
-            expected_count: int,
-            *,
-            retry_timeout: dt.timedelta = dt.timedelta(minutes=1),
-            retry_wait: dt.timedelta = dt.timedelta(seconds=10),
-            log_level: int = logging.DEBUG,
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=1),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
     ) -> None:
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
@@ -659,7 +659,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 )
 
     def assertFailedRpcs(
-            self, test_client: XdsTestClient, num_rpcs: Optional[int] = 100
+        self, test_client: XdsTestClient, num_rpcs: Optional[int] = 100
     ):
         lb_stats = self.getClientRpcStats(test_client, num_rpcs)
         failed = int(lb_stats.num_failures)
@@ -670,11 +670,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def getClientRpcStats(
-            self,
-            test_client: XdsTestClient,
-            num_rpcs: int,
-            *,
-            metadata_keys: Optional[tuple[str, ...]] = None,
+        self,
+        test_client: XdsTestClient,
+        num_rpcs: int,
+        *,
+        metadata_keys: Optional[tuple[str, ...]] = None,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
@@ -697,15 +697,15 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             )
 
     def assertClientEventuallyReachesSteadyState(
-            self,
-            test_client: XdsTestClient,
-            *,
-            rpc_type: str,
-            num_rpcs: int,
-            threshold_percent: int = 1,
-            retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
-            retry_wait: dt.timedelta = dt.timedelta(seconds=10),
-            steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
+        self,
+        test_client: XdsTestClient,
+        *,
+        rpc_type: str,
+        num_rpcs: int,
+        threshold_percent: int = 1,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
@@ -730,11 +730,11 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def _checkRpcsInFlight(
-            self,
-            test_client: XdsTestClient,
-            rpc_type: str,
-            num_rpcs: int,
-            threshold_percent: int,
+        self,
+        test_client: XdsTestClient,
+        rpc_type: str,
+        num_rpcs: int,
+        threshold_percent: int,
     ):
         if not 0 <= threshold_percent <= 100:
             raise ValueError(
@@ -901,14 +901,14 @@ class IsolatedXdsKubernetesTestCase(
         )
 
     def _start_test_client(
-            self,
-            server_target: str,
-            *,
-            wait_for_active_ads: bool = True,
-            wait_for_server_channel_ready: bool = True,
-            wait_for_active_ads_timeout: Optional[_timedelta] = None,
-            wait_for_server_channel_ready_timeout: Optional[_timedelta] = None,
-            **kwargs,
+        self,
+        server_target: str,
+        *,
+        wait_for_active_ads: bool = True,
+        wait_for_server_channel_ready: bool = True,
+        wait_for_active_ads_timeout: Optional[_timedelta] = None,
+        wait_for_server_channel_ready_timeout: Optional[_timedelta] = None,
+        **kwargs,
     ) -> XdsTestClient:
         test_client = self.client_runner.run(
             server_target=server_target, **kwargs
@@ -990,7 +990,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def startTestServers(
-            self, replica_count=1, server_runner=None, **kwargs
+        self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
         if server_runner is None:
             server_runner = self.server_runner
@@ -1007,7 +1007,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         return test_servers
 
     def startTestClient(
-            self, test_server: XdsTestServer, **kwargs
+        self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
         return self._start_test_client(test_server.xds_uri, **kwargs)
 
@@ -1115,7 +1115,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         return test_server
 
     def setupSecurityPolicies(
-            self, *, server_tls, server_mtls, client_tls, client_mtls
+        self, *, server_tls, server_mtls, client_tls, client_mtls
     ):
         self.td.setup_client_security(
             server_namespace=self.server_namespace,
@@ -1132,11 +1132,11 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def startSecureTestClient(
-            self,
-            test_server: XdsTestServer,
-            *,
-            wait_for_server_channel_ready=True,
-            **kwargs,
+        self,
+        test_server: XdsTestServer,
+        *,
+        wait_for_server_channel_ready=True,
+        **kwargs,
     ) -> XdsTestClient:
         return self._start_test_client(
             server_target=test_server.xds_uri,
@@ -1146,10 +1146,10 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def assertTestAppSecurity(
-            self,
-            mode: SecurityMode,
-            test_client: XdsTestClient,
-            test_server: XdsTestServer,
+        self,
+        mode: SecurityMode,
+        test_client: XdsTestClient,
+        test_server: XdsTestServer,
     ):
         client_socket, server_socket = self.getConnectedSockets(
             test_client, test_server
@@ -1169,9 +1169,9 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             raise TypeError("Incorrect security mode")
 
     def assertSecurityMtls(
-            self,
-            client_security: grpc_channelz.Security,
-            server_security: grpc_channelz.Security,
+        self,
+        client_security: grpc_channelz.Security,
+        server_security: grpc_channelz.Security,
     ):
         self.assertEqual(
             client_security.WhichOneof("model"),
@@ -1224,9 +1224,9 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             )
 
     def assertSecurityTls(
-            self,
-            client_security: grpc_channelz.Security,
-            server_security: grpc_channelz.Security,
+        self,
+        client_security: grpc_channelz.Security,
+        server_security: grpc_channelz.Security,
     ):
         self.assertEqual(
             client_security.WhichOneof("model"),
@@ -1298,11 +1298,11 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def assertClientCannotReachServerRepeatedly(
-            self,
-            test_client: XdsTestClient,
-            *,
-            times: Optional[int] = None,
-            delay: Optional[_timedelta] = None,
+        self,
+        test_client: XdsTestClient,
+        *,
+        times: Optional[int] = None,
+        delay: Optional[_timedelta] = None,
     ):
         """
         Asserts that the client repeatedly cannot reach the server.
@@ -1358,7 +1358,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 
     @staticmethod
     def getConnectedSockets(
-            test_client: XdsTestClient, test_server: XdsTestServer
+        test_client: XdsTestClient, test_server: XdsTestServer
     ) -> Tuple[grpc_channelz.Socket, grpc_channelz.Socket]:
         client_sock = test_client.get_active_server_channel_socket()
         server_sock = test_server.get_server_socket_matching_client(client_sock)

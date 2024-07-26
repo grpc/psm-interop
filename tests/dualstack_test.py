@@ -37,8 +37,7 @@ _QPS = 100
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     @classmethod
     def setUpClass(cls):
-        """Force the canonical test server for all languages.
-        """
+        """Force the canonical test server for all languages."""
         super().setUpClass()
         if cls.lang_spec.client_lang is not _Lang.JAVA:
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
@@ -60,7 +59,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             enable_dualstack=True,
             enable_workload_identity=self.enable_workload_identity,
         )
-
 
         self.server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
@@ -97,20 +95,26 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.td.create_backend_service()
 
         with self.subTest("02_setup_routing_rule_map_for_grpc"):
-            self.td.setup_routing_rule_map_for_grpc(self.server_xds_host, self.server_xds_port)
+            self.td.setup_routing_rule_map_for_grpc(
+                self.server_xds_host, self.server_xds_port
+            )
 
         test_servers: List[_XdsTestServer] = []
         with self.subTest("03_start_test_server-default"):
-            test_servers.append(self.startTestServers(
-                server_runner=self.server_runner,
-                address_type="ipv4_ipv6",
-            )[0])
+            test_servers.append(
+                self.startTestServers(
+                    server_runner=self.server_runner,
+                    address_type="ipv4_ipv6",
+                )[0]
+            )
 
         with self.subTest("03_start_test_server-v4"):
-            test_servers.append(self.startTestServers(
-                server_runner=self.v4_server_runner,
-                address_type="ipv4",
-            )[0])
+            test_servers.append(
+                self.startTestServers(
+                    server_runner=self.v4_server_runner,
+                    address_type="ipv4",
+                )[0]
+            )
 
         # with self.subTest("03_start_test_server-v6"):
         #     test_servers.append(self.startTestServers(

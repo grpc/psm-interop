@@ -42,17 +42,17 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     hostname: str
 
     def __init__(
-            self,
-            *,
-            ip: str,
-            rpc_port: int,
-            hostname: str,
-            maintenance_port: Optional[int] = None,
-            secure_mode: Optional[bool] = False,
-            xds_host: Optional[str] = None,
-            xds_port: Optional[int] = None,
-            rpc_host: Optional[str] = None,
-            monitoring_port: Optional[str] = None,
+        self,
+        *,
+        ip: str,
+        rpc_port: int,
+        hostname: str,
+        maintenance_port: Optional[int] = None,
+        secure_mode: Optional[bool] = False,
+        xds_host: Optional[str] = None,
+        xds_port: Optional[int] = None,
+        rpc_host: Optional[str] = None,
+        monitoring_port: Optional[str] = None,
     ):
         super().__init__(rpc_host=(rpc_host or ip))
         self.ip = ip
@@ -64,7 +64,9 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         self.monitoring_port = monitoring_port
 
     def __str__(self):
-        return 'XdsTestServer(ip=' + self.ip + ' ,hostname=' + self.hostname + ')'
+        return (
+            "XdsTestServer(ip=" + self.ip + " ,hostname=" + self.hostname + ")"
+        )
 
     @property
     @functools.lru_cache(None)
@@ -93,7 +95,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     @property
     @functools.cache
     def hook_service_client(
-            self,
+        self,
     ) -> grpc_testing.HookServiceClient:
         return grpc_testing.HookServiceClient(
             self._make_channel(self.maintenance_port),
@@ -168,7 +170,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         return self.channelz.list_server_sockets(server)
 
     def get_server_socket_matching_client(
-            self, client_socket: grpc_channelz.Socket
+        self, client_socket: grpc_channelz.Socket
     ):
         """Find test server socket that matches given test client socket.
 
