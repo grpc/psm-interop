@@ -84,6 +84,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     # Required fields.
     k8s_namespace: k8s.KubernetesNamespace
     deployment_name: str
+    app_label: str
     image_name: str
     gcp_project: str
     gcp_service_account: str
@@ -141,6 +142,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         gcp_project: str,
         gcp_service_account: str,
         gcp_ui_url: str,
+        app_label: str = "",
         namespace_template: Optional[str] = "namespace.yaml",
         reuse_namespace: bool = False,
         address_type: Optional[str] = None,
@@ -151,6 +153,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.deployment_name = deployment_name
         self.image_name = image_name
         self.gcp_project = gcp_project
+        self.app_label = app_label or deployment_name
         # Maps GCP service account to Kubernetes service account
         self.gcp_service_account = gcp_service_account
         self.gcp_ui_url = gcp_ui_url

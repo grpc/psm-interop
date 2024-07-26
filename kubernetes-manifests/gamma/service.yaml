@@ -9,7 +9,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: ${deployment_name}
+    app: ${app_label}
   ports:
   - port: ${test_port}
     protocol: TCP

@@ -63,10 +63,8 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         self.xds_host, self.xds_port = xds_host, xds_port
         self.monitoring_port = monitoring_port
 
-    def __str__(self):
-        return (
-            "XdsTestServer(ip=" + self.ip + " ,hostname=" + self.hostname + ")"
-        )
+    def __repr__(self):
+        return f"XdsTestServer(ip={self.ip}, hostname={self.hostname})"
 
     @property
     @functools.lru_cache(None)

@@ -32,6 +32,7 @@ _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 _Lang = skips.Lang
 
 _QPS = 100
+_SERVERS_APP_LABEL = "psm-interop-dualstack"
 
 
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
@@ -63,18 +64,21 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name,
+            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
         self.v4_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v4",
             service_name=self.server_runner.service_name,
+            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
         self.v6_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v6",
             service_name=self.server_runner.service_name,
+            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
 
@@ -127,8 +131,23 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         logger.info(f"Test servers: {test_servers}")  # TODO: change to debug
 
         with self.subTest("04_add_server_backends_to_backend_services"):
-            self.setupServerBackends(server_runner=self.server_runner)
-            self.setupServerBackends(server_runner=self.v4_server_runner)
+            (
+                neg_name,
+                neg_zones,
+            ) = self.server_runner.k8s_namespace.parse_service_neg_status(
+                self.server_runner.service_name, self.server_port
+            )
+
+            # Add backends to the Backend Service
+            self.td.backend_service_add_neg_backends(
+                neg_name, neg_zones, max_rate_per_endpoint=5
+            )
+            self.td.wait_for_backends_healthy_status(
+                replica_count=len(test_servers)
+            )
+
+            # self.setupServerBackends(server_runner=self.server_runner)
+            # self.setupServerBackends(server_runner=self.v4_server_runner)
             # self.setupServerBackends(server_runner=self.v6_server_runner)
 
         test_client: _XdsTestClient
