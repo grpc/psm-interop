@@ -14,8 +14,7 @@ import mako.template
 
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
-from protos.grpc.testing.xdsconfig.control_pb2 import StopOnRequestRequest
-from protos.grpc.testing.xdsconfig.control_pb2 import UpsertResourcesRequest
+from protos.grpc.testing.xdsconfig import control_pb2
 from protos.grpc.testing.xdsconfig.service_pb2_grpc import (
     XdsConfigControlServiceStub,
 )
@@ -275,7 +274,7 @@ class ControlPlane(GrpcProcess):
     def stop_on_resource_request(self, resource_type: str, resource_name: str):
         stub = XdsConfigControlServiceStub(self.channel())
         res = stub.StopOnRequest(
-            StopOnRequestRequest(
+            control_pb2.StopOnRequestRequest(
                 resource_type=resource_type, resource_name=resource_name
             )
         )
@@ -286,7 +285,7 @@ class ControlPlane(GrpcProcess):
     ):
         stub = XdsConfigControlServiceStub(self.channel())
         return stub.UpsertResources(
-            UpsertResourcesRequest(
+            control_pb2.UpsertResourcesRequest(
                 cluster=cluster,
                 upstream_host=upstream_host,
                 upstream_port=upstream_port,
