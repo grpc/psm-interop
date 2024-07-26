@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import abc
+from collections.abc import Sequence
 import contextlib
 import datetime as dt
 import enum
@@ -20,22 +21,21 @@ import logging
 import re
 import signal
 import time
-from collections.abc import Sequence
 from types import FrameType
 from typing import Any, Callable, Final, List, Optional, Tuple, Union
 
-import grpc
 from absl import flags
 from absl.testing import absltest
 from google.protobuf import json_format
+import grpc
 
-import framework.helpers.highlighter
 from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.helpers import grpc as helpers_grpc
 from framework.helpers import rand as helpers_rand
 from framework.helpers import retryers
 from framework.helpers import skips
+import framework.helpers.highlighter
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
