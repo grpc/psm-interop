@@ -268,7 +268,7 @@ class ControlPlane(GrpcProcess):
             port=port,
             image=image,
             ports={DEFAULT_CONTROL_PLANE_PORT: port},
-            command=["--upstream", str(upstream), "--node", manager.node_id],
+            command=["--upstream", str(upstream), "--nodeid", manager.node_id],
         )
 
     def stop_on_resource_request(self, resource_type: str, resource_name: str):
