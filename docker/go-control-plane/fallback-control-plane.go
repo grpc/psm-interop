@@ -160,18 +160,18 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 // and provides an interface for tests to manage control plane behavior.
 func main() {
 	flag.Parse()
-	host, port, err := net.SplitHostPort(*upstream)
+	host, upstreamPort, err := net.SplitHostPort(*upstream)
 	if err != nil {
 		log.Fatalf("Incorrect upstream host name: %+v: %+v\n", upstream, err)
 	}
-	upstreamPort, err := strconv.Atoi(port)
-	if err != nil || upstreamPort <= 0 {
-		log.Fatalf("Not a valid port number: %+v: %+v\n", port, err)
+	parsedUpstreamPort, err := strconv.Atoi(upstreamPort)
+	if err != nil || parsedUpstreamPort <= 0 {
+		log.Fatalf("Not a valid port number: %+v: %+v\n", upstreamPort, err)
 	}
 	cb := &controlplane.Callbacks{Filters: make(map[string]map[string]bool)}
 	// The type needs to be checked
 	controlService := &controlService{Cb: cb, version: 1,
-		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, host, uint32(upstreamPort))},
+		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, host, uint32(parsedUpstreamPort))},
 		listeners: map[string]*listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
 		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, nil),
 	}
@@ -188,7 +188,7 @@ func main() {
 	// Run the xDS server
 	ctx := context.Background()
 	srv := server.NewServer(ctx, controlService.cache, cb)
-	err = controlplane.RunServer(srv, controlService, uint(upstreamPort))
+	err = controlplane.RunServer(srv, controlService, *port)
 	if err != nil {
 		log.Fatalf("Server startup failed: %q\n", err)
 	}
