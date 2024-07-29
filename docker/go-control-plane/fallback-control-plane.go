@@ -21,9 +21,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
+	"log"
+	"net"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/eugeneo/fallback-control-plane/controlplane"
@@ -40,17 +40,10 @@ import (
 )
 
 var (
-	l        controlplane.Logger
 	port     = flag.Uint("port", 3333, "Port to listen on")
-	nodeID   = flag.String("node", "test-id", "Node ID")
+	nodeid   = flag.String("nodeid", "test-id", "Node ID")
 	upstream = flag.String("upstream", "localhost:3000", "upstream server")
 )
-
-// Init configures debug logging based on command line flag value.
-func init() {
-	l = controlplane.Logger{}
-	flag.BoolVar(&l.Debug, "debug", false, "Enable xDS server debug logging")
-}
 
 // controlService provides a gRPC API to configure test-specific control plane
 // behaviors.
@@ -90,10 +83,10 @@ func (srv *controlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 	srv.listeners[listener] = controlplane.MakeHTTPListener(listener, req.Cluster)
 	snapshot, err := srv.MakeSnapshot()
 	if err != nil {
-		l.Errorf("snapshot inconsistency: %+v\n", err)
+		log.Printf("snapshot inconsistency: %+v\n", err)
 		return nil, err
 	}
-	srv.cache.SetSnapshot(context.Background(), *nodeID, snapshot)
+	srv.cache.SetSnapshot(context.Background(), *nodeid, snapshot)
 	res := &cs.UpsertResourcesResponse{}
 	for _, l := range srv.listeners {
 		a, err := anypb.New(l)
@@ -134,14 +127,14 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 		return nil, error
 	}
 	if err := snapshot.Consistent(); err != nil {
-		l.Errorf("snapshot inconsistency: %+v\n", err)
+		log.Printf("snapshot inconsistency: %+v\n", err)
 		for _, r := range snapshot.Resources {
 			for name, resource := range r.Items {
 				bytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(resource.Resource)
 				if err != nil {
-					l.Errorf("Can't marshal %s\n", name)
+					log.Printf("Can't marshal %s\n", name)
 				} else {
-					l.Errorf("Resource: %s\n%s\n",
+					log.Printf("Resource: %s\n%s\n",
 						resource.Resource,
 						string(bytes))
 				}
@@ -149,14 +142,14 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 		}
 		return nil, err
 	}
-	l.Debugf("will serve snapshot:\n")
+	log.Printf("will serve snapshot:\n")
 	for _, values := range snapshot.Resources {
 		for name, item := range values.Items {
 			text, err := prototext.MarshalOptions{Multiline: true}.Marshal(item.Resource)
 			if err != nil {
-				l.Errorf("Resource %+v, error: %+v\n", name, err)
+				log.Printf("Resource %+v, error: %+v\n", name, err)
 			} else {
-				l.Debugf("%+v => %+v\n", name, string(text))
+				log.Printf("%+v => %+v\n", name, string(text))
 			}
 		}
 	}
@@ -167,41 +160,36 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 // and provides an interface for tests to manage control plane behavior.
 func main() {
 	flag.Parse()
-	sep := strings.LastIndex(*upstream, ":")
-	if sep < 0 {
-		l.Errorf("Incorrect upstream host name: %+v\n", upstream)
-		os.Exit(1)
-	}
-	upstreamPort, err := strconv.Atoi((*upstream)[sep+1:])
+	host, port, err := net.SplitHostPort(*upstream)
 	if err != nil {
-		l.Errorf("Bad upstream port: %+v\n%+v\n", (*upstream)[sep+1:], err)
-		os.Exit(1)
+		log.Fatalf("Incorrect upstream host name: %+v: %+v\n", upstream, err)
 	}
-	cb := &controlplane.Callbacks{Debug: l.Debug, Filters: make(map[string]map[string]bool)}
+	upstreamPort, err := strconv.Atoi(port)
+	if err != nil || upstreamPort <= 0 {
+		log.Fatalf("Not a valid port number: %+v: %+v\n", port, err)
+	}
+	cb := &controlplane.Callbacks{Filters: make(map[string]map[string]bool)}
 	// The type needs to be checked
 	controlService := &controlService{Cb: cb, version: 1,
-		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, (*upstream)[:sep], uint32(upstreamPort))},
+		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, host, uint32(upstreamPort))},
 		listeners: map[string]*listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
-		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, l),
+		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, nil),
 	}
 	// Create a cache
 	snapshot, err := controlService.MakeSnapshot()
 	if err != nil {
-		l.Errorf("snapshot error %q for %+v\n", err, snapshot)
-		os.Exit(1)
+		log.Fatalf("snapshot error %q for %+v\n", err, snapshot)
 	}
 	// Add the snapshot to the cache
-	if err := controlService.cache.SetSnapshot(context.Background(), *nodeID, snapshot); err != nil {
-		l.Errorf("snapshot error %q for %+v\n", err, snapshot)
-		os.Exit(1)
+	if err := controlService.cache.SetSnapshot(context.Background(), *nodeid, snapshot); err != nil {
+		log.Fatalf("snapshot error %q for %+v\n", err, snapshot)
 	}
 
 	// Run the xDS server
 	ctx := context.Background()
 	srv := server.NewServer(ctx, controlService.cache, cb)
-	err = controlplane.RunServer(srv, controlService, *port)
+	err = controlplane.RunServer(srv, controlService, uint(upstreamPort))
 	if err != nil {
-		l.Errorf("Server startup failed: %q\n", err)
-		os.Exit(1)
+		log.Fatalf("Server startup failed: %q\n", err)
 	}
 }

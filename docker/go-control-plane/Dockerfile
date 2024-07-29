@@ -29,4 +29,4 @@ RUN protoc -I=. --go_out=. protos/grpc/testing/xdsconfig/*.proto --go-grpc_out=.
 COPY docker/go-control-plane .
 RUN go build -v -o /usr/local/bin/fallback-control-plane .
 
-ENTRYPOINT ["fallback-control-plane", "-debug"]
+ENTRYPOINT ["fallback-control-plane"]

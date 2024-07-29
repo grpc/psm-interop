@@ -15,6 +15,7 @@
  * limitations under the License.
  *
  */
+
 // Package controlplane provides components for the common control plane used
 // for testing
 package controlplane
@@ -34,7 +35,6 @@ import (
 // required by our tests.
 type Callbacks struct {
 	Signal         chan struct{}
-	Debug          bool
 	Fetches        int
 	Requests       int
 	Responses      int
@@ -53,29 +53,21 @@ func (cb *Callbacks) Report() {
 }
 
 func (cb *Callbacks) OnStreamOpen(_ context.Context, id int64, typ string) error {
-	if cb.Debug {
-		log.Printf("Stream %d open for %s\n", id, typ)
-	}
+	log.Printf("Stream %d open for %s\n", id, typ)
 	return nil
 }
 
 func (cb *Callbacks) OnStreamClosed(id int64, node *core.Node) {
-	if cb.Debug {
-		log.Printf("Stream %d of node %s closed\n", id, node.Id)
-	}
+	log.Printf("Stream %d of node %s closed\n", id, node.Id)
 }
 
 func (cb *Callbacks) OnDeltaStreamOpen(_ context.Context, id int64, typ string) error {
-	if cb.Debug {
-		log.Printf("Delta stream %d open for %s\n", id, typ)
-	}
+	log.Printf("Delta stream %d open for %s\n", id, typ)
 	return nil
 }
 
 func (cb *Callbacks) OnDeltaStreamClosed(id int64, node *core.Node) {
-	if cb.Debug {
-		log.Printf("Delta stream %d of node %s closed\n", id, node.Id)
-	}
+	log.Printf("Delta stream %d of node %s closed\n", id, node.Id)
 }
 
 // Abruptly stops the server when the client requests a resource that the test
@@ -88,9 +80,7 @@ func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) 
 		close(cb.Signal)
 		cb.Signal = nil
 	}
-	if cb.Debug {
-		log.Printf("Received request for %s on stream %d: %v:%v\n", req.GetTypeUrl(), id, req.VersionInfo, req.ResourceNames)
-	}
+	log.Printf("Received request for %s on stream %d: %v:%v\n", req.GetTypeUrl(), id, req.VersionInfo, req.ResourceNames)
 	filtered := cb.Filters[req.GetTypeUrl()]
 	if filtered != nil {
 		for _, name := range req.ResourceNames {
@@ -107,9 +97,7 @@ func (cb *Callbacks) OnStreamResponse(ctx context.Context, id int64, req *discov
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.Responses++
-	if cb.Debug {
-		log.Printf("Responding to request for %s on stream %d\n", req.GetTypeUrl(), id)
-	}
+	log.Printf("Responding to request for %s on stream %d\n", req.GetTypeUrl(), id)
 }
 
 func (cb *Callbacks) OnStreamDeltaResponse(id int64, req *discovery.DeltaDiscoveryRequest, res *discovery.DeltaDiscoveryResponse) {

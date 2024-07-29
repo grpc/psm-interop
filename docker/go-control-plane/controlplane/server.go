@@ -55,12 +55,6 @@ func NewServer(ctx context.Context, cache cache.Cache, cb *test.Callbacks) *Serv
 func registerServer(grpcServer *grpc.Server, server server.Server) {
 	// register services
 	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-	// endpointservice.RegisterEndpointDiscoveryServiceServer(grpcServer, server)
-	// clusterservice.RegisterClusterDiscoveryServiceServer(grpcServer, server)
-	// routeservice.RegisterRouteDiscoveryServiceServer(grpcServer, server)
-	// listenerservice.RegisterListenerDiscoveryServiceServer(grpcServer, server)
-	// secretservice.RegisterSecretDiscoveryServiceServer(grpcServer, server)
-	// runtimeservice.RegisterRuntimeDiscoveryServiceServer(grpcServer, server)
 }
 
 // RunServer starts an xDS server at the given port. Blocks while the server is
@@ -70,9 +64,7 @@ func RunServer(srv server.Server, controlService cs.XdsConfigControlServiceServe
 	// streams over a single TCP connection. If a proxy multiplexes requests over
 	// a single connection to the management server, then it might lead to
 	// availability problems. Keepalive timeouts based on connection_keepalive parameter https://www.envoyproxy.io/docs/envoy/latest/configuration/overview/examples#dynamic
-	var grpcOptions []grpc.ServerOption
-	grpcOptions = append(grpcOptions)
-	grpcServer := grpc.NewServer(grpcOptions...)
+	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 	channelz.RegisterChannelzServiceToServer(grpcServer)
 	cs.RegisterXdsConfigControlServiceServer(grpcServer, controlService)

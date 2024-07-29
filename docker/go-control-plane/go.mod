@@ -1,6 +1,6 @@
 module github.com/eugeneo/fallback-control-plane
 
-go 1.20
+go 1.22
 
 require (
 	github.com/envoyproxy/go-control-plane v0.12.0
@@ -21,5 +21,3 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 )
-
-// replace github.com/envoyproxy/go-control-plane v0.12.0 => ../go-control-plane
