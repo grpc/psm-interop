@@ -26,8 +26,8 @@ import (
 	"os"
 	"sync"
 
-	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	pb_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	pb_discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 )
 
@@ -57,7 +57,7 @@ func (cb *Callbacks) OnStreamOpen(_ context.Context, id int64, typ string) error
 	return nil
 }
 
-func (cb *Callbacks) OnStreamClosed(id int64, node *core.Node) {
+func (cb *Callbacks) OnStreamClosed(id int64, node *pb_core.Node) {
 	log.Printf("Stream %d of node %s closed\n", id, node.Id)
 }
 
@@ -66,13 +66,13 @@ func (cb *Callbacks) OnDeltaStreamOpen(_ context.Context, id int64, typ string) 
 	return nil
 }
 
-func (cb *Callbacks) OnDeltaStreamClosed(id int64, node *core.Node) {
+func (cb *Callbacks) OnDeltaStreamClosed(id int64, node *pb_core.Node) {
 	log.Printf("Delta stream %d of node %s closed\n", id, node.Id)
 }
 
 // Abruptly stops the server when the client requests a resource that the test
 // marked as one that should trigger this behavior
-func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) error {
+func (cb *Callbacks) OnStreamRequest(id int64, req *pb_discovery.DiscoveryRequest) error {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.Requests++
@@ -93,20 +93,20 @@ func (cb *Callbacks) OnStreamRequest(id int64, req *discovery.DiscoveryRequest) 
 	return nil
 }
 
-func (cb *Callbacks) OnStreamResponse(ctx context.Context, id int64, req *discovery.DiscoveryRequest, res *discovery.DiscoveryResponse) {
+func (cb *Callbacks) OnStreamResponse(ctx context.Context, id int64, req *pb_discovery.DiscoveryRequest, res *pb_discovery.DiscoveryResponse) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.Responses++
 	log.Printf("Responding to request for %s on stream %d\n", req.GetTypeUrl(), id)
 }
 
-func (cb *Callbacks) OnStreamDeltaResponse(id int64, req *discovery.DeltaDiscoveryRequest, res *discovery.DeltaDiscoveryResponse) {
+func (cb *Callbacks) OnStreamDeltaResponse(id int64, req *pb_discovery.DeltaDiscoveryRequest, res *pb_discovery.DeltaDiscoveryResponse) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.DeltaResponses++
 }
 
-func (cb *Callbacks) OnStreamDeltaRequest(int64, *discovery.DeltaDiscoveryRequest) error {
+func (cb *Callbacks) OnStreamDeltaRequest(int64, *pb_discovery.DeltaDiscoveryRequest) error {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.DeltaRequests++
@@ -117,7 +117,7 @@ func (cb *Callbacks) OnStreamDeltaRequest(int64, *discovery.DeltaDiscoveryReques
 	return nil
 }
 
-func (cb *Callbacks) OnFetchRequest(context.Context, *discovery.DiscoveryRequest) error {
+func (cb *Callbacks) OnFetchRequest(context.Context, *pb_discovery.DiscoveryRequest) error {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 	cb.Fetches++
@@ -128,7 +128,7 @@ func (cb *Callbacks) OnFetchRequest(context.Context, *discovery.DiscoveryRequest
 	return nil
 }
 
-func (cb *Callbacks) OnFetchResponse(*discovery.DiscoveryRequest, *discovery.DiscoveryResponse) {}
+func (cb *Callbacks) OnFetchResponse(*pb_discovery.DiscoveryRequest, *pb_discovery.DiscoveryResponse) {}
 
 // Adds a resource type/name to the list of resources that stop the server
 // if a client requests them

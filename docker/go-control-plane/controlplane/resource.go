@@ -25,13 +25,13 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
-	clusterpb "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	corepb "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	endpointpb "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
-	listenerpb "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
-	routepb "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-	routerpb "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
-	hcmpb "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	pb_cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	pb_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	pb_endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	pb_listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	pb_route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	pb_router "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
+	pb_hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 )
 
 const (
@@ -43,30 +43,30 @@ var snapshot_version int = 1;
 
 // MakeCluster builds a CDS resource with a given clusterName that points
 // the users to upstreamHost:upstreamPort
-func MakeCluster(clusterName, upstreamHost string, upstreamPort uint32) *clusterpb.Cluster {
-	return &clusterpb.Cluster{
+func MakeCluster(clusterName, upstreamHost string, upstreamPort uint32) *pb_cluster.Cluster {
+	return &pb_cluster.Cluster{
 		Name:                 clusterName,
 		ConnectTimeout:       durationpb.New(5 * time.Second),
-		ClusterDiscoveryType: &clusterpb.Cluster_Type{Type: clusterpb.Cluster_LOGICAL_DNS},
-		LbPolicy:             clusterpb.Cluster_ROUND_ROBIN,
+		ClusterDiscoveryType: &pb_cluster.Cluster_Type{Type: pb_cluster.Cluster_LOGICAL_DNS},
+		LbPolicy:             pb_cluster.Cluster_ROUND_ROBIN,
 		LoadAssignment:       makeEndpoint(clusterName, upstreamHost, upstreamPort),
-		DnsLookupFamily:      clusterpb.Cluster_V4_ONLY,
+		DnsLookupFamily:      pb_cluster.Cluster_V4_ONLY,
 	}
 }
 
-func makeEndpoint(clusterName, upstreamHost string, upstreamPort uint32) *endpointpb.ClusterLoadAssignment {
-	return &endpointpb.ClusterLoadAssignment{
+func makeEndpoint(clusterName, upstreamHost string, upstreamPort uint32) *pb_endpoint.ClusterLoadAssignment {
+	return &pb_endpoint.ClusterLoadAssignment{
 		ClusterName: clusterName,
-		Endpoints: []*endpointpb.LocalityLbEndpoints{{
-			LbEndpoints: []*endpointpb.LbEndpoint{{
-				HostIdentifier: &endpointpb.LbEndpoint_Endpoint{
-					Endpoint: &endpointpb.Endpoint{
-						Address: &corepb.Address{
-							Address: &corepb.Address_SocketAddress{
-								SocketAddress: &corepb.SocketAddress{
-									Protocol: corepb.SocketAddress_TCP,
+		Endpoints: []*pb_endpoint.LocalityLbEndpoints{{
+			LbEndpoints: []*pb_endpoint.LbEndpoint{{
+				HostIdentifier: &pb_endpoint.LbEndpoint_Endpoint{
+					Endpoint: &pb_endpoint.Endpoint{
+						Address: &pb_core.Address{
+							Address: &pb_core.Address_SocketAddress{
+								SocketAddress: &pb_core.SocketAddress{
+									Protocol: pb_core.SocketAddress_TCP,
 									Address:  upstreamHost,
-									PortSpecifier: &corepb.SocketAddress_PortValue{
+									PortSpecifier: &pb_core.SocketAddress_PortValue{
 										PortValue: upstreamPort,
 									},
 								},
@@ -81,22 +81,22 @@ func makeEndpoint(clusterName, upstreamHost string, upstreamPort uint32) *endpoi
 
 // MakeHTTPListener builds a LDS resource that routes traffic to a given
 // cluster.
-func MakeHTTPListener(listenerName, cluster string) *listenerpb.Listener {
-	any_route, _ := anypb.New(&routerpb.Router{})
-	httpcm := &hcmpb.HttpConnectionManager{
-		RouteSpecifier: &hcmpb.HttpConnectionManager_RouteConfig{
-			RouteConfig: &routepb.RouteConfiguration{
-				VirtualHosts: []*routepb.VirtualHost{
+func MakeHTTPListener(listenerName, cluster string) *pb_listener.Listener {
+	any_route, _ := anypb.New(&pb_router.Router{})
+	httpcm := &pb_hcm.HttpConnectionManager{
+		RouteSpecifier: &pb_hcm.HttpConnectionManager_RouteConfig{
+			RouteConfig: &pb_route.RouteConfiguration{
+				VirtualHosts: []*pb_route.VirtualHost{
 					{
 						Domains: []string{"*"},
-						Routes: []*routepb.Route{
+						Routes: []*pb_route.Route{
 							{
-								Match: &routepb.RouteMatch{
-									PathSpecifier: &routepb.RouteMatch_Prefix{},
+								Match: &pb_route.RouteMatch{
+									PathSpecifier: &pb_route.RouteMatch_Prefix{},
 								},
-								Action: &routepb.Route_Route{
-									Route: &routepb.RouteAction{
-										ClusterSpecifier: &routepb.RouteAction_Cluster{
+								Action: &pb_route.Route_Route{
+									Route: &pb_route.RouteAction{
+										ClusterSpecifier: &pb_route.RouteAction_Cluster{
 											Cluster: cluster,
 										},
 									},
@@ -107,10 +107,10 @@ func MakeHTTPListener(listenerName, cluster string) *listenerpb.Listener {
 				},
 			},
 		},
-		HttpFilters: []*hcmpb.HttpFilter{
+		HttpFilters: []*pb_hcm.HttpFilter{
 			{
 				Name: "router",
-				ConfigType: &hcmpb.HttpFilter_TypedConfig{
+				ConfigType: &pb_hcm.HttpFilter_TypedConfig{
 					TypedConfig: any_route,
 				},
 			},
@@ -120,9 +120,9 @@ func MakeHTTPListener(listenerName, cluster string) *listenerpb.Listener {
 	if err != nil {
 		panic(err)
 	}
-	return &listenerpb.Listener{
+	return &pb_listener.Listener{
 		Name: listenerName,
-		ApiListener: &listenerpb.ApiListener{
+		ApiListener: &pb_listener.ApiListener{
 			ApiListener: any_hcm,
 		},
 	}

@@ -27,7 +27,7 @@ import (
 
 	cs "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
 
-	discoverygrpc "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	pb_discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
@@ -54,7 +54,7 @@ func NewServer(ctx context.Context, cache cache.Cache, cb *test.Callbacks) *Serv
 // Registers gRPC services needed to serve xDS traffic.
 func registerServer(grpcServer *grpc.Server, server server.Server) {
 	// register services
-	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
+	pb_discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
 }
 
 // RunServer starts an xDS server at the given port. Blocks while the server is
