@@ -66,7 +66,7 @@ FIREWALL_SOURCE_RANGE = flags.DEFINE_list(
 )
 FIREWALL_SOURCE_RANGE_IPV6 = flags.DEFINE_list(
     "firewall_source_range_ipv6",
-    default=["2600:2d00:1:b029::/64", "2600:2d00:1:1::/64"],
+    default=["2600:2d00:1:b029::/64"],
     help="Update the IPv6 source range of the firewall rule.",
 )
 # Note this needs to cover ports used in GKE probes as well.
