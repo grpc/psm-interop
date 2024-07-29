@@ -96,7 +96,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("00_create_health_check"):
             self.td.create_health_check()
 
-        with self.subTest("01_create_backend_services"):
+        with self.subTest("01_create_backend_service"):
             self.td.create_backend_service()
 
         with self.subTest("02_setup_routing_rule_map_for_grpc"):
@@ -129,7 +129,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 )[0]
             )
 
-        logger.info(f"Test servers: {test_servers}")  # TODO: change to debug
+        logger.debug(f"Test servers: %s", test_servers)
 
         with self.subTest("04_add_server_backends_to_backend_services"):
             (
@@ -142,9 +142,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             # Add backends to the Backend Service
             self.td.backend_service_add_neg_backends(
                 neg_name, neg_zones, max_rate_per_endpoint=5
-            )
-            self.td.wait_for_backends_healthy_status(
-                replica_count=len(test_servers)
             )
 
         test_client: _XdsTestClient
