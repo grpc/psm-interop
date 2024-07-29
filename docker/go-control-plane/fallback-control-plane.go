@@ -15,6 +15,11 @@
  * limitations under the License.
  *
  */
+
+// The fallback_control_plane executable is an xDS control plane for testing
+// purposes. This control plane serves xDS traffic and exposes an API for test
+// scripts to perform fine-grained configuration or trigger specific control
+// plane behaviors.
 package main
 
 import (
@@ -27,10 +32,10 @@ import (
 	"sync"
 
 	"github.com/eugeneo/fallback-control-plane/controlplane"
-	cs "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
+	pb_cs "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
 
-	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	pb_cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	pb_listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
@@ -48,10 +53,10 @@ var (
 // controlService provides a gRPC API to configure test-specific control plane
 // behaviors.
 type controlService struct {
-	cs.UnsafeXdsConfigControlServiceServer
+	pb_cs.UnsafeXdsConfigControlServiceServer
 	version   uint32
-	clusters  map[string]*cluster.Cluster
-	listeners map[string]*listener.Listener
+	clusters  map[string]*pb_cluster.Cluster
+	listeners map[string]*pb_listener.Listener
 	cache     cache.SnapshotCache
 	Cb        *controlplane.Callbacks
 	mu        sync.Mutex
@@ -59,11 +64,11 @@ type controlService struct {
 
 // StopOnRequest instructs the control plane to stop if any xDS client request
 // the specific resource.
-func (srv *controlService) StopOnRequest(_ context.Context, req *cs.StopOnRequestRequest) (*cs.StopOnRequestResponse, error) {
+func (srv *controlService) StopOnRequest(_ context.Context, req *pb_cs.StopOnRequestRequest) (*pb_cs.StopOnRequestResponse, error) {
 	srv.Cb.AddFilter(req.GetResourceType(), req.GetResourceName())
-	res := cs.StopOnRequestResponse{}
+	res := pb_cs.StopOnRequestResponse{}
 	for _, f := range srv.Cb.GetFilters() {
-		res.Filters = append(res.Filters, &cs.StopOnRequestResponse_ResourceFilter{ResourceType: f.ResourceType, ResourceName: f.ResourceName})
+		res.Filters = append(res.Filters, &pb_cs.StopOnRequestResponse_ResourceFilter{ResourceType: f.ResourceType, ResourceName: f.ResourceName})
 	}
 	return &res, nil
 }
@@ -71,7 +76,7 @@ func (srv *controlService) StopOnRequest(_ context.Context, req *cs.StopOnReques
 // UpsertResources allows the test to provide a new or replace existing xDS
 // resource. Notification will be sent to any control plane clients watching
 // the resource being updated.
-func (srv *controlService) UpsertResources(_ context.Context, req *cs.UpsertResourcesRequest) (*cs.UpsertResourcesResponse, error) {
+func (srv *controlService) UpsertResources(_ context.Context, req *pb_cs.UpsertResourcesRequest) (*pb_cs.UpsertResourcesResponse, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 	srv.version++
@@ -87,7 +92,7 @@ func (srv *controlService) UpsertResources(_ context.Context, req *cs.UpsertReso
 		return nil, err
 	}
 	srv.cache.SetSnapshot(context.Background(), *nodeid, snapshot)
-	res := &cs.UpsertResourcesResponse{}
+	res := &pb_cs.UpsertResourcesResponse{}
 	for _, l := range srv.listeners {
 		a, err := anypb.New(l)
 		if err != nil {
@@ -171,8 +176,8 @@ func main() {
 	cb := &controlplane.Callbacks{Filters: make(map[string]map[string]bool)}
 	// The type needs to be checked
 	controlService := &controlService{Cb: cb, version: 1,
-		clusters:  map[string]*cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, host, uint32(parsedUpstreamPort))},
-		listeners: map[string]*listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
+		clusters:  map[string]*pb_cluster.Cluster{controlplane.ListenerName: controlplane.MakeCluster(controlplane.ClusterName, host, uint32(parsedUpstreamPort))},
+		listeners: map[string]*pb_listener.Listener{controlplane.ListenerName: controlplane.MakeHTTPListener(controlplane.ListenerName, controlplane.ClusterName)},
 		cache:     cache.NewSnapshotCache(false, cache.IDHash{}, nil),
 	}
 	// Create a cache
