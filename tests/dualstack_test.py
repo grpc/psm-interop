@@ -50,6 +50,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             gcp_service_account=self.gcp_service_account,
             td_bootstrap_image=self.td_bootstrap_image,
             gcp_project=self.project,
+            app_label=_SERVERS_APP_LABEL,
             gcp_api_manager=self.gcp_api_manager,
             xds_server_uri=self.xds_server_uri,
             network=self.network,
@@ -63,21 +64,18 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name,
-            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
         self.v4_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v4",
             service_name=self.server_runner.service_name,
-            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
         self.v6_server_runner = _KubernetesServerRunner(
             self.server_runner.k8s_namespace,
             deployment_name=self.server_name + "-v6",
             service_name=self.server_runner.service_name,
-            app_label=_SERVERS_APP_LABEL,
             **runner_args,
         )
 
@@ -129,7 +127,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 )[0]
             )
 
-        logger.debug(f"Test servers: %s", test_servers)
+        logger.debug("Test servers: %s", test_servers)
 
         with self.subTest("04_add_server_backends_to_backend_services"):
             (
