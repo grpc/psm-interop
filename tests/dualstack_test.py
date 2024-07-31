@@ -39,9 +39,17 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     v4_server_runner: _KubernetesServerRunner = None
     v6_server_runner: _KubernetesServerRunner = None
 
+    @staticmethod
+    @override
+    def is_supported(config: skips.TestConfig) -> bool:
+        if config.client_lang in _Lang.CPP | _Lang.PYTHON | _Lang.JAVA:
+            return config.version_gte("v1.66.x")
+        return False
+
     @classmethod
     def setUpClass(cls):
         """Force the canonical test server for all languages."""
+        ## TODO: when adding other languages: make sure the java image version is switched to the one with all features we need for the dualstack test
         super().setUpClass()
         if cls.lang_spec.client_lang is not _Lang.JAVA:
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
