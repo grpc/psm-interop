@@ -192,7 +192,9 @@ func main() {
 
 	// Run the xDS server
 	ctx := context.Background()
-	srv := server.NewServer(ctx, controlService.cache, cb)
+	srv := server.NewServer(ctx, controlService.cache, server.CallbackFuncs{
+		StreamRequestFunc: cb.OnStreamRequest,
+	})
 	err = controlplane.RunServer(srv, controlService, *port)
 	if err != nil {
 		log.Fatalf("Server startup failed: %q\n", err)
