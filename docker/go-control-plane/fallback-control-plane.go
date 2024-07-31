@@ -110,7 +110,7 @@ func (srv *controlService) UpsertResources(_ context.Context, req *xdsconfigpb.U
 	srv.listeners[listener] = controlplane.MakeHTTPListener(listener, req.Cluster)
 	snapshot, err := srv.MakeSnapshot()
 	if err != nil {
-		log.Printf("snapshot inconsistency: %+v\n", err)
+		log.Printf("Snapshot inconsistency: %+v\n", err)
 		return nil, err
 	}
 	srv.cache.SetSnapshot(context.Background(), *nodeid, snapshot)
@@ -154,7 +154,7 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 		return nil, error
 	}
 	if err := snapshot.Consistent(); err != nil {
-		log.Printf("snapshot inconsistency: %+v\n", err)
+		log.Printf("Snapshot inconsistency: %+v\n", err)
 		for _, r := range snapshot.Resources {
 			for name, resource := range r.Items {
 				bytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(resource.Resource)
@@ -169,7 +169,7 @@ func (srv *controlService) MakeSnapshot() (*cache.Snapshot, error) {
 		}
 		return nil, err
 	}
-	log.Printf("will serve snapshot:\n")
+	log.Printf("Will serve snapshot:\n")
 	for _, values := range snapshot.Resources {
 		for name, item := range values.Items {
 			text, err := prototext.MarshalOptions{Multiline: true}.Marshal(item.Resource)
@@ -211,7 +211,7 @@ func RunServer(srv server.Server, controlService xdsconfigpb.XdsConfigControlSer
 		return err
 	}
 	v3discoverypb.RegisterAggregatedDiscoveryServiceServer(grpcServer, srv)
-	log.Printf("management server listening on %d\n", port)
+	log.Printf("Management server listening on %d\n", port)
 	if err = grpcServer.Serve(lis); err != nil {
 		log.Println(err)
 	}
@@ -240,11 +240,11 @@ func main() {
 	// Create a cache
 	snapshot, err := controlService.MakeSnapshot()
 	if err != nil {
-		log.Fatalf("snapshot error %q for %+v\n", err, snapshot)
+		log.Fatalf("Snapshot error %q for %+v\n", err, snapshot)
 	}
 	// Add the snapshot to the cache
 	if err := controlService.cache.SetSnapshot(context.Background(), *nodeid, snapshot); err != nil {
-		log.Fatalf("snapshot error %q for %+v\n", err, snapshot)
+		log.Fatalf("Snapshot error %q for %+v\n", err, snapshot)
 	}
 
 	// Run the xDS server
