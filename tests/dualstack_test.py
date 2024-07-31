@@ -111,7 +111,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 force=self.force_cleanup, force_namespace=True
             )
 
-    def test_dual_stack(self) -> None:
+    def test_dualstack(self) -> None:
         self.assertTrue(
             self.enable_dualstack,
             "Use common-dualstack.cfg to pickup all dualstack configurations",
