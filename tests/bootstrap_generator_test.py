@@ -125,6 +125,7 @@ class BootstrapGeneratorClientTest(
         super().tearDownClass()
 
     def tearDown(self):
+        super().tearDown()
         logger.info("----- TestMethod %s teardown -----", self.test_name)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=10),
@@ -135,7 +136,6 @@ class BootstrapGeneratorClientTest(
             retryer(self._cleanup)
         except retryers.RetryError:
             logger.exception("Got error during teardown")
-        super().tearDown()
 
     def _cleanup(self):
         self.client_runner.cleanup(force=self.force_cleanup)
@@ -170,6 +170,7 @@ class BootstrapGeneratorServerTest(
     test_server: XdsTestServer
 
     def tearDown(self):
+        super().tearDown()
         logger.info("----- TestMethod %s teardown -----", self.test_name)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=10),
@@ -180,7 +181,6 @@ class BootstrapGeneratorServerTest(
             retryer(self._cleanup)
         except retryers.RetryError:
             logger.exception("Got error during teardown")
-        super().tearDown()
 
     def _cleanup(self):
         self.client_runner.cleanup(force=self.force_cleanup)
