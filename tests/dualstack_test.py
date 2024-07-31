@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime as dt
 import logging
-from typing import Final, List
+from typing import Final
 
 from absl import flags
 from absl.testing import absltest
@@ -29,6 +30,8 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
+v4_server_runner: k8s_xds_server_runner.KubernetesServerRunner = None
+v6_server_runner: k8s_xds_server_runner.KubernetesServerRunner = None
 _Lang = skips.Lang
 
 _SERVERS_APP_LABEL: Final[str] = "psm-interop-dualstack"
@@ -43,7 +46,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
-        self.enable_dualstack = True
+        assert self.enable_dualstack == True
         super().setUp()
         runner_args = dict(
             image_name=self.server_image,
@@ -61,33 +64,41 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
         )
 
+        k8s_namespace = self.server_runner.k8s_namespace
+        # Replaces self.server_runner initiated in self.initKubernetesServerRunner().
         self.server_runner = _KubernetesServerRunner(
-            self.server_runner.k8s_namespace,
+            k8s_namespace,
             deployment_name=self.server_name,
             **runner_args,
         )
         self.v4_server_runner = _KubernetesServerRunner(
-            self.server_runner.k8s_namespace,
+            k8s_namespace,
             deployment_name=self.server_name + "-v4",
             service_name=self.server_runner.service_name,
             **runner_args,
         )
         self.v6_server_runner = _KubernetesServerRunner(
-            self.server_runner.k8s_namespace,
+            k8s_namespace,
             deployment_name=self.server_name + "-v6",
             service_name=self.server_runner.service_name,
             **runner_args,
         )
 
     def cleanup(self):
-        super().cleanup()
-        if hasattr(self, "v4_server_runner"):
+        self.td.cleanup(force=self.force_cleanup)
+        self.client_runner.cleanup(
+            force=self.force_cleanup, force_namespace=self.force_cleanup
+        )
+        self.server_runner.cleanup(
+            force=self.force_cleanup, force_namespace=False
+        )
+        if self.v4_server_runner:
             self.v4_server_runner.cleanup(
-                force=self.force_cleanup, force_namespace=self.force_cleanup
+                force=self.force_cleanup, force_namespace=False
             )
-        if hasattr(self, "v6_server_runner"):
+        if self.v6_server_runner:
             self.v6_server_runner.cleanup(
-                force=self.force_cleanup, force_namespace=self.force_cleanup
+                force=self.force_cleanup, force_namespace=True
             )
 
     def test_dual_stack(self) -> None:
@@ -102,8 +113,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.server_xds_host, self.server_xds_port
             )
 
-        test_servers: List[_XdsTestServer] = []
-        with self.subTest("03_start_test_server-default"):
+        test_servers: list[_XdsTestServer] = []
+        with self.subTest("03_start_test_server-dualstack"):
             test_servers.append(
                 self.startTestServers(
                     server_runner=self.server_runner,
@@ -152,29 +163,13 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("07_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("08_round_robin"):
-            num_rpcs = 100
-            expected_rpcs_per_replica = num_rpcs / len(test_servers)
-
-            rpcs_by_peer = self.getClientRpcStats(
-                test_client, num_rpcs
-            ).rpcs_by_peer
-            total_requests_received = sum(rpcs_by_peer[x] for x in rpcs_by_peer)
-            self.assertEqual(
-                total_requests_received, num_rpcs, "Wrong number of RPCS"
+        with self.subTest("08_confirm_all_servers_receive_traffic"):
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client,
+                test_servers,
+                retry_timeout=dt.timedelta(minutes=5),
+                retry_wait=dt.timedelta(seconds=5),
             )
-            for server in test_servers:
-                hostname = server.hostname
-                self.assertIn(
-                    hostname,
-                    rpcs_by_peer,
-                    f"Server {hostname} did not receive RPCs",
-                )
-                self.assertGreater(
-                    rpcs_by_peer[hostname],
-                    3,
-                    f"Insufficient RPCs for server {hostname}",
-                )
 
 
 if __name__ == "__main__":
