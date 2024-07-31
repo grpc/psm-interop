@@ -14,10 +14,10 @@
 import datetime as dt
 import logging
 from typing import Final
-from typing_extensions import TypeAlias, override
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import TypeAlias, override
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
