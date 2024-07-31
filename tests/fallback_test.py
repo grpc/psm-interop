@@ -140,11 +140,7 @@ class FallbackTest(absltest.TestCase):
         ):
             # Wait for control plane to start up, stop when the client asks for
             # a cluster from the primary server
-            self.assertTrue(
-                primary.expect_message_in_output(
-                    "management server listening on"
-                )
-            )
+            self.assertTrue(primary.expect_running())
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
                 "example_proxy_cluster",
@@ -163,11 +159,7 @@ class FallbackTest(absltest.TestCase):
                 with self.start_control_plane(
                     "primary_xds_config_run_2", 0, server1.port
                 ):
-                    self.assertTrue(
-                        primary.expect_message_in_output(
-                            "management server listening on"
-                        )
-                    )
+                    self.assertTrue(primary.expect_running())
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
@@ -208,11 +200,7 @@ class FallbackTest(absltest.TestCase):
                 index=0,
                 upstream_port=server3.port,
             ) as primary2:
-                self.assertTrue(
-                    primary2.expect_message_in_output(
-                        "management server listening on"
-                    )
-                )
+                self.assertTrue(primary2.expect_running())
                 stats = client.get_stats(20)
                 self.assertEqual(stats.num_failures, 0)
                 self.assertIn("server3", stats.rpcs_by_peer)

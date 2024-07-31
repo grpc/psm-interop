@@ -292,6 +292,11 @@ class ControlPlane(GrpcProcess):
             )
         )
 
+    def expect_running(self, timeout_s: int = 5):
+        return self.expect_message_in_output(
+            "Management server listening on", timeout_s
+        )
+
 
 class Client(GrpcProcess):
     def __init__(
