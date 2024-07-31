@@ -143,7 +143,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 )[0]
             )
 
-        logger.debug("Test servers: %s", test_servers)
+        logger.info("Test servers: %s", test_servers)
 
         with self.subTest("04_add_server_backends_to_backend_services"):
             (
