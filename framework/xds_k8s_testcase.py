@@ -895,7 +895,9 @@ class IsolatedXdsKubernetesTestCase(
 
     def cleanup(self):
         self.td.cleanup(force=self.force_cleanup)
-        self.client_runner.cleanup(force=self.force_cleanup)
+        self.client_runner.cleanup(
+            force=self.force_cleanup, force_namespace=self.force_cleanup
+        )
         self.server_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )
