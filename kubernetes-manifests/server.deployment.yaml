@@ -32,7 +32,8 @@ spec:
         - name: ${deployment_name}
           image: ${image_name}
           imagePullPolicy: Always
-          % if address_type != "ipv6": # TODO test without this when ipv6 HC fw rules are in place
+          ## TODO:(lsafran) test without this when ipv6 HC fw rules are in place
+          % if address_type != "ipv6":
           startupProbe:
             tcpSocket:
               port: ${test_port}
