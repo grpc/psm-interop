@@ -46,7 +46,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
-        assert self.enable_dualstack == True
+        assert self.enable_dualstack
         super().setUp()
         runner_args = dict(
             image_name=self.server_image,
