@@ -30,14 +30,15 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
-v4_server_runner: k8s_xds_server_runner.KubernetesServerRunner = None
-v6_server_runner: k8s_xds_server_runner.KubernetesServerRunner = None
 _Lang = skips.Lang
 
 _SERVERS_APP_LABEL: Final[str] = "psm-interop-dualstack"
 
 
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
+    v4_server_runner: _KubernetesServerRunner = None
+    v6_server_runner: _KubernetesServerRunner = None
+
     @classmethod
     def setUpClass(cls):
         """Force the canonical test server for all languages."""
@@ -46,7 +47,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
-        assert self.enable_dualstack
         super().setUp()
         runner_args = dict(
             image_name=self.server_image,
@@ -102,6 +102,11 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             )
 
     def test_dual_stack(self) -> None:
+        self.assertTrue(
+            self.enable_dualstack,
+            "Use common-dualstack.cfg to pickup all dualstack configurations",
+        )
+
         with self.subTest("00_create_health_check"):
             self.td.create_health_check()
 
