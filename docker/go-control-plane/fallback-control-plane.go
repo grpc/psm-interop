@@ -38,8 +38,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/eugeneo/fallback-control-plane/controlplane"
-	xdsconfigpb "github.com/eugeneo/fallback-control-plane/grpc/interop/grpc_testing/xdsconfig"
+	"github.com/grpc/psm-interop/docker/go-control-plane/controlplane"
+	xdsconfigpb "github.com/grpc/psm-interop/docker/go-control-plane/grpc/interop/grpc_testing/xdsconfig"
 
 	v3clusterpb "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	v3listenerpb "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"

@@ -1,4 +1,4 @@
-module github.com/eugeneo/fallback-control-plane
+module github.com/grpc/psm-interop/docker/go-control-plane
 
 go 1.22
 
