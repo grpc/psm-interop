@@ -31,6 +31,7 @@ class ClientDeploymentArgs:
     enable_csm_observability: bool = False
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
+    enable_dualstack: bool = False
 
     def as_dict(self):
         return dataclasses.asdict(self)
@@ -63,6 +64,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         deployment_name: str,
         image_name: str,
         td_bootstrap_image: str,
+        app_label: str = "",
         network="default",
         xds_server_uri: Optional[str] = None,
         gcp_api_manager: gcp.api.GcpApiManager,
@@ -83,6 +85,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             deployment_name=deployment_name,
             image_name=image_name,
             gcp_project=gcp_project,
+            app_label=app_label,
             gcp_service_account=gcp_service_account,
             gcp_ui_url=gcp_api_manager.gcp_ui_url,
             namespace_template=namespace_template,
@@ -172,6 +175,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             deployment_name=self.deployment_name,
             image_name=self.image_name,
             namespace_name=self.k8s_namespace.name,
+            app_label=self.app_label,
             service_account_name=self.service_account_name,
             td_bootstrap_image=self.td_bootstrap_image,
             xds_server_uri=self.xds_server_uri,

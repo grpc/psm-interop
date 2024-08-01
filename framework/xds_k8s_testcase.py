@@ -65,6 +65,7 @@ TrafficDirectorAppNetManager = traffic_director.TrafficDirectorAppNetManager
 TrafficDirectorSecureManager = traffic_director.TrafficDirectorSecureManager
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
+ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _LoadBalancerStatsResponse = grpc_testing.LoadBalancerStatsResponse
@@ -146,6 +147,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     _prev_sigint_handler: Optional[_SignalHandler] = None
     _handling_sigint: bool = False
     yaml_highlighter: framework.helpers.highlighter.HighlighterYaml = None
+    enable_dualstack: bool = False
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
@@ -179,6 +181,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         cls.td_bootstrap_image = xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value
         cls.xds_server_uri = xds_flags.XDS_SERVER_URI.value
         cls.compute_api_version = xds_flags.COMPUTE_API_VERSION.value
+        cls.enable_dualstack = xds_flags.ENABLE_DUALSTACK.value
 
         # Firewall
         cls.ensure_firewall = xds_flags.ENSURE_FIREWALL.value
@@ -796,7 +799,11 @@ class IsolatedXdsKubernetesTestCase(
         self.client_namespace = KubernetesClientRunner.make_namespace_name(
             self.resource_prefix, self.resource_suffix
         )
-        self.client_runner = self.initKubernetesClientRunner()
+        self.client_runner = self.initKubernetesClientRunner(
+            deployment_args=ClientDeploymentArgs(
+                enable_dualstack=self.enable_dualstack
+            )
+        )
 
         # Create healthcheck firewall rules if necessary.
         if self.ensure_firewall:
@@ -888,7 +895,9 @@ class IsolatedXdsKubernetesTestCase(
 
     def cleanup(self):
         self.td.cleanup(force=self.force_cleanup)
-        self.client_runner.cleanup(force=self.force_cleanup)
+        self.client_runner.cleanup(
+            force=self.force_cleanup, force_namespace=self.force_cleanup
+        )
         self.server_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )
@@ -940,6 +949,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             resource_suffix=self.resource_suffix,
             network=self.network,
             compute_api_version=self.compute_api_version,
+            enable_dualstack=self.enable_dualstack,
         )
 
     def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
@@ -957,6 +967,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            enable_dualstack=self.enable_dualstack,
             **kwargs,
         )
 
@@ -1014,6 +1025,7 @@ class AppNetXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             resource_suffix=self.resource_suffix,
             network=self.network,
             compute_api_version=self.compute_api_version,
+            enable_dualstack=self.enable_dualstack,
         )
 
 
@@ -1051,6 +1063,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             resource_suffix=self.resource_suffix,
             network=self.network,
             compute_api_version=self.compute_api_version,
+            enable_dualstack=self.enable_dualstack,
         )
 
     def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
@@ -1068,6 +1081,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_dualstack=self.enable_dualstack,
             **kwargs,
         )
 

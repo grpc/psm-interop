@@ -151,6 +151,7 @@ class ComputeV1(
         subset_size: Optional[int] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
+        enable_dualstack: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
@@ -160,6 +161,10 @@ class ComputeV1(
             "healthChecks": [health_check.url],
             "protocol": protocol.name,
         }
+        # If add dualstack support is specified True, config the backend service
+        # to support IPv6
+        if enable_dualstack:
+            body["ipAddressSelectionPolicy"] = "PREFER_IPV6"
         # If affinity header is specified, config the backend service to support
         # affinity, and set affinity header to the one given.
         if affinity_header:
