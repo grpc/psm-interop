@@ -15,15 +15,10 @@
 package controlplane
 
 import (
-	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
-
-	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
-	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
-	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 
 	pb_cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	pb_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -126,14 +121,4 @@ func MakeHTTPListener(listenerName, cluster string) *pb_listener.Listener {
 			ApiListener: any_hcm,
 		},
 	}
-}
-
-// GenerateSnapshot prepares a new xDS config snapshot for serving to clients.
-func GenerateSnapshot(upstreamHost string, upstreamPort uint32) *cache.Snapshot {
-	snap, _ := cache.NewSnapshot(strconv.Itoa(snapshot_version), map[resource.Type][]types.Resource{
-		resource.ClusterType:  {MakeCluster(ClusterName, upstreamHost, upstreamPort)},
-		resource.ListenerType: {MakeHTTPListener(ListenerName, ClusterName)},
-	})
-	snapshot_version++
-	return snap
 }
