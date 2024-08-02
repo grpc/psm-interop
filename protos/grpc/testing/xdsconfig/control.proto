@@ -1,0 +1,55 @@
+// Copyright 2024 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package grpc.testing.xdsconfig;
+
+option go_package = "grpc/interop/grpc_testing/xdsconfig";
+
+import "google/protobuf/any.proto";
+
+// Request the server to stop on recieving request for the resource with
+// provided type and name
+message StopOnRequestRequest {
+  string resource_type = 1;
+  string resource_name = 2;
+};
+
+// Response to a request to stop server on specific resource request. Contains
+// a list of resources would cause the server to stop
+message StopOnRequestResponse {
+  message ResourceFilter {
+    string resource_type = 1;
+    string resource_name = 2;
+  };
+
+  repeated ResourceFilter filters = 1;
+};
+
+// Adds or replaces LDS and CDS resources. New LDS resource with have name
+// from the listener field and CDS will have name from the cluster field. LDS
+// will route the traffic to this cluster. Cluster will point to address
+// upstream_host:upstream_port
+message UpsertResourcesRequest {
+  optional string listener = 1;
+  string cluster = 2;
+  string upstream_host = 3;
+  uint32 upstream_port = 4;
+};
+
+// Response to Upsert request above. Contains all xDS resources from the server
+message UpsertResourcesResponse {
+  repeated google.protobuf.Any resource = 1;
+};
