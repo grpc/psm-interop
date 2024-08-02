@@ -1,5 +1,5 @@
 #[eostroukhov] TODO migrate to Alpine to decrease image size
-FROM golang:1.22.3-bookworm
+FROM golang:1.22.3-bookworm as build
 
 WORKDIR /usr/src/app
 
@@ -27,6 +27,12 @@ RUN go mod download && go mod verify
 COPY protos ./protos
 RUN protoc -I=. --go_out=. protos/grpc/testing/xdsconfig/*.proto --go-grpc_out=.
 COPY docker/go-control-plane .
-RUN go build -v -o /usr/local/bin/fallback-control-plane .
+RUN go build -v -tags osusergo,netgo -o /usr/local/bin/fallback-control-plane .
+
+# Second stage of the build which copies over only the client binary and skips
+# the Go compiler and gRPC repo from the earlier stage. This significantly
+# reduces the docker image size.
+FROM alpine
+COPY --from=build /usr/local/bin/fallback-control-plane /usr/local/bin
 
 ENTRYPOINT ["fallback-control-plane"]
