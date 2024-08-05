@@ -6,12 +6,12 @@ import pathlib
 import queue
 import threading
 
-from docker import client
-from docker import errors
-from docker import types
 import grpc
 import mako.template
 
+from docker import client
+from docker import errors
+from docker import types
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig import control_pb2
@@ -149,7 +149,6 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
-
     def __init__(
         self,
         image: str,
