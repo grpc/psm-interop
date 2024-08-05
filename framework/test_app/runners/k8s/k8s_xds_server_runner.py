@@ -91,6 +91,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         deployment_name: str,
         image_name: str,
         td_bootstrap_image: str,
+        app_label: str = "",
         network: str = "default",
         xds_server_uri: Optional[str] = None,
         gcp_api_manager: gcp.api.GcpApiManager,
@@ -108,12 +109,14 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
         deployment_args: Optional[ServerDeploymentArgs] = None,
+        enable_dualstack: bool = False,
     ):
         super().__init__(
             k8s_namespace,
             deployment_name=deployment_name,
             image_name=image_name,
             gcp_project=gcp_project,
+            app_label=app_label,
             gcp_service_account=gcp_service_account,
             gcp_ui_url=gcp_api_manager.gcp_ui_url,
             namespace_template=namespace_template,
@@ -142,6 +145,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self.td_bootstrap_image = td_bootstrap_image
         self.network = network
         self.xds_server_uri = xds_server_uri
+        self.enable_dualstack = enable_dualstack
 
         # Workload identity settings:
         if self.enable_workload_identity:
@@ -168,6 +172,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         test_port: int = DEFAULT_TEST_PORT,
         maintenance_port: Optional[int] = None,
         secure_mode: bool = False,
+        address_type: str = "",
         replica_count: int = 1,
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
@@ -220,9 +225,10 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
                 self.service_template,
                 service_name=self.service_name,
                 namespace_name=self.k8s_namespace.name,
-                deployment_name=self.deployment_name,
+                app_label=self.app_label,
                 neg_name=self.gcp_neg_name,
                 test_port=test_port,
+                enable_dualstack=self.enable_dualstack,
             )
         self._wait_service_neg_status_annotation(self.service_name, test_port)
 
@@ -249,6 +255,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             deployment_name=self.deployment_name,
             image_name=self.image_name,
             namespace_name=self.k8s_namespace.name,
+            app_label=self.app_label,
             service_account_name=self.service_account_name,
             td_bootstrap_image=self.td_bootstrap_image,
             xds_server_uri=self.xds_server_uri,
@@ -257,6 +264,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             test_port=test_port,
             maintenance_port=maintenance_port,
             secure_mode=secure_mode,
+            address_type=address_type,
             bootstrap_version=bootstrap_version,
             **self.deployment_args.as_dict(),
         )

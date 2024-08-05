@@ -250,7 +250,7 @@ do this, navigate to this directory and run `./bin/freeze.sh`.
 
 There are many arguments to be passed into the test run. You can save the
 arguments to a config file ("flagfile") for your development environment.
-Use [`config/local-dev.cfg.example`](https://github.com/grpc/grpc/blob/master/tools/run_tests/xds_k8s_test_driver/config/local-dev.cfg.example)
+Use [`config/local-dev.cfg.example`](https://github.com/grpc/psm-interop/blob/main/config/local-dev.cfg.example)
 as a starting point:
 
 ```shell
@@ -268,7 +268,7 @@ Learn more about flagfiles in [abseil documentation](https://abseil.io/docs/pyth
 
 ## Test suites
 
-See the full list of available test suites in the [`tests/`](https://github.com/grpc/grpc/tree/master/tools/run_tests/xds_k8s_test_driver/tests) folder. 
+See the full list of available test suites in the [`tests/`](https://github.com/grpc/psm-interop/blob/main/tests) folder. 
 
 ### xDS Baseline Tests
 
@@ -304,7 +304,7 @@ python -m tests.security_test --flagfile="config/local-dev.cfg"
 ```
 
 ## Helper scripts
-You can use interop xds-k8s [`bin/`](https://github.com/grpc/grpc/tree/master/tools/run_tests/xds_k8s_test_driver/bin)
+You can use interop xds-k8s [`bin/`](https://github.com/grpc/psm-interop/blob/main/bin)
 scripts to configure TD, start k8s instances step-by-step, and keep them alive
 for as long as you need. 
 

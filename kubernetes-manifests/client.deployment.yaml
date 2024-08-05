@@ -5,19 +5,19 @@ metadata:
   name: ${deployment_name}
   namespace: ${namespace_name}
   labels:
-    app: ${deployment_name}
+    app: ${app_label}
     deployment_id: ${deployment_id}
     owner: xds-k8s-interop-test
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ${deployment_name}
+      app: ${app_label}
       deployment_id: ${deployment_id}
   template:
     metadata:
       labels:
-        app: ${deployment_name}
+        app: ${app_label}
         deployment_id: ${deployment_id}
         owner: xds-k8s-interop-test
     spec:
@@ -66,6 +66,12 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
+            % if enable_dualstack:
+            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
+              value: "true"
+            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}

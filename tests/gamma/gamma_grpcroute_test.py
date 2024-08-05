@@ -37,6 +37,7 @@ class GammaGrpcRouteTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         kwargs["route_kind"] = k8s.RouteKind.GRPC
         return super().initKubernetesServerRunner(**kwargs)
 
+    @absltest.unittest.skip("Skipping test until cl/655674720 is merged")
     def test_ping_pong(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
