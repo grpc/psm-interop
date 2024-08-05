@@ -14,7 +14,8 @@ import mako.template
 
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
-from protos.grpc.testing.xdsconfig import control_pb2, service_pb2_grpc
+from protos.grpc.testing.xdsconfig import control_pb2
+from protos.grpc.testing.xdsconfig import service_pb2_grpc
 
 # bootstrap.json template
 BOOTSTRAP_JSON_TEMPLATE = "templates/bootstrap.json"
