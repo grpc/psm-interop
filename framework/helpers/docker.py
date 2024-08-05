@@ -6,9 +6,9 @@ import pathlib
 import queue
 import threading
 
-from docker.client import DockerClient
-from docker.errors import NotFound
-from docker.types import ContainerConfig
+from docker import client
+from docker import errors
+from docker import types
 import grpc
 import mako.template
 
@@ -72,7 +72,7 @@ class ProcessManager:
         node_id: str,
         verbosity="info",
     ):
-        self.docker_client = DockerClient.from_env()
+        self.docker_client = client.DockerClient.from_env()
         self.node_id = node_id
         self.outputs = defaultdict(list)
         self.queue = queue.Queue()
@@ -149,12 +149,13 @@ def Configure(config, image: str, name: str, verbosity: str):
 
 
 class DockerProcess:
+
     def __init__(
         self,
         image: str,
         name: str,
         manager: ProcessManager,
-        **config: ContainerConfig,
+        **config: types.ContainerConfig,
     ):
         self.name = name
         self.config = Configure(
@@ -180,7 +181,7 @@ class DockerProcess:
         try:
             self.container.stop()
             self.container.wait()
-        except NotFound:
+        except errors.NotFound:
             # It is ok, container was auto removed
             logger.debug(
                 "Container %s was autoremoved, most likely because the app crashed",
