@@ -99,7 +99,9 @@ class FallbackTest(absltest.TestCase):
             self.assertEqual(client.get_stats(5).num_failures, 5)
             # Fallback control plane start, send traffic to server2
             with self.start_control_plane(
-                "fallback_xds_config", 1, server2.port
+                name="fallback_xds_config",
+                index=1,
+                upstream_port=server2.port,
             ):
                 stats = client.get_stats(5)
                 self.assertGreater(stats.rpcs_by_peer["server2"], 0)
@@ -119,11 +121,11 @@ class FallbackTest(absltest.TestCase):
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
                     self.assertGreater(stats.rpcs_by_peer["server1"], 0)
-                # Primary control plane down
+                # Primary control plane down, cached value is used
                 stats = client.get_stats(5)
                 self.assertEqual(stats.num_failures, 0)
                 self.assertEqual(stats.rpcs_by_peer["server1"], 5)
-            # Fallback control plane down
+            # Fallback control plane down, cached value is used
             stats = client.get_stats(5)
             self.assertEqual(stats.num_failures, 0)
             self.assertEqual(stats.rpcs_by_peer["server1"], 5)
