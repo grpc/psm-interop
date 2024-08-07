@@ -1,6 +1,18 @@
+# Copyright 2024 gRPC authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import logging
 import socket
-import unittest
 
 import absl
 from absl import flags
@@ -9,6 +21,8 @@ from absl.testing import absltest
 import framework
 import framework.helpers.docker
 import framework.helpers.logs
+import framework.helpers.retryers
+import framework.helpers.xds_resources
 import framework.xds_flags
 import framework.xds_k8s_testcase
 
@@ -25,6 +39,8 @@ _HOST_NAME = flags.DEFINE_string(
     "Host name all the services are bound on",
 )
 _NODE_ID = flags.DEFINE_string("node", "test-id", "Node ID")
+
+_LISTENER = "listener_0"
 
 absl.flags.adopt_module_key_flags(framework.xds_k8s_testcase)
 
@@ -59,17 +75,28 @@ class FallbackTest(absltest.TestCase):
             manager=self.process_manager,
             name=name or framework.xds_flags.CLIENT_NAME.value,
             port=port or get_free_port(),
-            url="xds:///listener_0",
+            url=f"xds:///{_LISTENER}",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
         )
 
-    def start_control_plane(self, name: str, index: int, upstream_port: int):
+    def start_control_plane(
+        self, name: str, index: int, upstream_port: int, cluster_name=None
+    ):
         logger.debug('Starting control plane "%s"', name)
         return framework.helpers.docker.ControlPlane(
             self.process_manager,
             name=name,
             port=self.bootstrap.xds_config_server_port(index),
-            upstream=f"{_HOST_NAME.value}:{upstream_port}",
+            initial_resources=framework.helpers.xds_resources.build_listener_and_cluster(
+                listener_name=_LISTENER,
+                cluster_name=(
+                    cluster_name
+                    if cluster_name
+                    else f"initial_cluster_for_{name}"
+                ),
+                upstream_host=_HOST_NAME.value,
+                upstream_port=upstream_port,
+            ),
             image=_CONTROL_PLANE_IMAGE.value,
         )
 
@@ -112,11 +139,6 @@ class FallbackTest(absltest.TestCase):
                     index=0,
                     upstream_port=server1.port,
                 ):
-                    self.assertTrue(
-                        client.expect_message_in_output(
-                            "parsed Cluster example_proxy_cluster", timeout_s=30
-                        )
-                    )
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
@@ -136,16 +158,13 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
             self.start_control_plane(
-                "primary_xds_config_run_1", 0, server1.port
+                "primary_xds_config_run_1", 0, server1.port, "cluster_name"
             ) as primary,
             self.start_control_plane("fallback_xds_config", 1, server2.port),
         ):
-            # Wait for control plane to start up, stop when the client asks for
-            # a cluster from the primary server
-            self.assertTrue(primary.expect_running())
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
-                "example_proxy_cluster",
+                "cluster_name",
             )
             # Run client
             with (self.start_client() as client,):
@@ -161,7 +180,6 @@ class FallbackTest(absltest.TestCase):
                 with self.start_control_plane(
                     "primary_xds_config_run_2", 0, server1.port
                 ):
-                    self.assertTrue(primary.expect_running())
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
@@ -189,9 +207,12 @@ class FallbackTest(absltest.TestCase):
                 "test_cluster_2",
             )
             primary.update_resources(
-                cluster="test_cluster_2",
-                upstream_port=server3.port,
-                upstream_host=_HOST_NAME.value,
+                framework.helpers.xds_resources.build_listener_and_cluster(
+                    cluster_name="test_cluster_2",
+                    listener_name=_LISTENER,
+                    upstream_port=server3.port,
+                    upstream_host=_HOST_NAME.value,
+                )
             )
             stats = client.get_stats(10)
             self.assertEqual(stats.num_failures, 0)
@@ -201,8 +222,7 @@ class FallbackTest(absltest.TestCase):
                 name="primary_xds_config_run_2",
                 index=0,
                 upstream_port=server3.port,
-            ) as primary2:
-                self.assertTrue(primary2.expect_running())
+            ):
                 stats = client.get_stats(20)
                 self.assertEqual(stats.num_failures, 0)
                 self.assertIn("server3", stats.rpcs_by_peer)

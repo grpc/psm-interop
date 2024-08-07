@@ -1,3 +1,17 @@
+# Copyright 2024 gRPC authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from collections import defaultdict
 import datetime
 import logging
@@ -14,8 +28,8 @@ from docker import errors
 from docker import types
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
-from protos.grpc.testing.xdsconfig import control_pb2
-from protos.grpc.testing.xdsconfig import service_pb2_grpc
+from protos.grpc.testing.xdsconfig import xdsconfig_pb2
+from protos.grpc.testing.xdsconfig import xdsconfig_pb2_grpc
 
 # bootstrap.json template
 BOOTSTRAP_JSON_TEMPLATE = "templates/bootstrap.json"
@@ -257,7 +271,7 @@ class ControlPlane(GrpcProcess):
         manager: ProcessManager,
         name: str,
         port: int,
-        upstream: str,
+        initial_resources: xdsconfig_pb2.SetResourcesRequest,
         image: str,
     ):
         super().__init__(
@@ -266,34 +280,28 @@ class ControlPlane(GrpcProcess):
             port=port,
             image=image,
             ports={DEFAULT_CONTROL_PLANE_PORT: port},
-            command=["--upstream", str(upstream), "--nodeid", manager.node_id],
+            command=["--nodeid", manager.node_id],
         )
+        self.initial_resources = initial_resources
+
+    def __enter__(self):
+        if not super().__enter__():
+            return None
+        self.update_resources(self.initial_resources)
+        return self
 
     def stop_on_resource_request(self, resource_type: str, resource_name: str):
-        stub = service_pb2_grpc.XdsConfigControlServiceStub(self.channel())
+        stub = xdsconfig_pb2_grpc.XdsConfigControlServiceStub(self.channel())
         res = stub.StopOnRequest(
-            control_pb2.StopOnRequestRequest(
+            xdsconfig_pb2.StopOnRequestRequest(
                 resource_type=resource_type, resource_name=resource_name
             )
         )
         return res
 
-    def update_resources(
-        self, cluster: str, upstream_port: int, upstream_host="localhost"
-    ):
-        stub = service_pb2_grpc.XdsConfigControlServiceStub(self.channel())
-        return stub.UpsertResources(
-            control_pb2.UpsertResourcesRequest(
-                cluster=cluster,
-                upstream_host=upstream_host,
-                upstream_port=upstream_port,
-            )
-        )
-
-    def expect_running(self, timeout_s: int = 5):
-        return self.expect_message_in_output(
-            "Management server listening on", timeout_s
-        )
+    def update_resources(self, resources: xdsconfig_pb2.SetResourcesRequest):
+        stub = xdsconfig_pb2_grpc.XdsConfigControlServiceStub(self.channel())
+        return stub.SetResources(resources)
 
 
 class Client(GrpcProcess):

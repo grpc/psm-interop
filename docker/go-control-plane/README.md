@@ -14,3 +14,12 @@ the root of `grpc/psm-interop` checkout.
 ```
 docker build . -f docker/go-control-plane/Dockerfile
 ```
+
+## Local development
+
+Run the following command from this repository root to generate protocol files:
+```
+protoc -I=. --go_out=docker/go-control-plane \
+  protos/grpc/testing/xdsconfig/*.proto \
+  --go-grpc_out=docker/go-control-plane/
+```

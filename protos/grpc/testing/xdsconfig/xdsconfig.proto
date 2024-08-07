@@ -38,18 +38,29 @@ message StopOnRequestResponse {
   repeated ResourceFilter filters = 1;
 };
 
-// Adds or replaces LDS and CDS resources. New LDS resource with have name
-// from the listener field and CDS will have name from the cluster field. LDS
-// will route the traffic to this cluster. Cluster will point to address
-// upstream_host:upstream_port
-message UpsertResourcesRequest {
-  optional string listener = 1;
-  string cluster = 2;
-  string upstream_host = 3;
-  uint32 upstream_port = 4;
+// Request to set one or more resources.
+message SetResourcesRequest {
+  message ResourceToSet {
+    // Resource type
+    string type = 1;
+    // Resource name
+    string name = 2;
+    // Optional resource contents. Resource is removed if not provided.
+    optional google.protobuf.Any body = 3;
+  };
+  repeated ResourceToSet resources = 1;
+}
+
+// Response to request to set resource. Contains all xDS resources from the
+// server
+message SetResourcesResponse {
+  repeated google.protobuf.Any resource = 1;
 };
 
-// Response to Upsert request above. Contains all xDS resources from the server
-message UpsertResourcesResponse {
-  repeated google.protobuf.Any resource = 1;
+// Service to control the control plane from the test script
+service XdsConfigControlService {
+  // Instructs the server to exit when given resource is requested
+  rpc StopOnRequest(StopOnRequestRequest) returns (StopOnRequestResponse);
+  // A generic way to set xDS resources
+  rpc SetResources(SetResourcesRequest) returns (SetResourcesResponse);
 };
