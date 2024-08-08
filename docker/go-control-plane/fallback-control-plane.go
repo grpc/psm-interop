@@ -53,8 +53,8 @@ var (
 )
 
 type resourceKey struct {
-	ResourceType string
-	ResourceName string
+	resourceType string
+	resourceName string
 }
 
 // controlService provides a gRPC API to configure test-specific control plane
@@ -73,15 +73,15 @@ type controlService struct {
 func (srv *controlService) StopOnRequest(_ context.Context, req *xdsconfigpb.StopOnRequestRequest) (*xdsconfigpb.StopOnRequestResponse, error) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-	if val, ok := srv.filters[req.GetResourceType()]; ok {
-		val[req.GetResourceName()] = true
+	if val, ok := srv.filters[req.TypeUrl]; ok {
+		val[req.Name] = true
 	} else {
-		srv.filters[req.GetResourceType()] = map[string]bool{req.GetResourceName(): true}
+		srv.filters[req.TypeUrl] = map[string]bool{req.Name: true}
 	}
 	res := xdsconfigpb.StopOnRequestResponse{}
 	for t, names := range srv.filters {
 		for name := range names {
-			res.Filters = append(res.Filters, &xdsconfigpb.StopOnRequestResponse_ResourceFilter{ResourceType: t, ResourceName: name})
+			res.Filters = append(res.Filters, &xdsconfigpb.StopOnRequestResponse_ResourceFilter{TypeUrl: t, Name: name})
 		}
 	}
 	return &res, nil
@@ -97,18 +97,18 @@ func (srv *controlService) SetResources(_ context.Context, req *xdsconfigpb.SetR
 		srv.version++
 	}
 	for _, resource := range req.Resources {
-		key := resourceKey{ResourceType: resource.Type, ResourceName: resource.Name}
+		key := resourceKey{resourceType: resource.TypeUrl, resourceName: resource.Name}
 		contents := resource.Body
-		if contents != nil {
-			body, err := contents.UnmarshalNew()
-			if err != nil {
-				log.Printf("Failed to parse %s/%s: %v", key.ResourceType, key.ResourceName, err)
-			} else {
-				srv.resources[key] = &body
-			}
-		} else {
+		if contents == nil {
 			delete(srv.resources, key)
+			continue
 		}
+		body, err := contents.UnmarshalNew()
+		if err != nil {
+			log.Printf("Failed to parse %s/%s: %v", key.resourceType, key.resourceName, err)
+			continue
+		}
+		srv.resources[key] = &body
 	}
 	if err := srv.RefreshSnapshot(); err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (srv *controlService) SetResources(_ context.Context, req *xdsconfigpb.SetR
 	for key, message := range srv.resources {
 		a, err := anypb.New(*message)
 		if err != nil {
-			log.Printf("Can not wrap resource %s/%s into any: %v", key.ResourceType, key.ResourceName, err)
+			log.Printf("Can not wrap resource %s/%s into any: %v", key.resourceType, key.resourceName, err)
 		}
 		res.Resource = append(res.Resource, a)
 	}
@@ -145,7 +145,7 @@ func (srv *controlService) onStreamRequest(id int64, req *v3discoverypb.Discover
 func (srv *controlService) RefreshSnapshot() error {
 	resources := map[resource.Type][]types.Resource{}
 	for k, resource := range srv.resources {
-		resources[k.ResourceType] = append(resources[k.ResourceType], *resource)
+		resources[k.resourceType] = append(resources[k.resourceType], *resource)
 	}
 	// Create the snapshot that we'll serve to Envoy
 	snapshot, err := cache.NewSnapshot(fmt.Sprint(srv.version), resources)

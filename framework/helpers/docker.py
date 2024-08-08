@@ -294,7 +294,7 @@ class ControlPlane(GrpcProcess):
         stub = xdsconfig_pb2_grpc.XdsConfigControlServiceStub(self.channel())
         res = stub.StopOnRequest(
             xdsconfig_pb2.StopOnRequestRequest(
-                resource_type=resource_type, resource_name=resource_name
+                type_url=resource_type, name=resource_name
             )
         )
         return res

@@ -108,7 +108,7 @@ def _build_cluster(
 
 def _build_resource_to_set(resource: message.Message):
     return xdsconfig_pb2.SetResourcesRequest.ResourceToSet(
-        type=f"type.googleapis.com/{resource.DESCRIPTOR.full_name}",
+        type_url=f"type.googleapis.com/{resource.DESCRIPTOR.full_name}",
         name=resource.name,
         body=_wrap_in_any(resource),
     )
