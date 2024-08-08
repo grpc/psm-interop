@@ -17,7 +17,8 @@ docker build . -f docker/go-control-plane/Dockerfile
 
 ## Local development
 
-Run the following command from this repository root to generate protocol files:
+Run the following command from this repository to generate code from the .proto
+files:
 ```
 protoc -I=. --go_out=docker/go-control-plane \
   protos/grpc/testing/xdsconfig/*.proto \
