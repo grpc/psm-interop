@@ -285,9 +285,10 @@ class ControlPlane(GrpcProcess):
         self.initial_resources = initial_resources
 
     def __enter__(self):
-        if super().__enter__():
-            self.update_resources(self.initial_resources)
-            return self
+        if not super().__enter__():
+            return None
+        self.update_resources(self.initial_resources)
+        return self
 
     def stop_on_resource_request(self, resource_type: str, resource_name: str):
         stub = xdsconfig_pb2_grpc.XdsConfigControlServiceStub(self.channel())
