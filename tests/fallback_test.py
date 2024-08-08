@@ -89,11 +89,7 @@ class FallbackTest(absltest.TestCase):
             port=self.bootstrap.xds_config_server_port(index),
             initial_resources=framework.helpers.xds_resources.build_listener_and_cluster(
                 listener_name=_LISTENER,
-                cluster_name=(
-                    cluster_name
-                    if cluster_name
-                    else f"initial_cluster_for_{name}"
-                ),
+                cluster_name=cluster_name or f"initial_cluster_for_{name}",
                 upstream_host=_HOST_NAME.value,
                 upstream_port=upstream_port,
             ),
