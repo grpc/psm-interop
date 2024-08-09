@@ -37,9 +37,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	xdsconfigpb "github.com/grpc/psm-interop/docker/go-control-plane/grpc/interop/grpc_testing/xdsconfig"
-
 	v3discoverypb "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	xdsconfigpb "github.com/grpc/psm-interop/docker/test-control-plane/grpc/interop/grpc_testing/xdsconfig"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"

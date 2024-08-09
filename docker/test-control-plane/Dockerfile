@@ -21,18 +21,21 @@ RUN cp ./proto/bin/protoc ${BASE}/bin/
 RUN cp -R ./proto/include/* ${BASE}/include/
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
-COPY docker/go-control-plane/go.mod docker/go-control-plane/go.sum ./
+COPY docker/test-control-plane/go.mod docker/test-control-plane/go.sum ./
 RUN go mod download && go mod verify
 
 COPY protos ./protos
+COPY docker/test-control-plane .
+# Make sure files generated on machine are not picked up
+RUN rm -r grpc
 RUN protoc -I=. --go_out=. protos/grpc/testing/xdsconfig/*.proto --go-grpc_out=.
-COPY docker/go-control-plane .
-RUN go build -v -tags osusergo,netgo -o /usr/local/bin/fallback-control-plane .
+
+RUN go build -v -tags osusergo,netgo -o /usr/local/bin/test-control-plane .
 
 # Second stage of the build which copies over only the client binary and skips
 # the Go compiler and gRPC repo from the earlier stage. This significantly
 # reduces the docker image size.
 FROM alpine
-COPY --from=build /usr/local/bin/fallback-control-plane /usr/local/bin
+COPY --from=build /usr/local/bin/test-control-plane /usr/local/bin
 
-ENTRYPOINT ["fallback-control-plane"]
+ENTRYPOINT ["test-control-plane"]

@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 _CONTROL_PLANE_IMAGE = flags.DEFINE_string(
     "control_plane_image",
-    "us-docker.pkg.dev/eostroukhov-xds-interop/docker/control-plane",
+    "us-docker.pkg.dev/grpc-testing/psm-interop/test-control-plane:latest",
     "Control plane (xDS config) server image",
 )
 _HOST_NAME = flags.DEFINE_string(
