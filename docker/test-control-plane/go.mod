@@ -1,4 +1,4 @@
-module github.com/grpc/psm-interop/docker/go-control-plane
+module github.com/grpc/psm-interop/docker/test-control-plane
 
 go 1.22
 

@@ -73,4 +73,4 @@ venv-*/
 out/
 protos/**/*_pb2*
 # Generated Go files
-docker/go-control-plane/grpc/interop/grpc_testing/xdsconfig/*.pb.go
+docker/test-control-plane/grpc/interop/grpc_testing/xdsconfig/*.pb.go
