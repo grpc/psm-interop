@@ -202,6 +202,47 @@ psm::dualstack::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- Fallback TESTS ------------------
+
+#######################################
+# Fallback Test Suite setup.
+#######################################
+psm::fallback::setup() {
+}
+
+#######################################
+# Prepares the list of tests in Fallback test suite.
+# Globals:
+#   TESTS: Populated with tests in Fallback test suite.
+#######################################
+psm::fallback::get_tests() {
+  TESTS=(
+    "fallback_test"
+  )
+}
+
+#######################################
+# Executes Fallback test case
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::fallback::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-fallback.cfg"
+  )
+
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- URL Map TESTS ------------------
 
 #######################################
@@ -301,7 +342,7 @@ psm::csm::run_test() {
 #   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
 #     in the source repo.
 # Arguments:
-#   Test suite name, one of (lb, security, dualstack, url_map, csm)
+#   Test suite name, one of (csm, dualstack, fallback, lb, security, url_map)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
@@ -316,7 +357,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    lb | security | dualstack | url_map | csm)
+    csm | dualstack | fallback | lb | security | url_map)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
