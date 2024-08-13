@@ -1,0 +1,24 @@
+{
+  "xds_servers": [
+% for i, server in enumerate(servers):
+    {
+      "server_uri": "${server}",
+      "channel_creds": [
+        {
+          "type": "insecure"
+        }
+      ],
+      "server_features": [
+        "xds_v3"
+      ]
+    }${','*bool(i < len(servers)-1)}
+% endfor
+  ],
+  "node": {
+    "id": "test-id",
+    "cluster": "cluster",
+    "locality": {
+      "zone": "us-west4-b"
+    }
+  }
+}
