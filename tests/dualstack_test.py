@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import threading
 import datetime as dt
 import logging
+import time
 from typing import Final
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
@@ -39,6 +41,8 @@ _SERVERS_APP_LABEL: Final[str] = "psm-interop-dualstack"
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     v4_server_runner: _KubernetesServerRunner = None
     v6_server_runner: _KubernetesServerRunner = None
+    fr_recreater: threading.Thread = None
+    firewall_rule_creation_should_stop: bool = False
 
     @staticmethod
     @override
@@ -95,6 +99,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         )
 
     def cleanup(self):
+        self.firewall_rule_creation_should_stop = True
+
         self.td.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
@@ -128,6 +134,22 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.server_xds_host, self.server_xds_port
             )
 
+        with self.subTest("_start_firewall_rule_creation_thread"):
+
+            def recreate_firewall_rule():
+                time.sleep(30)
+                while self.firewall_rule_creation_should_stop is False:
+                    self.td.create_firewall_rules(
+                        allowed_ports=self.firewall_allowed_ports,
+                        source_range=self.firewall_source_range,
+                        source_range_ipv6=self.firewall_source_range_ipv6,
+                    )
+                    time.sleep(30)
+
+            self.fr_recreater = threading.Thread(
+                target=recreate_firewall_rule, args=(self,), daemon=True
+            )
+
         test_servers: list[_XdsTestServer] = []
         with self.subTest("03_start_test_server-dualstack"):
             test_servers.append(
@@ -155,6 +177,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         logger.info("Test servers: %s", test_servers)
 
+        # Start recreating the firewall rule every 15 seconds
         with self.subTest("04_add_server_backends_to_backend_services"):
             (
                 neg_name,
