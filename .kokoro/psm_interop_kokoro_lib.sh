@@ -913,7 +913,7 @@ gcloud_gcr_list_image_tags() {
 #   Writes authorization info $HOME/.kube/config
 #######################################
 gcloud_get_cluster_credentials() {
-  if [[ -n "NO_GKE_CLUSTER" ]]; then
+  if [[ -n "${NO_GKE_CLUSTER}" ]]; then
     psm::tools::log "Skipping cluster credentials"
     return
   fi
