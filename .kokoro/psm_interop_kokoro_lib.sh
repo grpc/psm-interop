@@ -206,9 +206,11 @@ psm::dualstack::run_test() {
 
 #######################################
 # Fallback Test Suite setup.
+#
+# This test does not actively need GKE but Kokoro fails if no cluster is provided.
 #######################################
-psm::fallback::setup() {
-  : # Placeholder for future setup commands
+psm::url_map::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_BASIC
 }
 
 #######################################
