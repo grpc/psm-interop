@@ -1018,6 +1018,7 @@ test_driver_compile_protos() {
     "${TEST_DRIVER_PROTOS_PATH}/test.proto"
     "${TEST_DRIVER_PROTOS_PATH}/messages.proto"
     "${TEST_DRIVER_PROTOS_PATH}/empty.proto"
+    "${TEST_DRIVER_PROTOS_PATH}/xdsconfig/xdsconfig.proto"
   )
   psm::tools::log "Generate python code from grpc.testing protos: ${protos[*]}"
   cd "${TEST_DRIVER_REPO_DIR}"
