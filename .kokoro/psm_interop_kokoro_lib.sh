@@ -208,6 +208,7 @@ psm::dualstack::run_test() {
 # Fallback Test Suite setup.
 #######################################
 psm::fallback::setup() {
+  : # Placeholder for future setup commands
 }
 
 #######################################
