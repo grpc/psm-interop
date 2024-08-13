@@ -206,9 +206,11 @@ psm::dualstack::run_test() {
 
 #######################################
 # Fallback Test Suite setup.
+#
+# This test does not need GKE so setting variable to skip some init
 #######################################
 psm::fallback::setup() {
-  : # Placeholder for future setup commands
+  NO_GKE_CLUSTER=1
 }
 
 #######################################
@@ -911,6 +913,10 @@ gcloud_gcr_list_image_tags() {
 #   Writes authorization info $HOME/.kube/config
 #######################################
 gcloud_get_cluster_credentials() {
+  if [[ -n "${NO_GKE_CLUSTER}" ]]; then
+    psm::tools::log "Skipping cluster credentials"
+    return
+  fi
   # Secondary cluster, when set.
   if [[ -n "${SECONDARY_GKE_CLUSTER_NAME}" && -n "${SECONDARY_GKE_CLUSTER_ZONE}" ]]; then
     gcloud container clusters get-credentials "${SECONDARY_GKE_CLUSTER_NAME}" --zone "${SECONDARY_GKE_CLUSTER_ZONE}"
