@@ -209,7 +209,7 @@ psm::dualstack::run_test() {
 #
 # This test does not actively need GKE but Kokoro fails if no cluster is provided.
 #######################################
-psm::url_map::setup() {
+psm::fallback::setup() {
   activate_gke_cluster GKE_CLUSTER_PSM_BASIC
 }
 
