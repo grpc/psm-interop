@@ -211,6 +211,7 @@ psm::dualstack::run_test() {
 #######################################
 psm::fallback::setup() {
   NO_GKE_CLUSTER=1
+  gcloud -q auth configure-docker "${DOCKER_REGISTRY}"
 }
 
 #######################################
