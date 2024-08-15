@@ -14,12 +14,11 @@
 import datetime
 import logging
 import socket
-import time
-import unittest
 
 import absl
 from absl import flags
 from absl.testing import absltest
+from grpc_channelz.v1 import channelz_pb2
 
 import framework
 import framework.helpers.docker
@@ -28,8 +27,6 @@ import framework.helpers.retryers
 import framework.helpers.xds_resources
 import framework.xds_flags
 import framework.xds_k8s_testcase
-
-from grpc_channelz.v1 import channelz_pb2
 
 logger = logging.getLogger(__name__)
 
