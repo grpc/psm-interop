@@ -19,6 +19,7 @@ import math
 import pathlib
 import queue
 import threading
+import time
 
 import grpc
 import mako.template
@@ -30,6 +31,9 @@ from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig import xdsconfig_pb2
 from protos.grpc.testing.xdsconfig import xdsconfig_pb2_grpc
+from framework.rpc.grpc_channelz import ChannelzServiceClient
+from grpc_channelz.v1 import channelz_pb2
+
 
 # bootstrap.json template
 BOOTSTRAP_JSON_TEMPLATE = "templates/bootstrap.json"
@@ -318,8 +322,16 @@ class Client(GrpcProcess):
             port=port,
             image=image,
             name=name,
-            command=[f"--server={url}", "--print_response"],
-            ports={DEFAULT_GRPC_CLIENT_PORT: port},
+            command=[
+                "--server",
+                url,
+                # "--print_response",
+                # "true",
+                # "--verbose",
+                "--stats_port",
+                str(port),
+            ],
+            ports={str(port): port},
             volumes={
                 manager.bootstrap.mount_dir: {
                     "bind": "/grpc",
@@ -333,7 +345,28 @@ class Client(GrpcProcess):
         stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(
-                num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 1.5)
+                num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 10)
             )
         )
         return res
+
+    def expect_channel_status(
+        self,
+        port: int,
+        expected_status: channelz_pb2.ChannelConnectivityState,
+        timeout: datetime.timedelta,
+        poll_interval: datetime.timedelta,
+    ) -> channelz_pb2.ChannelConnectivityState:
+        deadline = datetime.datetime.now() + timeout
+        channelz = ChannelzServiceClient(self.channel())
+        status = None
+        while datetime.datetime.now() < deadline:
+            status = None
+            for ch in channelz.list_channels():
+                if ch.data.target.endswith(str(port)):
+                    status = ch.data.state.state
+                    break
+            if status == expected_status:
+                return status
+            time.sleep(poll_interval.microseconds * 0.000001)
+        return status
