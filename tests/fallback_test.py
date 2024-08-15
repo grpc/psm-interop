@@ -15,7 +15,6 @@ import datetime
 import logging
 import socket
 import time
-from typing import List
 import unittest
 
 import absl
@@ -72,7 +71,8 @@ class FallbackTest(absltest.TestCase):
     def setUpClass():
         FallbackTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
-            ports=[get_free_port() for _ in range(2)],
+            primary_port=get_free_port(),
+            fallback_port=get_free_port(),
             host_name=_HOST_NAME.value,
         )
 
@@ -122,16 +122,16 @@ class FallbackTest(absltest.TestCase):
             command=[],
         )
 
-    def assert_ads_connection(
+    def assert_ads_connections(
         self,
         client: framework.helpers.docker.Client,
-        port: int,
-        expected_status: channelz_pb2.ChannelConnectivityState,
+        primary_status: channelz_pb2.ChannelConnectivityState,
+        fallback_status: channelz_pb2.ChannelConnectivityState,
     ):
         self.assertEqual(
             client.expect_channel_status(
-                port,
-                expected_status,
+                self.bootstrap.primary_port,
+                primary_status,
                 timeout=datetime.timedelta(
                     milliseconds=_STATUS_TIMEOUT_MS.value
                 ),
@@ -139,9 +139,23 @@ class FallbackTest(absltest.TestCase):
                     milliseconds=_STATUS_POLL_INTERVAL_MS.value
                 ),
             ),
-            expected_status,
+            primary_status,
+        )
+        self.assertEqual(
+            client.expect_channel_status(
+                self.bootstrap.fallback_port,
+                fallback_status,
+                timeout=datetime.timedelta(
+                    milliseconds=_STATUS_TIMEOUT_MS.value
+                ),
+                poll_interval=datetime.timedelta(
+                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
+                ),
+            ),
+            fallback_status,
         )
 
+    @unittest.skip("Boop")
     def test_fallback_on_startup(self):
         primary_port = self.bootstrap.ports[0]
         fallback_port = self.bootstrap.ports[1]
@@ -210,27 +224,36 @@ class FallbackTest(absltest.TestCase):
             self.assertEqual(stats.num_failures, 0)
             self.assertEqual(stats.rpcs_by_peer["server1"], 5)
 
-    @unittest.skip("Boop")
     def test_fallback_mid_startup(self):
+        primary_port = self.bootstrap.primary_port
+        fallback_port = self.bootstrap.fallback_port
         # Run the mesh, excluding the client
         with (
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
             self.start_control_plane(
-                "primary_xds_config_run_1", 0, server1.port, "cluster_name"
+                "primary_xds_config_run_1",
+                port=primary_port,
+                upstream_port=server1.port,
+                cluster_name="cluster_name",
             ) as primary,
-            self.start_control_plane("fallback_xds_config", 1, server2.port),
+            self.start_control_plane(
+                "fallback_xds_config",
+                port=fallback_port,
+                upstream_port=server2.port,
+            ),
         ):
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
                 "cluster_name",
             )
             # Run client
-            with (self.start_client() as client,):
-                self.assertTrue(
-                    client.expect_message_in_output("creating xds client")
+            with self.start_client() as client:
+                self.assert_ads_connections(
+                    client,
+                    primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                    fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
-                time.sleep(5)
                 # Secondary xDS config start, send traffic to server2
                 stats = client.get_stats(5)
                 self.assertEqual(stats.num_failures, 0)
@@ -238,9 +261,15 @@ class FallbackTest(absltest.TestCase):
                 self.assertNotIn("server1", stats.rpcs_by_peer)
                 # Rerun primary control plane
                 with self.start_control_plane(
-                    "primary_xds_config_run_2", 0, server1.port
+                    "primary_xds_config_run_2",
+                    port=primary_port,
+                    upstream_port=server1.port,
                 ):
-                    time.sleep(5)
+                    self.assert_ads_connections(
+                        client,
+                        primary_status=channelz_pb2.ChannelConnectivityState.READY,
+                        fallback_status=None,
+                    )
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
@@ -283,7 +312,7 @@ class FallbackTest(absltest.TestCase):
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
-                index=0,
+                port=self.bootstrap.primary_port,
                 upstream_port=server3.port,
             ):
                 time.sleep(5)

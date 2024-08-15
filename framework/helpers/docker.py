@@ -54,21 +54,29 @@ def _make_working_dir(base: pathlib.Path) -> str:
 
 
 class Bootstrap:
-    def __init__(self, base: pathlib.Path, ports: list[int], host_name: str):
-        self.ports = ports
+
+    def __init__(
+        self,
+        base: pathlib.Path,
+        primary_port: int,
+        fallback_port: int,
+        host_name: str,
+    ):
+        self.primary_port = primary_port
+        self.fallback_port = fallback_port
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
         file = template.render(
-            servers=[f"{host_name}:{port}" for port in self.ports]
+            servers=[
+                f"{host_name}:{primary_port}",
+                f"{host_name}:{fallback_port}",
+            ]
         )
         destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
             logger.debug("Generated bootstrap file at %s", destination)
-
-    def xds_config_server_port(self, server_id: int):
-        return self.ports[server_id]
 
 
 class ChildProcessEvent:
