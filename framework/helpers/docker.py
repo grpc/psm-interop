@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
 import datetime
 import logging
 import math
 import pathlib
-import queue
 import threading
+import time
 
 import grpc
+from grpc_channelz.v1 import channelz_pb2
 import mako.template
 
 from docker import client
 from docker import errors
 from docker import types
+from framework.rpc.grpc_channelz import ChannelzServiceClient
 from protos.grpc.testing import messages_pb2
 from protos.grpc.testing import test_pb2_grpc
 from protos.grpc.testing.xdsconfig import xdsconfig_pb2
@@ -50,21 +51,28 @@ def _make_working_dir(base: pathlib.Path) -> str:
 
 
 class Bootstrap:
-    def __init__(self, base: pathlib.Path, ports: list[int], host_name: str):
-        self.ports = ports
+    def __init__(
+        self,
+        base: pathlib.Path,
+        primary_port: int,
+        fallback_port: int,
+        host_name: str,
+    ):
+        self.primary_port = primary_port
+        self.fallback_port = fallback_port
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
         file = template.render(
-            servers=[f"{host_name}:{port}" for port in self.ports]
+            servers=[
+                f"{host_name}:{primary_port}",
+                f"{host_name}:{fallback_port}",
+            ]
         )
         destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
             logger.debug("Generated bootstrap file at %s", destination)
-
-    def xds_config_server_port(self, server_id: int):
-        return self.ports[server_id]
 
 
 class ChildProcessEvent:
@@ -84,61 +92,10 @@ class ProcessManager:
         self,
         bootstrap: Bootstrap,
         node_id: str,
-        verbosity="info",
     ):
         self.docker_client = client.DockerClient.from_env()
         self.node_id = node_id
-        self.outputs = defaultdict(list)
-        self.queue = queue.Queue()
         self.bootstrap = bootstrap
-        self.verbosity = verbosity
-
-    def next_event(self, timeout: int) -> ChildProcessEvent:
-        event: ChildProcessEvent = self.queue.get(timeout=timeout)
-        source = event.source
-        message = event.data
-        self.outputs[source].append(message)
-        return event
-
-    def expect_output(
-        self, process_name: str, expected_message: str, timeout_s: int
-    ) -> bool:
-        """
-        Checks if the specified message appears in the output of a given process within a timeout.
-
-        Returns:
-            True if the expected message is found in the process's output within
-            the timeout, False otherwise.
-
-        Behavior:
-            - If the process has already produced output, it checks there first.
-            - Otherwise, it waits for new events from the process, up to the specified timeout.
-            - If an event from the process contains the expected message, it returns True.
-            - If the timeout is reached without finding the message, it returns False.
-        """
-        logger.debug(
-            'Waiting for message "%s" from %s', expected_message, process_name
-        )
-        if any(
-            m
-            for m in self.outputs[process_name]
-            if m.find(expected_message) >= 0
-        ):
-            return True
-        deadline = datetime.datetime.now() + datetime.timedelta(
-            seconds=timeout_s
-        )
-        while datetime.datetime.now() <= deadline:
-            event = self.next_event(timeout_s)
-            if (
-                event.source == process_name
-                and event.data.find(expected_message) >= 0
-            ):
-                return True
-        return False
-
-    def on_message(self, source: str, message: str):
-        self.queue.put(ChildProcessEvent(source, message))
 
 
 def _Sanitize(l: str) -> str:
@@ -147,12 +104,12 @@ def _Sanitize(l: str) -> str:
     return l.replace("\0", "�")
 
 
-def Configure(config, image: str, name: str, verbosity: str):
+def Configure(config, image: str, name: str):
     config["detach"] = True
     config["environment"] = {
         "GRPC_EXPERIMENTAL_XDS_FALLBACK": "true",
         "GRPC_TRACE": "xds_client",
-        "GRPC_VERBOSITY": verbosity,
+        "GRPC_VERBOSITY": "info",
         "GRPC_XDS_BOOTSTRAP": "/grpc/bootstrap.json",
     }
     config["extra_hosts"] = {"host.docker.internal": "host-gateway"}
@@ -171,9 +128,7 @@ class DockerProcess:
         **config: types.ContainerConfig,
     ):
         self.name = name
-        self.config = Configure(
-            config, image=image, name=name, verbosity=manager.verbosity
-        )
+        self.config = Configure(config, image, name)
         self.container = None
         self.manager = manager
         self.thread = None
@@ -216,7 +171,6 @@ class DockerProcess:
             for l in s[: s.rfind("\n")].splitlines():
                 message = _Sanitize(l)
                 logger.info("[%s] %s", self.name, message)
-                self.manager.on_message(self.name, message)
 
 
 class GrpcProcess:
@@ -251,13 +205,6 @@ class GrpcProcess:
         if self.grpc_channel:
             self.grpc_channel.close()
         self.docker_process.exit()
-
-    def expect_message_in_output(
-        self, expected_message: str, timeout_s: int = 5
-    ) -> bool:
-        return self.manager.expect_output(
-            self.docker_process.name, expected_message, timeout_s
-        )
 
     def channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
@@ -318,8 +265,13 @@ class Client(GrpcProcess):
             port=port,
             image=image,
             name=name,
-            command=[f"--server={url}", "--print_response"],
-            ports={DEFAULT_GRPC_CLIENT_PORT: port},
+            command=[
+                "--server",
+                url,
+                "--stats_port",
+                str(port),
+            ],
+            ports={str(port): port},
             volumes={
                 manager.bootstrap.mount_dir: {
                     "bind": "/grpc",
@@ -333,7 +285,28 @@ class Client(GrpcProcess):
         stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(
-                num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 1.5)
+                num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 10)
             )
         )
         return res
+
+    def expect_channel_status(
+        self,
+        port: int,
+        expected_status: channelz_pb2.ChannelConnectivityState,
+        timeout: datetime.timedelta,
+        poll_interval: datetime.timedelta,
+    ) -> channelz_pb2.ChannelConnectivityState:
+        deadline = datetime.datetime.now() + timeout
+        channelz = ChannelzServiceClient(self.channel())
+        status = None
+        while datetime.datetime.now() < deadline:
+            status = None
+            for ch in channelz.list_channels():
+                if ch.data.target.endswith(str(port)):
+                    status = ch.data.state.state
+                    break
+            if status == expected_status:
+                break
+            time.sleep(poll_interval.microseconds * 0.000001)
+        return status

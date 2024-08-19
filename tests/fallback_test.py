@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import logging
 import socket
 
 import absl
 from absl import flags
 from absl.testing import absltest
+from grpc_channelz.v1 import channelz_pb2
 
 import framework
 import framework.helpers.docker
@@ -39,6 +41,14 @@ _HOST_NAME = flags.DEFINE_string(
     "Host name all the services are bound on",
 )
 _NODE_ID = flags.DEFINE_string("node", "test-id", "Node ID")
+_STATUS_TIMEOUT_MS = flags.DEFINE_integer(
+    "status_timeout_ms",
+    15000,
+    "Duration (in ms) that the test will wait for xDS channel to change the status",
+)
+_STATUS_POLL_INTERVAL_MS = flags.DEFINE_integer(
+    "status_poll_interval_ms", 300, "Channel status poll interval (in ms)"
+)
 
 _LISTENER = "listener_0"
 
@@ -58,7 +68,8 @@ class FallbackTest(absltest.TestCase):
     def setUpClass():
         FallbackTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
-            ports=[get_free_port() for _ in range(2)],
+            primary_port=get_free_port(),
+            fallback_port=get_free_port(),
             host_name=_HOST_NAME.value,
         )
 
@@ -80,13 +91,13 @@ class FallbackTest(absltest.TestCase):
         )
 
     def start_control_plane(
-        self, name: str, index: int, upstream_port: int, cluster_name=None
+        self, name: str, port: int, upstream_port: int, cluster_name=None
     ):
         logger.debug('Starting control plane "%s"', name)
         return framework.helpers.docker.ControlPlane(
             self.process_manager,
             name=name,
-            port=self.bootstrap.xds_config_server_port(index),
+            port=port,
             initial_resources=framework.helpers.xds_resources.build_listener_and_cluster(
                 listener_name=_LISTENER,
                 cluster_name=cluster_name or f"initial_cluster_for_{name}",
@@ -108,41 +119,94 @@ class FallbackTest(absltest.TestCase):
             command=[],
         )
 
+    def assert_ads_connections(
+        self,
+        client: framework.helpers.docker.Client,
+        primary_status: channelz_pb2.ChannelConnectivityState,
+        fallback_status: channelz_pb2.ChannelConnectivityState,
+    ):
+        self.assertEqual(
+            client.expect_channel_status(
+                self.bootstrap.primary_port,
+                primary_status,
+                timeout=datetime.timedelta(
+                    milliseconds=_STATUS_TIMEOUT_MS.value
+                ),
+                poll_interval=datetime.timedelta(
+                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
+                ),
+            ),
+            primary_status,
+        )
+        self.assertEqual(
+            client.expect_channel_status(
+                self.bootstrap.fallback_port,
+                fallback_status,
+                timeout=datetime.timedelta(
+                    milliseconds=_STATUS_TIMEOUT_MS.value
+                ),
+                poll_interval=datetime.timedelta(
+                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
+                ),
+            ),
+            fallback_status,
+        )
+
     def test_fallback_on_startup(self):
         with (
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
             self.start_client() as client,
         ):
-            self.assertTrue(
-                client.expect_message_in_output(
-                    "UNAVAILABLE: xDS channel for server"
-                )
+            self.assert_ads_connections(
+                client=client,
+                primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                fallback_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
             )
             self.assertEqual(client.get_stats(5).num_failures, 5)
             # Fallback control plane start, send traffic to server2
             with self.start_control_plane(
                 name="fallback_xds_config",
-                index=1,
+                port=self.bootstrap.fallback_port,
                 upstream_port=server2.port,
             ):
+                self.assert_ads_connections(
+                    client=client,
+                    primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                    fallback_status=channelz_pb2.ChannelConnectivityState.READY,
+                )
                 stats = client.get_stats(5)
                 self.assertGreater(stats.rpcs_by_peer["server2"], 0)
                 self.assertNotIn("server1", stats.rpcs_by_peer)
                 # Primary control plane start. Will use it
                 with self.start_control_plane(
                     name="primary_xds_config",
-                    index=0,
+                    port=self.bootstrap.primary_port,
                     upstream_port=server1.port,
                 ):
+                    self.assert_ads_connections(
+                        client=client,
+                        primary_status=channelz_pb2.ChannelConnectivityState.READY,
+                        fallback_status=None,
+                    )
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
                     self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+                self.assert_ads_connections(
+                    client=client,
+                    primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                    fallback_status=None,
+                )
                 # Primary control plane down, cached value is used
                 stats = client.get_stats(5)
                 self.assertEqual(stats.num_failures, 0)
                 self.assertEqual(stats.rpcs_by_peer["server1"], 5)
+            self.assert_ads_connections(
+                client=client,
+                primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                fallback_status=None,
+            )
             # Fallback control plane down, cached value is used
             stats = client.get_stats(5)
             self.assertEqual(stats.num_failures, 0)
@@ -154,18 +218,27 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
             self.start_control_plane(
-                "primary_xds_config_run_1", 0, server1.port, "cluster_name"
+                "primary_xds_config_run_1",
+                port=self.bootstrap.primary_port,
+                upstream_port=server1.port,
+                cluster_name="cluster_name",
             ) as primary,
-            self.start_control_plane("fallback_xds_config", 1, server2.port),
+            self.start_control_plane(
+                "fallback_xds_config",
+                port=self.bootstrap.fallback_port,
+                upstream_port=server2.port,
+            ),
         ):
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
                 "cluster_name",
             )
             # Run client
-            with (self.start_client() as client,):
-                self.assertTrue(
-                    client.expect_message_in_output("creating xds client")
+            with self.start_client() as client:
+                self.assert_ads_connections(
+                    client,
+                    primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                    fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
                 # Secondary xDS config start, send traffic to server2
                 stats = client.get_stats(5)
@@ -174,8 +247,15 @@ class FallbackTest(absltest.TestCase):
                 self.assertNotIn("server1", stats.rpcs_by_peer)
                 # Rerun primary control plane
                 with self.start_control_plane(
-                    "primary_xds_config_run_2", 0, server1.port
+                    "primary_xds_config_run_2",
+                    port=self.bootstrap.primary_port,
+                    upstream_port=server1.port,
                 ):
+                    self.assert_ads_connections(
+                        client,
+                        primary_status=channelz_pb2.ChannelConnectivityState.READY,
+                        fallback_status=None,
+                    )
                     stats = client.get_stats(10)
                     self.assertEqual(stats.num_failures, 0)
                     self.assertIn("server1", stats.rpcs_by_peer)
@@ -187,13 +267,21 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server2") as server2,
             self.start_server(name="server3") as server3,
             self.start_control_plane(
-                "primary_xds_config_run_1", 0, server1.port
+                "primary_xds_config_run_1",
+                port=self.bootstrap.primary_port,
+                upstream_port=server1.port,
             ) as primary,
-            self.start_control_plane("fallback_xds_config", 1, server2.port),
+            self.start_control_plane(
+                "fallback_xds_config",
+                port=self.bootstrap.fallback_port,
+                upstream_port=server2.port,
+            ),
             self.start_client() as client,
         ):
-            self.assertTrue(
-                client.expect_message_in_output("creating xds client")
+            self.assert_ads_connections(
+                client,
+                primary_status=channelz_pb2.ChannelConnectivityState.READY,
+                fallback_status=None,
             )
             # Secondary xDS config start, send traffic to server2
             stats = client.get_stats(5)
@@ -210,15 +298,25 @@ class FallbackTest(absltest.TestCase):
                     upstream_host=_HOST_NAME.value,
                 )
             )
+            self.assert_ads_connections(
+                client,
+                primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                fallback_status=channelz_pb2.ChannelConnectivityState.READY,
+            )
             stats = client.get_stats(10)
             self.assertEqual(stats.num_failures, 0)
             self.assertIn("server2", stats.rpcs_by_peer)
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
-                index=0,
+                port=self.bootstrap.primary_port,
                 upstream_port=server3.port,
             ):
+                self.assert_ads_connections(
+                    client,
+                    primary_status=channelz_pb2.ChannelConnectivityState.READY,
+                    fallback_status=None,
+                )
                 stats = client.get_stats(20)
                 self.assertEqual(stats.num_failures, 0)
                 self.assertIn("server3", stats.rpcs_by_peer)
