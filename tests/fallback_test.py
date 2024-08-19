@@ -63,9 +63,15 @@ def get_free_port() -> int:
 
 class FallbackTest(absltest.TestCase):
     bootstrap: framework.helpers.docker.Bootstrap = None
+    dockerInternalIp: str
 
     @staticmethod
     def setUpClass():
+        # Use the host IP for when we need to use IP address and not the host
+        # name, such as EDS resources
+        FallbackTest.dockerInternalIp = socket.gethostbyname(
+            socket.gethostname()
+        )
         FallbackTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
             primary_port=get_free_port(),
@@ -101,7 +107,7 @@ class FallbackTest(absltest.TestCase):
             initial_resources=framework.helpers.xds_resources.build_listener_and_cluster(
                 listener_name=_LISTENER,
                 cluster_name=cluster_name or f"initial_cluster_for_{name}",
-                upstream_host=_HOST_NAME.value,
+                upstream_host=FallbackTest.dockerInternalIp,
                 upstream_port=upstream_port,
             ),
             image=_CONTROL_PLANE_IMAGE.value,
@@ -295,7 +301,7 @@ class FallbackTest(absltest.TestCase):
                     cluster_name="test_cluster_2",
                     listener_name=_LISTENER,
                     upstream_port=server3.port,
-                    upstream_host=_HOST_NAME.value,
+                    upstream_host=FallbackTest.dockerInternalIp,
                 )
             )
             self.assert_ads_connections(
