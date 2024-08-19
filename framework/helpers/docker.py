@@ -268,9 +268,6 @@ class Client(GrpcProcess):
             command=[
                 "--server",
                 url,
-                # "--print_response",
-                # "true",
-                # "--verbose",
                 "--stats_port",
                 str(port),
             ],
@@ -310,6 +307,6 @@ class Client(GrpcProcess):
                     status = ch.data.state.state
                     break
             if status == expected_status:
-                return status
+                break
             time.sleep(poll_interval.microseconds * 0.000001)
         return status
