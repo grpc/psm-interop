@@ -14,8 +14,8 @@
 
 from envoy.config.cluster.v3 import cluster_pb2
 from envoy.config.core.v3 import address_pb2
-from envoy.config.core.v3 import config_source_pb2
 from envoy.config.core.v3 import base_pb2
+from envoy.config.core.v3 import config_source_pb2
 from envoy.config.endpoint.v3 import endpoint_components_pb2
 from envoy.config.endpoint.v3 import endpoint_pb2
 from envoy.config.listener.v3 import api_listener_pb2
@@ -137,7 +137,7 @@ def build_listener_and_cluster(
     upstream_port: int,
     service_name: str | None = None,
 ) -> xdsconfig_pb2.SetResourcesRequest:
-    if service_name == None:
+    if service_name is None:
         service_name = f"{cluster_name}_eds_service"
     listener = _build_listener(listener_name, cluster_name)
     cluster = _build_cluster(cluster_name, service_name)
