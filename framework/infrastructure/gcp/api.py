@@ -54,7 +54,7 @@ V2_DISCOVERY_URI = flags.DEFINE_string(
     default=discovery.V2_DISCOVERY_URI,
     help="Override v2 Discovery URI",
 )
-V2_DISCOVERY_FORCE_API_KEY = flags.DEFINE_string(
+V2_DISCOVERY_FORCE_API_KEY = flags.DEFINE_boolean(
     "v2_discovery_force_api_key",
     default=False,
     help=(
