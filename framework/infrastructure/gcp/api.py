@@ -119,7 +119,9 @@ class GcpApiManager:
         # TODO(sergiitk): add options to pass google Credentials
         self._exit_stack = contextlib.ExitStack()
 
-        self.v2_discovery_force_api_key = v2_discovery_force_api_key
+        self.v2_discovery_force_api_key = (
+            v2_discovery_force_api_key or V2_DISCOVERY_FORCE_API_KEY.value
+        )
 
     def close(self):
         self._exit_stack.close()
@@ -184,14 +186,7 @@ class GcpApiManager:
                 visibility_labels=["NETWORKSECURITY_ALPHA"],
             )
         elif version == "v1beta1":
-            add_args = {}
-            if (
-                self.v2_discovery_force_api_key
-                or V2_DISCOVERY_FORCE_API_KEY.value
-            ):
-                add_args["api_key"] = self.private_api_key
-
-            return self._build_from_discovery_v2(api_name, version, **add_args)
+            return self._build_from_discovery_v2(api_name, version)
 
         raise NotImplementedError(f"Network Security {version} not supported")
 
@@ -206,14 +201,7 @@ class GcpApiManager:
                 visibility_labels=["NETWORKSERVICES_ALPHA"],
             )
         elif version in ("v1", "v1beta1"):
-            add_args = {}
-            if (
-                self.v2_discovery_force_api_key
-                or V2_DISCOVERY_FORCE_API_KEY.value
-            ):
-                add_args["api_key"] = self.private_api_key
-
-            return self._build_from_discovery_v2(api_name, version, **add_args)
+            return self._build_from_discovery_v2(api_name, version)
 
         raise NotImplementedError(f"Network Services {version} not supported")
 
@@ -281,6 +269,9 @@ class GcpApiManager:
         params = {}
         if api_key:
             params["key"] = api_key
+        elif self.v2_discovery_force_api_key:
+            params["key"] = self.private_api_key
+
         if visibility_labels:
             # Dash-separated list of labels.
             params["labels"] = "_".join(visibility_labels)
