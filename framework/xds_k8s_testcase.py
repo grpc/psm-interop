@@ -967,7 +967,6 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
-            enable_dualstack=self.enable_dualstack,
             **kwargs,
         )
 
@@ -1081,7 +1080,6 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
-            enable_dualstack=self.enable_dualstack,
             **kwargs,
         )
 

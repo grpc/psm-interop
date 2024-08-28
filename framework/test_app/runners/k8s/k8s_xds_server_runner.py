@@ -37,6 +37,7 @@ class ServerDeploymentArgs:
     enable_csm_observability: bool = False
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
+    enable_dualstack: bool = False
 
     def as_dict(self):
         return {
@@ -47,6 +48,7 @@ class ServerDeploymentArgs:
             "enable_csm_observability": self.enable_csm_observability,
             "csm_workload_name": self.csm_workload_name,
             "csm_canonical_service_name": self.csm_canonical_service_name,
+            "enable_dualstack": self.enable_dualstack,
         }
 
 
@@ -109,7 +111,6 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
         deployment_args: Optional[ServerDeploymentArgs] = None,
-        enable_dualstack: bool = False,
     ):
         super().__init__(
             k8s_namespace,
@@ -145,7 +146,6 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self.td_bootstrap_image = td_bootstrap_image
         self.network = network
         self.xds_server_uri = xds_server_uri
-        self.enable_dualstack = enable_dualstack
 
         # Workload identity settings:
         if self.enable_workload_identity:
@@ -228,7 +228,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
                 app_label=self.app_label,
                 neg_name=self.gcp_neg_name,
                 test_port=test_port,
-                enable_dualstack=self.enable_dualstack,
+                enable_dualstack=self.deployment_args.enable_dualstack,
             )
         self._wait_service_neg_status_annotation(self.service_name, test_port)
 
