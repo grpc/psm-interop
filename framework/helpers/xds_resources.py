@@ -135,10 +135,8 @@ def build_listener_and_cluster(
     cluster_name: str,
     upstream_host: str,
     upstream_port: int,
-    service_name: str | None = None,
 ) -> xdsconfig_pb2.SetResourcesRequest:
-    if service_name is None:
-        service_name = f"{cluster_name}_eds_service"
+    service_name = f"{cluster_name}_eds_service"
     listener = _build_listener(listener_name, cluster_name)
     cluster = _build_cluster(cluster_name, service_name)
     load_assignment = _build_endpoint(
