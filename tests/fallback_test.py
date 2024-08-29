@@ -74,14 +74,12 @@ class FallbackTest(absltest.TestCase):
         )
 
     def setUp(self):
-        logger.info("Starting %s", self.id())
         self.process_manager = framework.helpers.docker.ProcessManager(
             bootstrap=FallbackTest.bootstrap,
             node_id=_NODE_ID.value,
         )
 
     def start_client(self, port: int = None, name: str = None):
-        logger.debug("Starting client process")
         return framework.helpers.docker.Client(
             manager=self.process_manager,
             name=name or framework.xds_flags.CLIENT_NAME.value,
@@ -93,7 +91,6 @@ class FallbackTest(absltest.TestCase):
     def start_control_plane(
         self, name: str, port: int, upstream_port: int, cluster_name=None
     ):
-        logger.debug('Starting control plane "%s"', name)
         return framework.helpers.docker.ControlPlane(
             self.process_manager,
             name=name,

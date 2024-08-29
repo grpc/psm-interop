@@ -127,6 +127,7 @@ class DockerProcess:
         manager: ProcessManager,
         **config: types.ContainerConfig,
     ):
+        logger.info("Running image %s as [%s]", image, name)
         self.name = name
         self.config = Configure(config, image, name)
         self.container = None
