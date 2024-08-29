@@ -54,6 +54,14 @@ V2_DISCOVERY_URI = flags.DEFINE_string(
     default=discovery.V2_DISCOVERY_URI,
     help="Override v2 Discovery URI",
 )
+V2_DISCOVERY_FORCE_API_KEY = flags.DEFINE_boolean(
+    "v2_discovery_force_api_key",
+    default=False,
+    help=(
+        "Set flag to add API key when accessing staging networksecurity, "
+        "networkservices endpoints"
+    ),
+)
 COMPUTE_V1_DISCOVERY_FILE = flags.DEFINE_string(
     "compute_v1_discovery_file",
     default=None,
@@ -91,6 +99,7 @@ class GcpApiManager:
         private_api_key_secret_name=None,
         gcp_ui_url=None,
         verbose_gcp_api: bool = False,
+        v2_discovery_force_api_key: bool = False,
     ):
         # Log GCP API requests and responses.
         # Note: this modifies a global variable on googleapiclient.model.
@@ -109,6 +118,10 @@ class GcpApiManager:
         self.gcp_ui_url = gcp_ui_url or GCP_UI_URL.value
         # TODO(sergiitk): add options to pass google Credentials
         self._exit_stack = contextlib.ExitStack()
+
+        self.v2_discovery_force_api_key = (
+            v2_discovery_force_api_key or V2_DISCOVERY_FORCE_API_KEY.value
+        )
 
     def close(self):
         self._exit_stack.close()
@@ -256,6 +269,9 @@ class GcpApiManager:
         params = {}
         if api_key:
             params["key"] = api_key
+        elif self.v2_discovery_force_api_key:
+            params["key"] = self.private_api_key
+
         if visibility_labels:
             # Dash-separated list of labels.
             params["labels"] = "_".join(visibility_labels)
