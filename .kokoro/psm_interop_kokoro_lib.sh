@@ -75,8 +75,6 @@ psm::lb::setup() {
 psm::lb::get_tests() {
   TESTS=(
     "failover_test"
-    "outlier_detection_test"
-    "remove_neg_test"
   )
 }
 
@@ -169,6 +167,8 @@ psm::dualstack::get_tests() {
     "custom_lb_test"
     "round_robin_test"
     "circuit_breaking_test"
+    "outlier_detection_test"
+    "remove_neg_test"
   )
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
