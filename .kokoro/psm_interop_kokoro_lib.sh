@@ -74,8 +74,25 @@ psm::lb::setup() {
 #######################################
 psm::lb::get_tests() {
   TESTS=(
+    "affinity_test"
+    "api_listener_test"
+    "app_net_test"
+    "change_backend_service_test"
+    "custom_lb_test"
     "failover_test"
+    "outlier_detection_test"
+    "remove_neg_test"
+    "round_robin_test"
+    "circuit_breaking_test"
   )
+  # master-only tests
+  if [[ "${TESTING_VERSION}" =~ "master" ]]; then
+      psm::tools::log "Appending master-only tests to the LB suite."
+      TESTS+=(
+        "bootstrap_generator_test"
+        "subsetting_test"
+      )
+  fi
 }
 
 #######################################
