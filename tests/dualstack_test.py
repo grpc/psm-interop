@@ -45,6 +45,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang in _Lang.CPP | _Lang.PYTHON | _Lang.JAVA:
             return config.version_gte("v1.66.x")
+        if config.client_lang == _Lang.NODE:
+            return config.version_gte("v1.12.x")
         return False
 
     @classmethod
