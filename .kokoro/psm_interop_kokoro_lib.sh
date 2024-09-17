@@ -187,14 +187,6 @@ psm::dualstack::get_tests() {
     "outlier_detection_test"
     "remove_neg_test"
   )
-  # master-only tests
-  if [[ "${TESTING_VERSION}" =~ "master" ]]; then
-      psm::tools::log "Appending master-only tests to the LB suite."
-      TESTS+=(
-        "bootstrap_generator_test"
-        "subsetting_test"
-      )
-  fi
 }
 
 #######################################
