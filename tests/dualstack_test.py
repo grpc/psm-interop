@@ -35,6 +35,8 @@ _Lang = skips.Lang
 
 _SERVERS_APP_LABEL: Final[str] = "psm-interop-dualstack"
 
+ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
+
 
 class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     v4_server_runner: _KubernetesServerRunner = None
@@ -72,8 +74,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             reuse_namespace=True,
             reuse_service=True,
-            enable_dualstack=True,
             enable_workload_identity=self.enable_workload_identity,
+            deployment_args=ServerDeploymentArgs(enable_dualstack=True),
         )
 
         k8s_namespace = self.server_runner.k8s_namespace
