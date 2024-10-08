@@ -29,7 +29,7 @@ USAGE:
   ./bin/pylint.sh
 
 ONE-TIME INSTALLATION:
-  1. python3.9 -m venv --upgrade-deps venv-pylint
+  1. python3.10 -m venv --upgrade-deps venv-pylint
   2. source ./venv-pylint/bin/activate
   3. pip install pylint==2.2.2 astroid==2.3.3 toml==0.10.2 "isort>=4.3.0,<5.0.0"
   4. deactivate
