@@ -24,7 +24,7 @@ changes to this codebase at the moment.
 ## Installation
 
 #### Requirements
-1. Python v3.9+
+1. Python v3.10+
 2. [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
 3. `kubectl`
 
