@@ -19,10 +19,9 @@ import datetime as dt
 import json
 import logging
 import re
-from typing import Any, Final, Optional, Type, cast
+from typing import Any, Final, Optional, Type, TypeAlias, cast
 
 from google.protobuf import json_format
-from typing_extensions import TypeAlias
 
 # Needed to load the descriptors so that Any is parsed
 # TODO(sergiitk): replace with import xds_protos when it works

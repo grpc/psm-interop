@@ -15,10 +15,9 @@
 import collections
 import dataclasses
 import functools
-from typing import Optional
+from typing import Optional, TypeAlias
 
 import grpc
-from typing_extensions import TypeAlias
 import yaml
 
 from framework.rpc import grpc_testing

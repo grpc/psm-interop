@@ -21,7 +21,7 @@ import json
 import logging
 import pathlib
 import threading
-from typing import Any, Callable, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Optional, Tuple, TypeAlias, Union
 import warnings
 
 from kubernetes import client
@@ -30,7 +30,7 @@ from kubernetes import utils
 import kubernetes.config
 from kubernetes.dynamic import exceptions as dynamic_exc
 from kubernetes.dynamic import resource as dynamic_res
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self, override
 import urllib3.exceptions
 import yaml
 
