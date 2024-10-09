@@ -37,8 +37,8 @@ class EndpointPolicy:
     endpoint_matcher: dict
     update_time: str
     create_time: str
-    http_filters: Optional[dict] = None
-    server_tls_policy: Optional[str] = None
+    http_filters: dict | None = None
+    server_tls_policy: str | None = None
 
     @classmethod
     def from_response(
@@ -76,10 +76,10 @@ class Mesh:
 class GrpcRoute:
     @dataclasses.dataclass(frozen=True)
     class MethodMatch:
-        type: Optional[str]
-        grpc_service: Optional[str]
-        grpc_method: Optional[str]
-        case_sensitive: Optional[bool]
+        type: str | None
+        grpc_service: str | None
+        grpc_method: str | None
+        case_sensitive: bool | None
 
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "GrpcRoute.MethodMatch":
@@ -92,7 +92,7 @@ class GrpcRoute:
 
     @dataclasses.dataclass(frozen=True)
     class HeaderMatch:
-        type: Optional[str]
+        type: str | None
         key: str
         value: str
 
@@ -106,7 +106,7 @@ class GrpcRoute:
 
     @dataclasses.dataclass(frozen=True)
     class RouteMatch:
-        method: Optional["GrpcRoute.MethodMatch"]
+        method: "GrpcRoute.MethodMatch" | None
         headers: Tuple["GrpcRoute.HeaderMatch"]
 
         @classmethod
@@ -125,7 +125,7 @@ class GrpcRoute:
     @dataclasses.dataclass(frozen=True)
     class Destination:
         service_name: str
-        weight: Optional[int]
+        weight: int | None
 
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "GrpcRoute.Destination":
@@ -188,10 +188,10 @@ class GrpcRoute:
 class HttpRoute:
     @dataclasses.dataclass(frozen=True)
     class MethodMatch:
-        type: Optional[str]
-        http_service: Optional[str]
-        http_method: Optional[str]
-        case_sensitive: Optional[bool]
+        type: str | None
+        http_service: str | None
+        http_method: str | None
+        case_sensitive: bool | None
 
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "HttpRoute.MethodMatch":
@@ -204,7 +204,7 @@ class HttpRoute:
 
     @dataclasses.dataclass(frozen=True)
     class HeaderMatch:
-        type: Optional[str]
+        type: str | None
         key: str
         value: str
 
@@ -218,7 +218,7 @@ class HttpRoute:
 
     @dataclasses.dataclass(frozen=True)
     class RouteMatch:
-        method: Optional["HttpRoute.MethodMatch"]
+        method: "HttpRoute.MethodMatch" | None
         headers: Tuple["HttpRoute.HeaderMatch"]
 
         @classmethod
@@ -237,7 +237,7 @@ class HttpRoute:
     @dataclasses.dataclass(frozen=True)
     class Destination:
         service_name: str
-        weight: Optional[int]
+        weight: int | None
 
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "HttpRoute.Destination":
@@ -249,7 +249,7 @@ class HttpRoute:
     @dataclasses.dataclass(frozen=True)
     class RouteAction:
         destinations: List["HttpRoute.Destination"]
-        stateful_session_affinity: Optional["HttpRoute.StatefulSessionAffinity"]
+        stateful_session_affinity: "HttpRoute.StatefulSessionAffinity" | None
 
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "HttpRoute.RouteAction":
@@ -275,7 +275,7 @@ class HttpRoute:
 
     @dataclasses.dataclass(frozen=True)
     class StatefulSessionAffinity:
-        cookie_ttl: Optional[str]
+        cookie_ttl: str | None
 
         @classmethod
         def from_response(

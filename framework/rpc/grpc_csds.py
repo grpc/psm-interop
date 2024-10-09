@@ -163,7 +163,7 @@ class CsdsClient(framework.rpc.grpc.GrpcClientHelper):
     DEFAULT_RPC_DEADLINE: Final[dt.timedelta] = dt.timedelta(seconds=30)
 
     def __init__(
-        self, channel: grpc.Channel, *, log_target: Optional[str] = ""
+        self, channel: grpc.Channel, *, log_target: str | None = ""
     ) -> None:
         super().__init__(channel, self.STUB_CLASS, log_target=log_target)
 
@@ -172,7 +172,7 @@ class CsdsClient(framework.rpc.grpc.GrpcClientHelper):
         *,
         timeout: dt.timedelta = DEFAULT_RPC_DEADLINE,
         log_level: int = logging.INFO,
-    ) -> Optional[ClientConfig]:
+    ) -> ClientConfig | None:
         """Fetches the active xDS configurations."""
         response: ClientStatusResponse = self.call_unary_with_deadline(
             rpc="FetchClientStatus",
@@ -188,7 +188,7 @@ class CsdsClient(framework.rpc.grpc.GrpcClientHelper):
             return None
         return response.config[0]
 
-    def fetch_client_status_parsed(self, **kwargs) -> Optional[DumpedXdsConfig]:
+    def fetch_client_status_parsed(self, **kwargs) -> DumpedXdsConfig | None:
         """Same as fetch_client_status, but also parses."""
         client_config = self.fetch_client_status(**kwargs)
         if client_config:

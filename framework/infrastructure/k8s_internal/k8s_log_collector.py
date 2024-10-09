@@ -35,8 +35,8 @@ class PodLogCollector(threading.Thread):
     log_to_stdout: bool
     log_timestamps: bool
     error_backoff_sec: int
-    _out_stream: Optional[TextIO]
-    _watcher: Optional[watch.Watch]
+    _out_stream: TextIO | None
+    _watcher: watch.Watch | None
     _read_pod_log_fn: Callable[..., Any]
 
     def __init__(

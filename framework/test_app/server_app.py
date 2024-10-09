@@ -47,12 +47,12 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         ip: str,
         rpc_port: int,
         hostname: str,
-        maintenance_port: Optional[int] = None,
-        secure_mode: Optional[bool] = False,
-        xds_host: Optional[str] = None,
-        xds_port: Optional[int] = None,
-        rpc_host: Optional[str] = None,
-        monitoring_port: Optional[str] = None,
+        maintenance_port: int | None = None,
+        secure_mode: bool | None = False,
+        xds_host: str | None = None,
+        xds_port: int | None = None,
+        rpc_host: str | None = None,
+        monitoring_port: str | None = None,
     ):
         super().__init__(rpc_host=(rpc_host or ip))
         self.ip = ip
@@ -127,7 +127,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         )
         self.hook_service_client.set_return_status(**kwargs)
 
-    def set_xds_address(self, xds_host, xds_port: Optional[int] = None):
+    def set_xds_address(self, xds_host, xds_port: int | None = None):
         self.xds_host, self.xds_port = xds_host, xds_port
 
     @property

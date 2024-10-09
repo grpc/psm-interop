@@ -135,9 +135,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
     STATS_PARTIAL_RESULTS_TIMEOUT_SEC = 1200
     STATS_ACCUMULATED_RESULTS_TIMEOUT_SEC = 600
 
-    def __init__(
-        self, channel: grpc.Channel, *, log_target: Optional[str] = ""
-    ):
+    def __init__(self, channel: grpc.Channel, *, log_target: str | None = ""):
         super().__init__(
             channel,
             test_pb2_grpc.LoadBalancerStatsServiceStub,
@@ -148,7 +146,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
         self,
         *,
         num_rpcs: int,
-        timeout_sec: Optional[int] = STATS_PARTIAL_RESULTS_TIMEOUT_SEC,
+        timeout_sec: int | None = STATS_PARTIAL_RESULTS_TIMEOUT_SEC,
         metadata_keys: Optional[tuple[str, ...]] = None,
     ) -> LoadBalancerStatsResponse:
         if timeout_sec is None:
@@ -167,7 +165,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
         return cast(LoadBalancerStatsResponse, stats)
 
     def get_client_accumulated_stats(
-        self, *, timeout_sec: Optional[int] = None
+        self, *, timeout_sec: int | None = None
     ) -> LoadBalancerAccumulatedStatsResponse:
         if timeout_sec is None:
             timeout_sec = self.STATS_ACCUMULATED_RESULTS_TIMEOUT_SEC
@@ -187,9 +185,7 @@ class XdsUpdateClientConfigureServiceClient(
     stub: test_pb2_grpc.XdsUpdateClientConfigureServiceStub
     CONFIGURE_TIMEOUT_SEC: Final[int] = 5
 
-    def __init__(
-        self, channel: grpc.Channel, *, log_target: Optional[str] = ""
-    ):
+    def __init__(self, channel: grpc.Channel, *, log_target: str | None = ""):
         super().__init__(
             channel,
             test_pb2_grpc.XdsUpdateClientConfigureServiceStub,
@@ -200,9 +196,9 @@ class XdsUpdateClientConfigureServiceClient(
         self,
         *,
         rpc_types: Sequence[str],
-        metadata: Optional[ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
-        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
+        metadata: ConfigureMetadata | None = None,
+        app_timeout: int | None = None,
+        timeout_sec: int | None = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         request = messages_pb2.ClientConfigureRequest()
         for rpc_type in rpc_types:
@@ -236,9 +232,9 @@ class XdsUpdateClientConfigureServiceClient(
     def configure_unary(
         self,
         *,
-        metadata: Optional[ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
-        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
+        metadata: ConfigureMetadata | None = None,
+        app_timeout: int | None = None,
+        timeout_sec: int | None = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_UNARY_CALL,),
@@ -250,9 +246,9 @@ class XdsUpdateClientConfigureServiceClient(
     def configure_empty(
         self,
         *,
-        metadata: Optional[ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
-        timeout_sec: Optional[int] = CONFIGURE_TIMEOUT_SEC,
+        metadata: ConfigureMetadata | None = None,
+        app_timeout: int | None = None,
+        timeout_sec: int | None = CONFIGURE_TIMEOUT_SEC,
     ) -> None:
         self.configure(
             rpc_types=(RPC_TYPE_EMPTY_CALL,),
@@ -265,7 +261,7 @@ class XdsUpdateClientConfigureServiceClient(
 class XdsUpdateHealthServiceClient(framework.rpc.grpc.GrpcClientHelper):
     stub: test_pb2_grpc.XdsUpdateHealthServiceStub
 
-    def __init__(self, channel: grpc.Channel, log_target: Optional[str] = ""):
+    def __init__(self, channel: grpc.Channel, log_target: str | None = ""):
         super().__init__(
             channel,
             test_pb2_grpc.XdsUpdateHealthServiceStub,
@@ -289,7 +285,7 @@ class HookServiceClient(framework.rpc.grpc.GrpcClientHelper):
     # Override the default deadline: all requests expected to be short.
     DEFAULT_RPC_DEADLINE: Final[dt.timedelta] = dt.timedelta(seconds=10)
 
-    def __init__(self, channel: grpc.Channel, log_target: Optional[str] = ""):
+    def __init__(self, channel: grpc.Channel, log_target: str | None = ""):
         super().__init__(channel, self.STUB_CLASS, log_target=log_target)
 
     def set_return_status(
@@ -321,7 +317,7 @@ class HookServiceClient(framework.rpc.grpc.GrpcClientHelper):
 class HealthClient(framework.rpc.grpc.GrpcClientHelper):
     stub: health_pb2_grpc.HealthStub
 
-    def __init__(self, channel: grpc.Channel, log_target: Optional[str] = ""):
+    def __init__(self, channel: grpc.Channel, log_target: str | None = ""):
         super().__init__(
             channel, health_pb2_grpc.HealthStub, log_target=log_target
         )

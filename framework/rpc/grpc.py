@@ -44,7 +44,7 @@ class GrpcClientHelper:
         channel: grpc.Channel,
         stub_class: Any,
         *,
-        log_target: Optional[str] = "",
+        log_target: str | None = "",
     ):
         self.channel = channel
         self.stub = stub_class(channel)
@@ -58,8 +58,8 @@ class GrpcClientHelper:
         *,
         rpc: str,
         req: Message,
-        deadline_sec: Optional[int] = DEFAULT_RPC_DEADLINE_SEC,
-        log_level: Optional[int] = logging.DEBUG,
+        deadline_sec: int | None = DEFAULT_RPC_DEADLINE_SEC,
+        log_level: int | None = logging.DEBUG,
     ) -> Message:
         if deadline_sec is None:
             deadline_sec = self.DEFAULT_RPC_DEADLINE_SEC

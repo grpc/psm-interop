@@ -63,14 +63,14 @@ class Highlighter:
     formatter: Formatter
     lexer: Lexer
     color: bool
-    color_style: Optional[str] = None
+    color_style: str | None = None
 
     def __init__(
         self,
         *,
         lexer: Lexer,
-        color: Optional[bool] = None,
-        color_style: Optional[str] = None,
+        color: bool | None = None,
+        color_style: str | None = None,
     ):
         self.lexer = lexer
         self.color = color if color is not None else COLOR.value
@@ -97,7 +97,7 @@ class Highlighter:
 
 class HighlighterYaml(Highlighter):
     def __init__(
-        self, *, color: Optional[bool] = None, color_style: Optional[str] = None
+        self, *, color: bool | None = None, color_style: str | None = None
     ):
         super().__init__(
             lexer=YamlLexer(encoding="utf-8"),

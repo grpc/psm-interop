@@ -57,7 +57,7 @@ def datetime_suffix(*, seconds: bool = False) -> str:
     return utc_now().strftime("%Y%m%d-%H%M" + ("%S" if seconds else ""))
 
 
-def ago(date_from: datetime.datetime, now: Optional[datetime.datetime] = None):
+def ago(date_from: datetime.datetime, now: datetime.datetime | None = None):
     if not now:
         now = utc_now()
 

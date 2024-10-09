@@ -88,9 +88,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     alternative_backends: set[NegGcpResource]
 
     # Backend Serivices
-    backend_service: Optional[GcpResource] = None
-    affinity_backend_service: Optional[GcpResource] = None
-    alternative_backend_service: Optional[GcpResource] = None
+    backend_service: GcpResource | None = None
+    affinity_backend_service: GcpResource | None = None
+    alternative_backend_service: GcpResource | None = None
 
     # TODO(sergiitk): move these flags to backend service dataclass
     backend_service_protocol: BackendServiceProtocol = _BackendUnset
@@ -127,19 +127,19 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.enable_dualstack: bool = enable_dualstack
 
         # Managed resources
-        self.health_check: Optional[GcpResource] = None
-        self.url_map: Optional[GcpResource] = None
-        self.alternative_url_map: Optional[GcpResource] = None
-        self.firewall_rule: Optional[GcpResource] = None
-        self.firewall_rule_ipv6: Optional[GcpResource] = None
-        self.target_proxy: Optional[GcpResource] = None
-        self.target_proxy_ipv6: Optional[GcpResource] = None
+        self.health_check: GcpResource | None = None
+        self.url_map: GcpResource | None = None
+        self.alternative_url_map: GcpResource | None = None
+        self.firewall_rule: GcpResource | None = None
+        self.firewall_rule_ipv6: GcpResource | None = None
+        self.target_proxy: GcpResource | None = None
+        self.target_proxy_ipv6: GcpResource | None = None
         # TODO(sergiitk): remove this flag once target proxy resource loaded
         self.target_proxy_is_http: bool = False
-        self.alternative_target_proxy: Optional[GcpResource] = None
-        self.forwarding_rule: Optional[GcpResource] = None
-        self.forwarding_rule_ipv6: Optional[GcpResource] = None
-        self.alternative_forwarding_rule: Optional[GcpResource] = None
+        self.alternative_target_proxy: GcpResource | None = None
+        self.forwarding_rule: GcpResource | None = None
+        self.forwarding_rule_ipv6: GcpResource | None = None
+        self.alternative_forwarding_rule: GcpResource | None = None
 
         # Backends.
         self.backends = set()
@@ -155,8 +155,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         service_host,
         service_port,
         *,
-        backend_protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
-        health_check_port: Optional[int] = None,
+        backend_protocol: BackendServiceProtocol | None = _BackendGRPC,
+        health_check_port: int | None = None,
     ):
         self.setup_backend_for_grpc(
             protocol=backend_protocol, health_check_port=health_check_port
@@ -166,8 +166,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def setup_backend_for_grpc(
         self,
         *,
-        protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
-        health_check_port: Optional[int] = None,
+        protocol: BackendServiceProtocol | None = _BackendGRPC,
+        health_check_port: int | None = None,
     ):
         self.create_health_check(port=health_check_port)
         self.create_backend_service(protocol)
@@ -211,8 +211,8 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def create_health_check(
         self,
         *,
-        protocol: Optional[HealthCheckProtocol] = _HealthCheckGRPC,
-        port: Optional[int] = None,
+        protocol: HealthCheckProtocol | None = _HealthCheckGRPC,
+        port: int | None = None,
     ):
         if self.health_check:
             raise ValueError(
@@ -240,11 +240,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def create_backend_service(
         self,
-        protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
-        subset_size: Optional[int] = None,
-        affinity_header: Optional[str] = None,
+        protocol: BackendServiceProtocol | None = _BackendGRPC,
+        subset_size: int | None = None,
+        affinity_header: str | None = None,
         locality_lb_policies: Optional[List[dict]] = None,
-        outlier_detection: Optional[dict] = None,
+        outlier_detection: dict | None = None,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -285,7 +285,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         name: str,
         zones: list[str],
         *,
-        max_rate_per_endpoint: Optional[int] = None,
+        max_rate_per_endpoint: int | None = None,
     ) -> None:
         self.backends |= self._get_gcp_negs_in_zones(name, zones)
         if not self.backends:
@@ -308,7 +308,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def backend_service_patch_backends(
         self,
-        max_rate_per_endpoint: Optional[int] = None,
+        max_rate_per_endpoint: int | None = None,
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
     ):
@@ -342,7 +342,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
 
     def create_alternative_backend_service(
-        self, protocol: Optional[BackendServiceProtocol] = _BackendGRPC
+        self, protocol: BackendServiceProtocol | None = _BackendGRPC
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -422,7 +422,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
 
     def create_affinity_backend_service(
-        self, protocol: Optional[BackendServiceProtocol] = _BackendGRPC
+        self, protocol: BackendServiceProtocol | None = _BackendGRPC
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -500,7 +500,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         matcher_name: str,
         src_hosts,
         dst_default_backend_service: GcpResource,
-        dst_host_rule_match_backend_service: Optional[GcpResource] = None,
+        dst_host_rule_match_backend_service: GcpResource | None = None,
     ) -> Dict[str, Any]:
         if dst_host_rule_match_backend_service is None:
             dst_host_rule_match_backend_service = dst_default_backend_service
@@ -579,7 +579,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self,
         src_host: str,
         src_port: int,
-        backend_service: Optional[GcpResource] = None,
+        backend_service: GcpResource | None = None,
     ) -> GcpResource:
         name = self.make_resource_name(self.ALTERNATIVE_URL_MAP_NAME)
         src_address = f"{src_host}:{src_port}"
@@ -916,7 +916,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         project: str,
         *,
         resource_prefix: str,
-        resource_suffix: Optional[str] = None,
+        resource_suffix: str | None = None,
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
@@ -938,9 +938,9 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
 
         # Managed resources
         # TODO(gnossen) PTAL at the pylint error
-        self.grpc_route: Optional[GrpcRoute] = None
-        self.http_route: Optional[HttpRoute] = None
-        self.mesh: Optional[Mesh] = None
+        self.grpc_route: GrpcRoute | None = None
+        self.http_route: HttpRoute | None = None
+        self.mesh: Mesh | None = None
 
     def create_mesh(self) -> GcpResource:
         name = self.make_resource_name(self.MESH_NAME)
@@ -1042,7 +1042,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         project: str,
         *,
         resource_prefix: str,
-        resource_suffix: Optional[str] = None,
+        resource_suffix: str | None = None,
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
@@ -1062,10 +1062,10 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
 
         # Managed resources
-        self.server_tls_policy: Optional[ServerTlsPolicy] = None
-        self.client_tls_policy: Optional[ClientTlsPolicy] = None
-        self.authz_policy: Optional[AuthorizationPolicy] = None
-        self.endpoint_policy: Optional[EndpointPolicy] = None
+        self.server_tls_policy: ServerTlsPolicy | None = None
+        self.client_tls_policy: ClientTlsPolicy | None = None
+        self.authz_policy: AuthorizationPolicy | None = None
+        self.endpoint_policy: EndpointPolicy | None = None
 
     def setup_server_security(
         self, *, server_namespace, server_name, server_port, tls=True, mtls=True

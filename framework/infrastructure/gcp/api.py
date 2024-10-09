@@ -88,7 +88,7 @@ HttpRequest = googleapiclient.http.HttpRequest
 
 class GcpApiManager:
     # The previous value of googleapiclient.model.dump_request_response.
-    _dump_req_resp: Optional[bool] = None
+    _dump_req_resp: bool | None = None
 
     def __init__(
         self,
@@ -263,8 +263,8 @@ class GcpApiManager:
         api_name,
         version,
         *,
-        api_key: Optional[str] = None,
-        visibility_labels: Optional[List] = None,
+        api_key: str | None = None,
+        visibility_labels: List | None = None,
     ):
         params = {}
         if api_key:
@@ -305,8 +305,8 @@ class ResponseError(Error):
 
     reason: str
     uri: str
-    error_details: Optional[str]
-    status: Optional[int]
+    error_details: str | None
+    status: int | None
     cause: _HttpError
 
     def __init__(self, cause: _HttpError):
@@ -441,7 +441,7 @@ class GcpProjectApiResource:
         self,
         request: HttpRequest,
         *,
-        num_retries: Optional[int] = _GCP_API_RETRIES,
+        num_retries: int | None = _GCP_API_RETRIES,
     ) -> Dict[str, Any]:
         """Execute the immediate request.
 
@@ -515,7 +515,7 @@ class GcpProjectApiResource:
 class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
     GLOBAL_LOCATION = "global"
 
-    def parent(self, location: Optional[str] = GLOBAL_LOCATION):
+    def parent(self, location: str | None = GLOBAL_LOCATION):
         if location is None:
             location = self.GLOBAL_LOCATION
         return f"projects/{self.project}/locations/{location}"

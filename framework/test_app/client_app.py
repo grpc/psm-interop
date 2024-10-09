@@ -65,9 +65,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         rpc_port: int,
         server_target: str,
         hostname: str,
-        rpc_host: Optional[str] = None,
-        maintenance_port: Optional[int] = None,
-        monitoring_port: Optional[int] = None,
+        rpc_host: str | None = None,
+        maintenance_port: int | None = None,
+        monitoring_port: int | None = None,
     ):
         super().__init__(rpc_host=(rpc_host or ip))
         self.ip = ip
@@ -109,7 +109,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
-    def get_csds_parsed(self, **kwargs) -> Optional[grpc_csds.DumpedXdsConfig]:
+    def get_csds_parsed(self, **kwargs) -> grpc_csds.DumpedXdsConfig | None:
         return self.csds.fetch_client_status_parsed(**kwargs)
 
     def get_load_balancer_stats(
@@ -117,7 +117,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         *,
         num_rpcs: int,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        timeout_sec: Optional[int] = None,
+        timeout_sec: int | None = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """
         Shortcut to LoadBalancerStatsServiceClient.get_client_stats()
@@ -131,7 +131,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def get_load_balancer_accumulated_stats(
         self,
         *,
-        timeout_sec: Optional[int] = None,
+        timeout_sec: int | None = None,
     ) -> grpc_testing.LoadBalancerAccumulatedStatsResponse:
         """Shortcut to LoadBalancerStatsServiceClient.get_client_accumulated_stats()"""
         return self.load_balancer_stats.get_client_accumulated_stats(
@@ -141,8 +141,8 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def wait_for_server_channel_ready(
         self,
         *,
-        timeout: Optional[_timedelta] = None,
-        rpc_deadline: Optional[_timedelta] = None,
+        timeout: _timedelta | None = None,
+        rpc_deadline: _timedelta | None = None,
     ) -> _ChannelzChannel:
         """Wait for the channel to the server to transition to READY.
 
@@ -169,9 +169,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def wait_for_active_xds_channel(
         self,
         *,
-        xds_server_uri: Optional[str] = None,
-        timeout: Optional[_timedelta] = None,
-        rpc_deadline: Optional[_timedelta] = None,
+        xds_server_uri: str | None = None,
+        timeout: _timedelta | None = None,
+        rpc_deadline: _timedelta | None = None,
     ) -> _ChannelzChannel:
         """Wait until the xds channel is active or timeout.
 
@@ -236,8 +236,8 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         state: _ChannelzChannelState,
         *,
-        timeout: Optional[_timedelta] = None,
-        rpc_deadline: Optional[_timedelta] = None,
+        timeout: _timedelta | None = None,
+        rpc_deadline: _timedelta | None = None,
     ) -> _ChannelzChannel:
         # When polling for a state, prefer smaller wait times to avoid
         # exhausting all allowed time on a single long RPC.
@@ -274,9 +274,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def wait_for_xds_channel_active(
         self,
         *,
-        xds_server_uri: Optional[str] = None,
-        timeout: Optional[_timedelta] = None,
-        rpc_deadline: Optional[_timedelta] = None,
+        xds_server_uri: str | None = None,
+        timeout: _timedelta | None = None,
+        rpc_deadline: _timedelta | None = None,
     ) -> _ChannelzChannel:
         if not xds_server_uri:
             xds_server_uri = DEFAULT_TD_XDS_URI
@@ -312,7 +312,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         xds_server_uri: str,
         *,
-        rpc_deadline: Optional[_timedelta] = None,
+        rpc_deadline: _timedelta | None = None,
     ) -> _ChannelzChannel:
         rpc_params = {}
         if rpc_deadline is not None:
@@ -366,7 +366,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         expected_state: _ChannelzChannelState,
         *,
-        rpc_deadline: Optional[_timedelta] = None,
+        rpc_deadline: _timedelta | None = None,
         check_subchannel=True,
     ) -> _ChannelzChannel:
         rpc_params = {}
@@ -450,9 +450,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         channel: _ChannelzChannel,
         *,
-        wait_between_checks: Optional[_timedelta] = None,
+        wait_between_checks: _timedelta | None = None,
         **rpc_params,
-    ) -> Optional[_ChannelzChannel]:
+    ) -> _ChannelzChannel | None:
         """Checks if the channel has calls that started, but didn't complete.
 
         We consider the channel is active if channel is in READY state and

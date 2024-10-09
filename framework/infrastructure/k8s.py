@@ -438,7 +438,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def _get_dyn_resource(
         self, api: dynamic_res.Resource, name, *args, **kwargs
-    ) -> Optional[DynResourceInstance]:
+    ) -> DynResourceInstance | None:
         try:
             return api.get(name=name, namespace=self.name, *args, **kwargs)
         except dynamic_exc.NotFoundError:
@@ -457,7 +457,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
                 return retryer(method, *args, **kwargs)
             raise
 
-    def _handle_exception(self, err: Exception) -> Optional[retryers.Retrying]:
+    def _handle_exception(self, err: Exception) -> retryers.Retrying | None:
         # TODO(sergiitk): replace returns with match/case when we use to py3.10.
         # pylint: disable=too-many-return-statements
 
@@ -502,7 +502,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def _handle_api_exception(
         self, err: _ApiException
-    ) -> Optional[retryers.Retrying]:
+    ) -> retryers.Retrying | None:
         # TODO(sergiitk): replace returns with match/case when we use to py3.10.
         # pylint: disable=too-many-return-statements
 
@@ -593,25 +593,25 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             self._api.core.read_namespaced_service, name, self.name
         )
 
-    def get_gamma_mesh(self, name) -> Optional[GammaMesh]:
+    def get_gamma_mesh(self, name) -> GammaMesh | None:
         return self._get_dyn_resource(self.api_gke_mesh, name)
 
     def get_gamma_route(
         self, name: str, *, kind: RouteKind
-    ) -> Optional[GammaXRoute]:
+    ) -> GammaXRoute | None:
         return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
     def get_session_affinity_policy(
         self, name
-    ) -> Optional[GcpSessionAffinityPolicy]:
+    ) -> GcpSessionAffinityPolicy | None:
         return self._get_dyn_resource(self.api_session_affinity_policy, name)
 
     def get_session_affinity_filter(
         self, name
-    ) -> Optional[GcpSessionAffinityFilter]:
+    ) -> GcpSessionAffinityFilter | None:
         return self._get_dyn_resource(self.api_session_affinity_filter, name)
 
-    def get_backend_policy(self, name) -> Optional[GcpBackendPolicy]:
+    def get_backend_policy(self, name) -> GcpBackendPolicy | None:
         return self._get_dyn_resource(self.api_backend_policy, name)
 
     def get_service_account(self, name) -> V1Service:
@@ -733,7 +733,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         self,
         name: str,
         *,
-        grace_period: Optional[_timedelta] = DELETE_GRACE_PERIOD,
+        grace_period: _timedelta | None = DELETE_GRACE_PERIOD,
     ) -> None:
         delete_options = client.V1DeleteOptions(propagation_policy="Foreground")
 
@@ -872,8 +872,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def wait_for_namespace_deleted(
         self,
-        timeout_sec: Optional[int] = None,
-        wait_sec: Optional[int] = None,
+        timeout_sec: int | None = None,
+        wait_sec: int | None = None,
     ) -> None:
         if timeout_sec is None:
             if self.wait_for_namespace_deleted_timeout_sec is not None:
@@ -1076,8 +1076,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         self,
         pod: V1Pod,
         remote_port: int,
-        local_port: Optional[int] = None,
-        local_address: Optional[str] = None,
+        local_port: int | None = None,
+        local_address: str | None = None,
     ) -> k8s_port_forwarder.PortForwarder:
         destination = f"pod/{pod.metadata.name}"
         logger.info(
@@ -1120,7 +1120,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def pretty_format_statuses(
         self,
-        k8s_objects: List[Optional[object]],
+        k8s_objects: List[object | None],
         *,
         highlight: bool = True,
     ) -> str:
@@ -1131,14 +1131,14 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def pretty_format_status(
         self,
-        k8s_object: Optional[object],
+        k8s_object: object | None,
         highlight: bool = True,
     ) -> str:
         if k8s_object is None:
             return "No data"
 
         result = []
-        metadata: Optional[V1ObjectMeta] = None
+        metadata: V1ObjectMeta | None = None
         if isinstance(getattr(k8s_object, "metadata", None), V1ObjectMeta):
             # Parse the name if present.
             metadata: V1ObjectMeta = k8s_object.metadata
@@ -1185,7 +1185,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def pretty_format_metadata(
         self,
-        k8s_object: Optional[object],
+        k8s_object: object | None,
         *,
         highlight: bool = True,
         managed_fields: bool = False,
@@ -1226,7 +1226,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def _check_service_neg_status_annotation(
-        cls, service: Optional[V1Service]
+        cls, service: V1Service | None
     ) -> bool:
         return (
             isinstance(service, V1Service)

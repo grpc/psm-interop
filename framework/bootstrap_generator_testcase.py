@@ -127,7 +127,7 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
 
     @classmethod
     def initKubernetesServerRunner(
-        cls, *, td_bootstrap_image: Optional[str] = None
+        cls, *, td_bootstrap_image: str | None = None
     ) -> KubernetesServerRunner:
         if not td_bootstrap_image:
             td_bootstrap_image = cls.td_bootstrap_image
@@ -165,7 +165,7 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
         return test_server
 
     def initKubernetesClientRunner(
-        self, td_bootstrap_image: Optional[str] = None
+        self, td_bootstrap_image: str | None = None
     ) -> KubernetesClientRunner:
         if not td_bootstrap_image:
             td_bootstrap_image = self.td_bootstrap_image

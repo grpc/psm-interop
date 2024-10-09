@@ -126,7 +126,7 @@ class XdsUrlMapTestCase(
     - rpc_distribution_validate: Validates if the routing behavior is correct
     """
 
-    test_client_runner: Optional[_KubernetesClientRunner] = None
+    test_client_runner: _KubernetesClientRunner | None = None
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
@@ -363,8 +363,8 @@ class XdsUrlMapTestCase(
         test_client: XdsTestClient,
         *,
         rpc_types: Sequence[str],
-        metadata: Optional[grpc_testing.ConfigureMetadata] = None,
-        app_timeout: Optional[int] = None,
+        metadata: grpc_testing.ConfigureMetadata | None = None,
+        app_timeout: int | None = None,
         num_rpcs: int,
     ) -> grpc_testing.RpcDistributionStats:
         test_client.update_config.configure(

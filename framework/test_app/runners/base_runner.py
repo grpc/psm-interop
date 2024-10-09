@@ -36,8 +36,8 @@ class RunnerError(Exception):
 
 
 class BaseRunner(metaclass=ABCMeta):
-    _logs_subdir: Optional[pathlib.Path] = None
-    _log_stop_event: Optional[threading.Event] = None
+    _logs_subdir: pathlib.Path | None = None
+    _log_stop_event: threading.Event | None = None
 
     def __init__(self):
         if xds_flags.COLLECT_APP_LOGS.value:

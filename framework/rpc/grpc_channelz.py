@@ -58,9 +58,7 @@ _GetServerSocketsResponse = channelz_pb2.GetServerSocketsResponse
 class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
     stub: channelz_pb2_grpc.ChannelzStub
 
-    def __init__(
-        self, channel: grpc.Channel, *, log_target: Optional[str] = ""
-    ):
+    def __init__(self, channel: grpc.Channel, *, log_target: str | None = ""):
         super().__init__(
             channel, channelz_pb2_grpc.ChannelzStub, log_target=log_target
         )
@@ -139,7 +137,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
 
     def find_server_listening_on_port(
         self, port: int, **kwargs
-    ) -> Optional[Server]:
+    ) -> Server | None:
         for server in self.list_servers(**kwargs):
             listen_socket_ref: SocketRef
             for listen_socket_ref in server.listen_socket:
@@ -162,7 +160,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
         This does not include subchannels nor non-top level channels.
         """
         start: int = -1
-        response: Optional[_GetTopChannelsResponse] = None
+        response: _GetTopChannelsResponse | None = None
         while start < 0 or not response.end:
             # From proto: To request subsequent pages, the client generates this
             # value by adding 1 to the highest seen result ID.
@@ -199,7 +197,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
     def list_servers(self, **kwargs) -> Iterator[Server]:
         """Iterate over all pages of all servers that exist in the process."""
         start: int = -1
-        response: Optional[_GetServersResponse] = None
+        response: _GetServersResponse | None = None
         while start < 0 or not response.end:
             # From proto: To request subsequent pages, the client generates this
             # value by adding 1 to the highest seen result ID.
@@ -219,7 +217,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
         Iterating over the results will resolve additional pages automatically.
         """
         start: int = -1
-        response: Optional[_GetServerSocketsResponse] = None
+        response: _GetServerSocketsResponse | None = None
         while start < 0 or not response.end:
             # From proto: To request subsequent pages, the client generates this
             # value by adding 1 to the highest seen result ID.
