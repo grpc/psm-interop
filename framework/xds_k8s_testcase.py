@@ -674,7 +674,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,

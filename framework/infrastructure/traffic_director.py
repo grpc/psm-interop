@@ -243,7 +243,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         protocol: BackendServiceProtocol | None = _BackendGRPC,
         subset_size: int | None = None,
         affinity_header: str | None = None,
-        locality_lb_policies: Optional[List[dict]] = None,
+        locality_lb_policies: List[dict] | None = None,
         outlier_detection: dict | None = None,
     ):
         if protocol is None:
@@ -310,7 +310,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self,
         max_rate_per_endpoint: int | None = None,
         *,
-        circuit_breakers: Optional[dict[str, int]] = None,
+        circuit_breakers: dict[str, int] | None = None,
     ):
         logging.info(
             "Adding backends to Backend Service %s: %r",
@@ -384,7 +384,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.alternative_backend_service_patch_backends()
 
     def alternative_backend_service_patch_backends(
-        self, *, circuit_breakers: Optional[dict[str, int]] = None
+        self, *, circuit_breakers: dict[str, int] | None = None
     ):
         logging.info(
             "Adding backends to Alternative Backend Service %s: %r",

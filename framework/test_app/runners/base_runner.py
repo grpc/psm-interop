@@ -86,7 +86,7 @@ class BaseRunner(metaclass=ABCMeta):
         gcp_ui_url: str,
         gcp_project: str,
         query: Dict[str, str],
-        request: Optional[Dict[str, str]] = None,
+        request: Dict[str, str] | None = None,
     ) -> str:
         req_merged = {"query": cls._logs_explorer_query(query)}
         if request is not None:

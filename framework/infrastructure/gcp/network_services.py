@@ -61,7 +61,7 @@ class EndpointPolicy:
 class Mesh:
     name: str
     url: str
-    routes: Optional[List[str]]
+    routes: List[str] | None
 
     @classmethod
     def from_response(cls, name: str, d: Dict[str, Any]) -> "Mesh":
@@ -169,7 +169,7 @@ class GrpcRoute:
     url: str
     hostnames: Tuple[str]
     rules: Tuple["GrpcRoute.RouteRule"]
-    meshes: Optional[Tuple[str]]
+    meshes: Tuple[str] | None
 
     @classmethod
     def from_response(
@@ -304,7 +304,7 @@ class HttpRoute:
     url: str
     hostnames: Tuple[str]
     rules: Tuple["HttpRoute.RouteRule"]
-    meshes: Optional[Tuple[str]]
+    meshes: Tuple[str] | None
 
     @classmethod
     def from_response(cls, name: str, d: Dict[str, Any]) -> "HttpRoute":

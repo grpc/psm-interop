@@ -147,7 +147,7 @@ class LoadBalancerStatsServiceClient(framework.rpc.grpc.GrpcClientHelper):
         *,
         num_rpcs: int,
         timeout_sec: int | None = STATS_PARTIAL_RESULTS_TIMEOUT_SEC,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> LoadBalancerStatsResponse:
         if timeout_sec is None:
             timeout_sec = self.STATS_PARTIAL_RESULTS_TIMEOUT_SEC

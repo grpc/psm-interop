@@ -149,7 +149,7 @@ class ComputeV1(
         affinity_header: str | None = None,
         protocol: BackendServiceProtocol | None = None,
         subset_size: int | None = None,
-        locality_lb_policies: Optional[List[dict]] = None,
+        locality_lb_policies: List[dict] | None = None,
         outlier_detection: dict | None = None,
         enable_dualstack: bool = False,
     ) -> "GcpResource":
@@ -203,7 +203,7 @@ class ComputeV1(
         backends,
         max_rate_per_endpoint: int | None = None,
         *,
-        circuit_breakers: Optional[dict[str, int]] = None,
+        circuit_breakers: dict[str, int] | None = None,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5

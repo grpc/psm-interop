@@ -116,7 +116,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         *,
         num_rpcs: int,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
         timeout_sec: int | None = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """
