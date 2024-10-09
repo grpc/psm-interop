@@ -16,7 +16,7 @@ import logging
 import os
 import pathlib
 import threading
-from typing import Any, Callable, Optional, TextIO
+from typing import Any, Callable, TextIO
 
 from kubernetes import client
 from kubernetes.watch import watch

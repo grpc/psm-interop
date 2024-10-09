@@ -14,7 +14,7 @@
 """This contains common helpers for working with dates and time."""
 import datetime
 import re
-from typing import Optional, Pattern
+from typing import Pattern
 
 import dateutil.parser
 

@@ -17,7 +17,7 @@ Run xDS Test Client on Kubernetes.
 import dataclasses
 import datetime as dt
 import logging
-from typing import List, Optional
+from typing import List
 
 from typing_extensions import override
 

@@ -16,7 +16,6 @@ from dataclasses import dataclass
 import enum
 import logging
 import re
-from typing import Optional
 
 from packaging import version as pkg_version
 

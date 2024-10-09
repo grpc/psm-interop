@@ -21,7 +21,7 @@ import json
 import logging
 import pathlib
 import threading
-from typing import Any, Callable, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Tuple, Union
 import warnings
 
 from kubernetes import client

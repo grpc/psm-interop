@@ -16,7 +16,7 @@ import contextlib
 import functools
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from absl import flags
 from google.cloud import secretmanager_v1

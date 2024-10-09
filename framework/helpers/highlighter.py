@@ -19,7 +19,6 @@ and enable colorful syntax highlighting.
 TODO(sergiitk): This can be used to output protobuf responses formatted as JSON.
 """
 import logging
-from typing import Optional
 
 from absl import flags
 import pygments

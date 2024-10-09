@@ -19,7 +19,7 @@ from abc import abstractmethod
 import functools
 import pathlib
 import threading
-from typing import Dict, Optional
+from typing import Dict
 import urllib.parse
 
 from absl import flags

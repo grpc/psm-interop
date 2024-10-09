@@ -14,7 +14,6 @@
 
 import datetime
 import time
-from typing import Optional
 
 from absl import flags
 from absl.testing import absltest

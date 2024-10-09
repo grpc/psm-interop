@@ -22,7 +22,7 @@ import datetime as dt
 import functools
 import logging
 import pathlib
-from typing import List, Optional, cast
+from typing import List, cast
 
 import absl.logging
 import mako.lookup

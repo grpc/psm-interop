@@ -17,7 +17,7 @@ https://github.com/grpc/grpc-proto/blob/master/grpc/channelz/v1/channelz.proto
 """
 import ipaddress
 import logging
-from typing import Iterator, Optional
+from typing import Iterator
 
 import grpc
 from grpc_channelz.v1 import channelz_pb2

@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Final, Optional
+from typing import Final
 
 from absl import flags
 from absl.testing import absltest

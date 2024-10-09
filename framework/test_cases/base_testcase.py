@@ -14,7 +14,7 @@
 """Base test case used for xds test suites."""
 import inspect
 import traceback
-from typing import Optional, Union
+from typing import Union
 import unittest
 
 from absl import logging

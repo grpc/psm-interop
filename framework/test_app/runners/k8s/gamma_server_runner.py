@@ -17,7 +17,7 @@ Run xDS Test Client on Kubernetes using Gamma
 import dataclasses
 import datetime
 import logging
-from typing import Final, Optional
+from typing import Final
 
 from typing_extensions import override
 

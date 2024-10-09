@@ -14,7 +14,7 @@
 import functools
 import logging
 import random
-from typing import Any, Dict, Final, List, Optional
+from typing import Any, Dict, Final, List
 
 import googleapiclient.errors
 from typing_extensions import TypeAlias

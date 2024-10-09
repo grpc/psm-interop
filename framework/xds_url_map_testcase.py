@@ -19,7 +19,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Iterable, Mapping, Sequence, Tuple
 import unittest
 
 from absl import flags

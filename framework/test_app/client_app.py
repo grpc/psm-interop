@@ -18,7 +18,7 @@ import datetime
 import functools
 import logging
 import time
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
 import framework.errors
 from framework.helpers import retryers

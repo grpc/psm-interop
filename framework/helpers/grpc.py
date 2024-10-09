@@ -15,7 +15,6 @@
 import collections
 import dataclasses
 import functools
-from typing import Optional
 
 import grpc
 from typing_extensions import TypeAlias

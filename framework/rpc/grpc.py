@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from google.protobuf import json_format
 import google.protobuf.message

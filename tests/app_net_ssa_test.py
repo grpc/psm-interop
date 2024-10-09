@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Final, List, Optional
+from typing import Final, List
 
 from absl import flags
 from absl.testing import absltest

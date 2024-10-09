@@ -31,7 +31,7 @@ import os
 import re
 import subprocess
 import sys
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 from absl import app
 from absl import flags

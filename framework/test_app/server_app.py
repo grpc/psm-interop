@@ -16,7 +16,7 @@ Provides an interface to xDS Test Server running remotely.
 """
 import functools
 import logging
-from typing import Iterator, Optional
+from typing import Iterator
 
 import framework.rpc
 from framework.rpc import grpc_channelz

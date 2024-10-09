@@ -22,7 +22,7 @@ import re
 import signal
 import time
 from types import FrameType
-from typing import Any, Callable, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Tuple, Union
 
 from absl import flags
 from absl.testing import absltest

@@ -15,7 +15,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from google.rpc import code_pb2
 import tenacity

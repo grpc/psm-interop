@@ -18,7 +18,7 @@ https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 from collections.abc import Sequence
 import datetime as dt
 import logging
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, cast
 
 from google.protobuf import json_format
 import grpc

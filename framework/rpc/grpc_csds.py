@@ -19,7 +19,7 @@ import datetime as dt
 import json
 import logging
 import re
-from typing import Any, Final, Optional, Type, cast
+from typing import Any, Final, Type, cast
 
 from google.protobuf import json_format
 from typing_extensions import TypeAlias

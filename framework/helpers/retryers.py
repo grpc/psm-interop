@@ -22,7 +22,7 @@ We use tenacity as a general-purpose retrying library.
 """
 import datetime
 import logging
-from typing import Any, Callable, List, Optional, Tuple, Type
+from typing import Any, Callable, List, Tuple, Type
 
 import tenacity
 from tenacity import _utils as tenacity_utils

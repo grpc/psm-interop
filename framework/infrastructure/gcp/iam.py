@@ -15,7 +15,7 @@ import dataclasses
 import datetime
 import functools
 import logging
-from typing import Any, Dict, FrozenSet, Optional
+from typing import Any, Dict, FrozenSet
 
 from framework.helpers import retryers
 from framework.infrastructure import gcp
