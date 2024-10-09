@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Final, List, Optional
+from typing import Final, List
 
 from absl import flags
 from absl.testing import absltest
@@ -49,7 +49,7 @@ class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
         test_client: _XdsTestClient,
         num_rpcs: int,
         *,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         return super().getClientRpcStats(
