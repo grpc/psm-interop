@@ -38,6 +38,7 @@ class ServerDeploymentArgs:
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
+    enable_rlqs: bool = False
 
     def as_dict(self):
         return {
@@ -49,6 +50,7 @@ class ServerDeploymentArgs:
             "csm_workload_name": self.csm_workload_name,
             "csm_canonical_service_name": self.csm_canonical_service_name,
             "enable_dualstack": self.enable_dualstack,
+            "enable_rlqs": self.enable_rlqs,
         }
 
 

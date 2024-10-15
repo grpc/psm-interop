@@ -48,6 +48,9 @@ spec:
             % if enable_csm_observability:
             - "--enable_csm_observability=true"
             % endif
+            % if enable_rlqs:
+            - "--xds_server_mode=true"
+            % endif
             % if address_type:
             - "--address_type=${address_type}"
             % endif
@@ -60,6 +63,13 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
+            % if enable_rlqs:
+            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_RLQS
+              value: "true"
+            ## TODO(sergiitk): remove
+            - name: GRPC_EXPERIMENTAL_RLQS_DRY_RUN
+              value: "true"
+            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}
