@@ -907,8 +907,15 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
     GRPC_ROUTE_NAME = "grpc-route"
     HTTP_ROUTE_NAME = "http-route"
     MESH_NAME = "mesh"
+    ENDPOINT_POLICY = "endpoint-policy"
 
     netsvc: gcp.network_services.NetworkServicesV1
+
+    # Managed resources
+    grpc_route: Optional[GrpcRoute] = None
+    http_route: Optional[HttpRoute] = None
+    mesh: Optional[Mesh] = None
+    endpoint_policy: Optional[EndpointPolicy] = None
 
     def __init__(
         self,
@@ -938,9 +945,10 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
 
         # Managed resources
         # TODO(gnossen) PTAL at the pylint error
-        self.grpc_route: Optional[GrpcRoute] = None
-        self.http_route: Optional[HttpRoute] = None
-        self.mesh: Optional[Mesh] = None
+        self.grpc_route = None
+        self.http_route = None
+        self.mesh = None
+        self.endpoint_policy = None
 
     def create_mesh(self) -> GcpResource:
         name = self.make_resource_name(self.MESH_NAME)
@@ -1019,14 +1027,54 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         self.netsvc.delete_http_route(name)
         self.http_route = None
 
+    def create_endpoint_policy(
+        self, *, server_namespace: str, server_name: str, server_port: int
+    ) -> None:
+        name = self.make_resource_name(self.ENDPOINT_POLICY)
+        logger.info("Creating Endpoint Policy %s", name)
+        endpoint_matcher_labels = [
+            {
+                "labelName": "app",
+                "labelValue": f"{server_namespace}-{server_name}",
+            }
+        ]
+        port_selector = {"ports": [str(server_port)]}
+        label_matcher_all = {
+            "metadataLabelMatchCriteria": "MATCH_ALL",
+            "metadataLabels": endpoint_matcher_labels,
+        }
+        config = {
+            "type": "GRPC_SERVER",
+            "trafficPortSelector": port_selector,
+            "endpointMatcher": {
+                "metadataLabelMatcher": label_matcher_all,
+            },
+        }
+
+        self.netsvc.create_endpoint_policy(name, config)
+        self.endpoint_policy = self.netsvc.get_endpoint_policy(name)
+        logger.debug("Loaded Endpoint Policy: %r", self.endpoint_policy)
+
+    def delete_endpoint_policy(self, force: bool = False) -> None:
+        if force:
+            name = self.make_resource_name(self.ENDPOINT_POLICY)
+        elif self.endpoint_policy:
+            name = self.endpoint_policy.name
+        else:
+            return
+        logger.info("Deleting Endpoint Policy %s", name)
+        self.netsvc.delete_endpoint_policy(name)
+        self.endpoint_policy = None
+
     def cleanup(self, *, force=False):
         self.delete_http_route(force=force)
         self.delete_grpc_route(force=force)
         self.delete_mesh(force=force)
+        self.delete_endpoint_policy(force=force)
         super().cleanup(force=force)
 
 
-class TrafficDirectorSecureManager(TrafficDirectorManager):
+class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
     SERVER_TLS_POLICY_NAME = "server-tls-policy"
     CLIENT_TLS_POLICY_NAME = "client-tls-policy"
     AUTHZ_POLICY_NAME = "authz-policy"
@@ -1034,7 +1082,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
     CERTIFICATE_PROVIDER_INSTANCE = "google_cloud_private_spiffe"
 
     netsec: _NetworkSecurityV1Beta1
-    netsvc: _NetworkServicesV1Beta1
+    netsvc: gcp.network_services.NetworkServicesV1
 
     def __init__(
         self,
@@ -1059,7 +1107,9 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
 
         # API
         self.netsec = _NetworkSecurityV1Beta1(gcp_api_manager, project)
-        self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
+        self.netsvc = gcp.network_services.NetworkServicesV1(
+            gcp_api_manager, project
+        )
 
         # Managed resources
         self.server_tls_policy: Optional[ServerTlsPolicy] = None

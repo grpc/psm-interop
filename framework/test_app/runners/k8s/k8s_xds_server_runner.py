@@ -178,6 +178,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         replica_count: int = 1,
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
+        config_mesh: Optional[str] = None,
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -268,6 +269,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             secure_mode=secure_mode,
             address_type=address_type,
             bootstrap_version=bootstrap_version,
+            config_mesh=config_mesh,
             **self.deployment_args.as_dict(),
         )
 

@@ -33,7 +33,7 @@ spec:
           image: ${image_name}
           imagePullPolicy: Always
           ## TODO:(lsafran) test without this when ipv6 HC fw rules are in place
-          % if address_type != "ipv6":
+          % if not (address_type == "ipv6" or enable_rlqs):
           startupProbe:
             tcpSocket:
               port: ${test_port}
@@ -116,6 +116,9 @@ spec:
             - "--node-metadata-experimental=app=${namespace_name}-${deployment_name}"
             % else:
             - "--node-metadata=app=${namespace_name}-${deployment_name}"
+            % endif
+            % if config_mesh:
+            - "--config-mesh-experimental=${config_mesh}"
             % endif
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"

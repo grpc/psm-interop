@@ -41,7 +41,17 @@ spec:
             - "--secure_mode=${secure_mode}"
             - "--qps=${qps}"
             - "--rpc=${rpc}"
+            - "--metadata=${metadata}"
+            % if request_payload_size > 0:
+            - "--request_payload_size=${request_payload_size}"
+            % endif
+            % if response_payload_size > 0:
+            - "--response_payload_size=${response_payload_size}"
+            % endif
             - "--print_response=${print_response}"
+            % if enable_csm_observability:
+            - "--enable_csm_observability=true"
+            % endif
           ports:
             - containerPort: ${stats_port}
           env:
@@ -50,6 +60,14 @@ spec:
             - name: GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT
               value: "true"
             - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
+              value: "true"
+            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RING_HASH
+              value: "true"
+            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RETRY
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_ENABLE_OUTLIER_DETECTION
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_CUSTOM_LB_CONFIG
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"

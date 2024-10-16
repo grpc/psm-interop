@@ -27,17 +27,17 @@ XdsTestServer: TypeAlias = xds_k8s_testcase.XdsTestServer
 XdsTestClient: TypeAlias = xds_k8s_testcase.XdsTestClient
 KubernetesServerRunner: TypeAlias = k8s_xds_server_runner.KubernetesServerRunner
 ServerDeploymentArgs: TypeAlias = k8s_xds_server_runner.ServerDeploymentArgs
+SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
 
 
-class RlqsTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
-    def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
-        return super().initKubernetesServerRunner(
-            deployment_args=ServerDeploymentArgs(enable_rlqs=True), **kwargs
-        )
+class SecurityAppNetTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
+    def test_mtls(self):
+        """mTLS test.
 
-    def test_rate_limit(self) -> None:
+        Both client and server configured to use TLS and mTLS.
+        """
         with self.subTest("0_create_health_check"):
-            self.td.create_health_check()
+            self.td.create_health_check(port=self.server_maintenance_port)
 
         with self.subTest("1_create_backend_service"):
             self.td.create_backend_service()
@@ -51,33 +51,21 @@ class RlqsTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                 self.server_xds_port,
             )
 
-        with self.subTest("4_create_endpoint_policy"):
-            self.td.create_endpoint_policy(
-                server_namespace=self.server_namespace,
-                server_name=self.server_name,
-                server_port=self.server_port,
-            )
+        self.setupSecurityPolicies(
+            server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
+        )
 
-        # TODO(sergiitk): create rl resources
+        test_server: XdsTestServer = self.startSecureTestServer(
+            config_mesh=self.td.mesh.name
+        )
+        self.setupServerBackends()
+        test_client: XdsTestClient = self.startSecureTestClient(
+            test_server, config_mesh=self.td.mesh.name
+        )
 
-        with self.subTest("4_start_test_server"):
-            test_server: XdsTestServer = self.startTestServers()[0]
-
-        with self.subTest("5_setup_server_backends"):
-            self.setupServerBackends()
-
-        with self.subTest("6_start_test_client"):
-            test_client: XdsTestClient = self.startTestClient(
-                test_server, config_mesh=self.td.mesh.name
-            )
-
-        with self.subTest("7_assert_xds_config_exists"):
-            self.assertXdsConfigExists(test_client)
-
-        # TODO(sergiitk): verify rl
-
-        with self.subTest("8_assert_successful_rpcs"):
-            self.assertSuccessfulRpcs(test_client)
+        self.assertTestAppSecurity(SecurityMode.MTLS, test_client, test_server)
+        self.assertSuccessfulRpcs(test_client)
+        logger.info("[SUCCESS] mTLS security mode confirmed.")
 
 
 if __name__ == "__main__":
