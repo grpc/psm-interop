@@ -19,10 +19,8 @@ import enum
 import hashlib
 import logging
 import re
-import signal
 import time
-from types import FrameType
-from typing import Any, Callable, Final, Optional, Tuple, Union
+from typing import Callable, Final, Optional, Tuple
 
 from absl import flags
 from absl.testing import absltest
@@ -83,9 +81,6 @@ _timedelta = datetime.timedelta
 ClientConfig = grpc_csds.ClientConfig
 RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
 MetadataByPeer: list[str, RpcMetadata]
-# pylint complains about signal.Signals for some reason.
-_SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
-_SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
 
 TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 # TODO(sergiitk): get rid of the seconds constant, use timedelta
@@ -147,8 +142,6 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     server_xds_port: Optional[int]
     td: TrafficDirectorManager
     td_bootstrap_image: str
-    _prev_sigint_handler: Optional[_SignalHandler] = None
-    _handling_sigint: bool = False
     yaml_highlighter: framework.helpers.highlighter.HighlighterYaml = None
     enable_dualstack: bool = False
 
@@ -290,39 +283,6 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         if cls.secondary_k8s_api_manager is not None:
             cls.secondary_k8s_api_manager.close()
         cls.gcp_api_manager.close()
-
-    def setUp(self):
-        self._prev_sigint_handler = signal.signal(
-            signal.SIGINT, self.handle_sigint
-        )
-
-    def handle_sigint(
-        self, signalnum: _SignalNum, frame: Optional[FrameType]
-    ) -> None:
-        # TODO(sergiitk): move to base_testcase.BaseTestCase
-        if self._handling_sigint:
-            logger.info("Ctrl+C pressed twice, aborting the cleanup.")
-        else:
-            cleanup_delay_sec = 2
-            logger.info(
-                "Caught Ctrl+C. Cleanup will start in %d seconds."
-                " Press Ctrl+C again to abort.",
-                cleanup_delay_sec,
-            )
-            self._handling_sigint = True
-            # Sleep for a few seconds to allow second Ctrl-C before the cleanup.
-            time.sleep(cleanup_delay_sec)
-            # Force resource cleanup by their name. Addresses the case where
-            # ctrl-c is pressed while waiting for the resource creation.
-            self.force_cleanup = True
-            self.tearDown()
-            self.tearDownClass()
-
-        # Remove the sigint handler.
-        self._handling_sigint = False
-        if self._prev_sigint_handler is not None:
-            signal.signal(signal.SIGINT, self._prev_sigint_handler)
-        raise KeyboardInterrupt
 
     @contextlib.contextmanager
     def subTest(self, msg, **params):  # noqa pylint: disable=signature-differs
@@ -801,6 +761,10 @@ class IsolatedXdsKubernetesTestCase(
     each test, and destroyed after.
     """
 
+    client_runner: Optional[KubernetesClientRunner] = None
+    server_runner: Optional[KubernetesServerRunner] = None
+    td: Optional[TrafficDirectorManager] = None
+
     def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
         super().setUp()
@@ -872,12 +836,14 @@ class IsolatedXdsKubernetesTestCase(
         client_restarts: int = 0
         server_restarts: int = 0
         try:
-            client_restarts = self.client_runner.get_pod_restarts(
-                self.client_runner.deployment
-            )
-            server_restarts = self.server_runner.get_pod_restarts(
-                self.server_runner.deployment
-            )
+            if self.client_runner:
+                client_restarts = self.client_runner.get_pod_restarts(
+                    self.client_runner.deployment
+                )
+            if self.server_runner:
+                server_restarts = self.server_runner.get_pod_restarts(
+                    self.server_runner.deployment
+                )
         except (retryers.RetryError, k8s.NotFound) as e:
             logger.exception(e)
 
@@ -891,9 +857,10 @@ class IsolatedXdsKubernetesTestCase(
         except retryers.RetryError:
             logger.exception("Got error during teardown")
         finally:
-            logger.info("----- Test client/server logs -----")
-            self.client_runner.logs_explorer_run_history_links()
-            self.server_runner.logs_explorer_run_history_links()
+            if self.client_runner and self.server_runner:
+                logger.info("----- Test client/server logs -----")
+                self.client_runner.logs_explorer_run_history_links()
+                self.server_runner.logs_explorer_run_history_links()
 
             # Fail if any of the pods restarted.
             self.assertEqual(
@@ -916,13 +883,16 @@ class IsolatedXdsKubernetesTestCase(
             )
 
     def cleanup(self):
-        self.td.cleanup(force=self.force_cleanup)
-        self.client_runner.cleanup(
-            force=self.force_cleanup, force_namespace=self.force_cleanup
-        )
-        self.server_runner.cleanup(
-            force=self.force_cleanup, force_namespace=self.force_cleanup
-        )
+        if self.td:
+            self.td.cleanup(force=self.force_cleanup)
+        if self.client_runner:
+            self.client_runner.cleanup(
+                force=self.force_cleanup, force_namespace=self.force_cleanup
+            )
+        if self.server_runner:
+            self.server_runner.cleanup(
+                force=self.force_cleanup, force_namespace=self.force_cleanup
+            )
 
     def _start_test_client(
         self,

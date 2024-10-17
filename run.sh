@@ -98,10 +98,10 @@ main() {
     echo
   fi
 
-  # Automatically save last run logs to out/
+  # Automatically save last run logs to out
   if [[ -n "${psm_log_file}" ]]; then
     mkdir -p "${PSM_LOG_DIR}"
-    exec &> >(tee "${PSM_LOG_DIR}/${psm_log_file}")
+    exec &> >(tee -i "${PSM_LOG_DIR}/${psm_log_file}")
     echo "Saving framework log to ${PSM_LOG_DIR}/${psm_log_file}"
   fi
 
