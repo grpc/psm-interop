@@ -45,17 +45,6 @@ logger = logging.getLogger(__name__)
 _CMD = flags.DEFINE_enum(
     "cmd", default="run", enum_values=["run", "cleanup"], help="Command"
 )
-_MODE = flags.DEFINE_enum(
-    "mode",
-    default="default",
-    enum_values=[
-        "default",
-        "secure",
-        "app_net",
-        "gamma",
-    ],
-    help="Select client mode",
-)
 _QPS = flags.DEFINE_integer("qps", default=25, help="Queries per second")
 _PRINT_RESPONSE = flags.DEFINE_bool(
     "print_response", default=False, help="Client prints responses"
@@ -78,21 +67,6 @@ _CLEANUP_NAMESPACE = flags.DEFINE_bool(
 )
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
-# Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-
-
-@flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT, _CMD, _MODE),
-    message=(
-        "Run outside of a test suite, must provide"
-        " the exact port value (must be greater than 0)."
-    ),
-)
-def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_MODE.name] == "gamma" or flags_dict[_CMD.name] == "cleanup":
-        return True
-    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
 
 
 def _make_sigint_handler(client_runner: common.KubernetesClientRunner):
@@ -155,7 +129,7 @@ def main(argv):
     xds_flags.set_socket_default_timeout_from_flag()
 
     # Flags.
-    mode: str = _MODE.value
+    mode: str = common.MODE.value
     command: str = _CMD.value
     # Flags: log following and port forwarding.
     should_follow_logs = _FOLLOW.value and xds_flags.COLLECT_APP_LOGS.value

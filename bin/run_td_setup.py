@@ -70,41 +70,10 @@ _CMD = flags.DEFINE_enum(
     ],
     help="Command",
 )
-_MODE = flags.DEFINE_enum(
-    "mode",
-    default="default",
-    enum_values=[
-        "default",
-        "secure",
-        "app_net",
-        "gamma",
-    ],
-    help="Select setup mode",
-)
-_SECURITY = flags.DEFINE_enum(
-    "security",
-    default=None,
-    enum_values=[
-        "mtls",
-        "tls",
-        "plaintext",
-        "mtls_error",
-        "server_authz_error",
-    ],
-    help="Configure TD with security",
-)
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 
 # Flag validations.
-# Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-# Require --security when --mode=secure.
-flags.register_multi_flags_validator(
-    (_MODE, _SECURITY),
-    lambda values: values[_MODE.name] != "secure" or values[_SECURITY.name],
-    "When --mode=secure; --security flag is required",
-)
 
 
 @flags.multi_flags_validator(
@@ -234,7 +203,7 @@ def _setup_td_secure(
             mtls=False,
         )
         td.setup_client_security(
-            server_namespace=(f"incorrect-namespace-{rand.rand_string()}"),
+            server_namespace=f"incorrect-namespace-{rand.rand_string()}",
             server_name=server_name,
             tls=True,
             mtls=False,
@@ -292,11 +261,11 @@ def main(
 
     # Flags.
     command = _CMD.value
-    security_mode = _SECURITY.value
+    security_mode = common.SECURITY.value
     if security_mode:
-        flags.set_default(_MODE, "secure")
+        flags.set_default(common.MODE, "secure")
 
-    mode = _MODE.value
+    mode = common.MODE.value
 
     # Short circuit for gamma node.
     if mode == "gamma":

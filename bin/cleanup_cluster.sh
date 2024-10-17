@@ -21,12 +21,12 @@ readonly XDS_K8S_DRIVER_DIR="${SCRIPT_DIR}/.."
 
 cd "${XDS_K8S_DRIVER_DIR}"
 
-NO_SECURE="yes"
+MODE=""
 DATE_TO=$(date -Iseconds)
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --secure) NO_SECURE=""; shift ;;
+    --mode=*) MODE="${1#*=}"; shift ;;
     --date_to=*) DATE_TO="${1#*=}T00:00:00Z"; shift ;;
     *) echo "Unknown argument $1"; exit 1 ;;
   esac
@@ -68,7 +68,7 @@ echo "Count: ${#namespaces[@]}"
 
 echo "Run plan:"
 for suffix in "${suffixes[@]}"; do
-  echo ./bin/cleanup.sh ${NO_SECURE:+"--nosecure"} "--resource_suffix=${suffix}"
+  echo ./bin/cleanup.sh ${MODE:+"--mode=$MODE"} "--resource_suffix=${suffix}"
 done
 
 read -r -n 1 -p "Continue? (y/N) " answer
@@ -85,7 +85,7 @@ failed=0
 for suffix in "${suffixes[@]}"; do
   echo "-------------------- Cleaning suffix ${suffix} --------------------"
   set -x
-  ./bin/cleanup.sh ${NO_SECURE:+"--nosecure"} "--resource_suffix=${suffix}" || (( ++failed ))
+  ./bin/cleanup.sh ${MODE:+"--mode=$MODE"} "--resource_suffix=${suffix}" || (( ++failed ))
   set +x
   echo "-------------------- Finished cleaning ${suffix} --------------------"
 done

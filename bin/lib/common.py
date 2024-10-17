@@ -33,6 +33,29 @@ from framework.test_app.runners.k8s import k8s_xds_server_runner
 logger = logging.get_absl_logger()
 # TODO(sergiitk): move common flags/validations here: mode, security, etc
 
+MODE = flags.DEFINE_enum(
+    "mode",
+    default="default",
+    enum_values=[
+        "default",
+        "secure",
+        "app_net",
+        "gamma",
+    ],
+    help="Select server mode",
+)
+SECURITY = flags.DEFINE_enum(
+    "security",
+    default=None,
+    enum_values=[
+        "mtls",
+        "tls",
+        "plaintext",
+        "mtls_error",
+        "server_authz_error",
+    ],
+    help="Configure TD with security",
+)
 SERVER_REPLICA_COUNT = flags.DEFINE_integer(
     "server_replica_count",
     default=1,
@@ -40,6 +63,36 @@ SERVER_REPLICA_COUNT = flags.DEFINE_integer(
     upper_bound=999,
     help="The number server replicas to run.",
 )
+ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
+    "gamma_route_kind",
+    default=k8s.RouteKind.HTTP,
+    enum_class=k8s.RouteKind,
+    help="When --mode=gamma, select the kind of a gamma route the server uses",
+)
+
+# Running outside of a test suite, so require explicit resource_suffix.
+flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX)
+
+# Require --security when --mode=secure.
+flags.register_multi_flags_validator(
+    (MODE, SECURITY),
+    lambda values: values[MODE.name] != "secure" or values[SECURITY.name],
+    "When --mode=secure; --security flag is required",
+)
+
+
+@flags.multi_flags_validator(
+    (xds_flags.SERVER_XDS_PORT.name, MODE.name),
+    message=(
+        "Run outside of a test suite, must provide"
+        " the exact port value (must be greater than 0)."
+    ),
+)
+def _check_server_xds_port_flag(flags_dict):
+    if flags_dict[MODE.name] == "gamma":
+        return True
+    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
+
 
 # Type aliases
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
@@ -151,6 +204,7 @@ def make_server_runner(
             f"{xds_flags.RESOURCE_PREFIX.value}-"
             f"{xds_flags.RESOURCE_SUFFIX.value}"
         )
+        runner_kwargs["route_kind"] = ROUTE_KIND_GAMMA.value
         server_runner = GammaServerRunner
 
     return server_runner(namespace, **runner_kwargs)
