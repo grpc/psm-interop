@@ -45,6 +45,7 @@ from bin.lib import common
 from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.infrastructure import k8s
+from framework.infrastructure import traffic_director
 
 logger = logging.getLogger(__name__)
 # Flags
@@ -94,6 +95,10 @@ def _get_run_kwargs(mode: str):
             run_kwargs["route_template"] = "gamma/route_http.yaml"
         elif common.ROUTE_KIND_GAMMA.value is k8s.RouteKind.GRPC:
             run_kwargs["route_template"] = "gamma/route_grpc.yaml"
+    elif mode == "rlqs":
+        # Minimal appnet td setup so it's possible to generate config mesh name
+        td = traffic_director.TrafficDirectorAppNetManager(**common.td_attrs())
+        run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
 
     return run_kwargs
 
