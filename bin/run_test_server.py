@@ -51,23 +51,6 @@ logger = logging.getLogger(__name__)
 _CMD = flags.DEFINE_enum(
     "cmd", default="run", enum_values=["run", "cleanup"], help="Command"
 )
-_MODE = flags.DEFINE_enum(
-    "mode",
-    default="default",
-    enum_values=[
-        "default",
-        "secure",
-        "app_net",
-        "gamma",
-    ],
-    help="Select server mode",
-)
-_ROUTE_KIND_GAMMA = flags.DEFINE_enum_class(
-    "gamma_route_kind",
-    default=k8s.RouteKind.HTTP,
-    enum_class=k8s.RouteKind,
-    help="When --mode=gamma, select the kind of a gamma route to create",
-)
 _REUSE_NAMESPACE = flags.DEFINE_bool(
     "reuse_namespace", default=True, help="Use existing namespace if exists"
 )
@@ -85,8 +68,6 @@ _CLEANUP_NAMESPACE = flags.DEFINE_bool(
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
 flags.adopt_module_key_flags(common)
-# Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX)
 
 
 def _make_sigint_handler(server_runner: common.KubernetesServerRunner):
@@ -109,9 +90,9 @@ def _get_run_kwargs(mode: str):
         run_kwargs["secure_mode"] = True
     elif mode == "gamma":
         run_kwargs["generate_mesh_id"] = True
-        if _ROUTE_KIND_GAMMA.value is k8s.RouteKind.HTTP:
+        if common.ROUTE_KIND_GAMMA.value is k8s.RouteKind.HTTP:
             run_kwargs["route_template"] = "gamma/route_http.yaml"
-        elif _ROUTE_KIND_GAMMA.value is k8s.RouteKind.GRPC:
+        elif common.ROUTE_KIND_GAMMA.value is k8s.RouteKind.GRPC:
             run_kwargs["route_template"] = "gamma/route_grpc.yaml"
 
     return run_kwargs
@@ -126,7 +107,7 @@ def main(argv):
 
     # Flags.
     command: str = _CMD.value
-    mode: str = _MODE.value
+    mode: str = common.MODE.value
     # Flags: log following and port forwarding.
     should_follow_logs = _FOLLOW.value and xds_flags.COLLECT_APP_LOGS.value
     should_port_forward = (
