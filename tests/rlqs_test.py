@@ -61,7 +61,9 @@ class RlqsTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
         # TODO(sergiitk): create rl resources
 
         with self.subTest("4_start_test_server"):
-            test_server: XdsTestServer = self.startTestServers()[0]
+            test_server: XdsTestServer = self.startTestServer(
+                config_mesh=self.td.mesh.name
+            )
 
         with self.subTest("5_setup_server_backends"):
             self.setupServerBackends()

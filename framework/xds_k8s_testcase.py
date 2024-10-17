@@ -22,7 +22,7 @@ import re
 import signal
 import time
 from types import FrameType
-from typing import Any, Callable, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, Optional, Tuple, Union
 
 from absl import flags
 from absl.testing import absltest
@@ -1012,16 +1012,28 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             **kwargs,
         )
 
+    def startTestServer(
+        self,
+        server_runner: Optional[KubernetesServerRunner] = None,
+        **run_kwargs,
+    ) -> XdsTestServer:
+        return self.startTestServers(server_runner=server_runner, **run_kwargs)[
+            0
+        ]
+
     def startTestServers(
-        self, replica_count=1, server_runner=None, **kwargs
-    ) -> List[XdsTestServer]:
+        self,
+        replica_count: int = 1,
+        server_runner: Optional[KubernetesServerRunner] = None,
+        **run_kwargs,
+    ) -> list[XdsTestServer]:
         if server_runner is None:
             server_runner = self.server_runner
         test_servers = server_runner.run(
             replica_count=replica_count,
             test_port=self.server_port,
             maintenance_port=self.server_maintenance_port,
-            **kwargs,
+            **run_kwargs,
         )
         for test_server in test_servers:
             test_server.set_xds_address(
