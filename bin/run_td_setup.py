@@ -222,6 +222,26 @@ def _setup_td_appnet(
     td.create_grpc_route(server_xds_host, server_xds_port)
 
 
+def _setup_td_rlqs(
+    *,
+    td: traffic_director.TrafficDirectorAppNetManager,
+    server_xds_host,
+    server_xds_port,
+    server_namespace,
+    server_name,
+    server_port,
+):
+    td.create_health_check()
+    td.create_backend_service()
+    td.create_mesh()
+    td.create_grpc_route(server_xds_host, server_xds_port)
+    td.create_endpoint_policy(
+        server_namespace=server_namespace,
+        server_name=server_name,
+        server_port=server_port,
+    )
+
+
 def _cmd_backends_add(td, server_name, server_namespace, server_port):
     logger.info("Adding backends")
     k8s_api_manager = k8s.KubernetesApiManager(xds_k8s_flags.KUBE_CONTEXT.value)
@@ -289,6 +309,10 @@ def main(
     td_attrs = common.td_attrs()
     if mode == "app_net":
         td = traffic_director.TrafficDirectorAppNetManager(**td_attrs)
+    elif mode == "rlqs":
+        td_attrs["netsvc_class"] = traffic_director.NetworkServicesV1Alpha1
+        td_attrs["compute_api_version"] = "v1alpha"
+        td = traffic_director.TrafficDirectorAppNetManager(**td_attrs)
     elif mode == "secure":
         td = traffic_director.TrafficDirectorSecureManager(**td_attrs)
         if server_maintenance_port is None:
@@ -306,6 +330,15 @@ def main(
                     td=td,
                     server_xds_host=server_xds_host,
                     server_xds_port=server_xds_port,
+                )
+            elif mode == "rlqs":
+                _setup_td_rlqs(
+                    td=td,
+                    server_xds_host=server_xds_host,
+                    server_xds_port=server_xds_port,
+                    server_namespace=server_namespace_name,
+                    server_name=server_name,
+                    server_port=server_port,
                 )
             elif mode == "secure":
                 _setup_td_secure(

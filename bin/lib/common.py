@@ -40,6 +40,7 @@ MODE = flags.DEFINE_enum(
         "default",
         "secure",
         "app_net",
+        "rlqs",
         "gamma",
     ],
     help="Select server mode",
@@ -206,6 +207,9 @@ def make_server_runner(
         )
         runner_kwargs["route_kind"] = ROUTE_KIND_GAMMA.value
         server_runner = GammaServerRunner
+    elif mode == "rlqs":
+        depl_args = k8s_xds_server_runner.ServerDeploymentArgs(enable_rlqs=True)
+        runner_kwargs["deployment_args"] = depl_args
 
     return server_runner(namespace, **runner_kwargs)
 

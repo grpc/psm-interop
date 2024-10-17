@@ -90,7 +90,7 @@ def _get_run_kwargs(mode: str):
     if mode == "secure":
         run_kwargs["secure_mode"] = True
 
-    elif mode == "app_net":
+    elif mode in ("app_net", "rlqs"):
         # Minimal appnet td setup so it's possible to generate config mesh name
         td = traffic_director.TrafficDirectorAppNetManager(**common.td_attrs())
         run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
