@@ -43,7 +43,10 @@ ClientTlsPolicy = gcp.network_security.ClientTlsPolicy
 AuthorizationPolicy = gcp.network_security.AuthorizationPolicy
 
 # Network Services
-_NetworkServicesV1Beta1 = gcp.network_services.NetworkServicesV1Beta1
+NetworkServicesV1: TypeAlias = gcp.network_services.NetworkServicesV1
+NetworkServicesV1Alpha1: TypeAlias = (
+    gcp.network_services.NetworkServicesV1Alpha1
+)
 EndpointPolicy = gcp.network_services.EndpointPolicy
 GrpcRoute = gcp.network_services.GrpcRoute
 HttpRoute = gcp.network_services.HttpRoute
@@ -927,6 +930,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
+        netsvc_class: type[NetworkServicesV1] = NetworkServicesV1,
     ):
         super().__init__(
             gcp_api_manager,
@@ -939,9 +943,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         )
 
         # API
-        self.netsvc = gcp.network_services.NetworkServicesV1(
-            gcp_api_manager, project
-        )
+        self.netsvc = netsvc_class(gcp_api_manager, project)
 
         # Managed resources
         # TODO(gnossen) PTAL at the pylint error
@@ -953,7 +955,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
     def create_mesh(self) -> GcpResource:
         name = self.make_resource_name(self.MESH_NAME)
         logger.info("Creating Mesh %s", name)
-        body = {}
+        body = {"name": name}
         resource = self.netsvc.create_mesh(name, body)
         self.mesh = self.netsvc.get_mesh(name)
         logger.debug("Loaded Mesh: %s", self.mesh)
