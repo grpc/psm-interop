@@ -185,6 +185,7 @@ psm::dualstack::get_tests() {
     "round_robin_test"
     "circuit_breaking_test"
     "outlier_detection_test"
+    "remove_neg_test"
   )
 }
 
