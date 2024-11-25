@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: psm-grpc-client
+  labels:
+    app: psm-grpc-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: psm-grpc-client
+  template:
+    metadata:
+      labels:
+        app: psm-grpc-client
+    spec:
+      containers:
+      - name: psm-grpc-client
+        image: docker.io/grpc/xds-example-cpp-client:v1.69.x
+        imagePullPolicy: Always
+        args:         
+          - "--xds_creds"
+          - "--target=xds:///psm-grpc-server"
+        env:
+          - name: GRPC_TRACE
+            value: "http1"
+          - name: GRPC_XDS_BOOTSTRAP
+            value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
+          - name: GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE
+            value: "true"
+          - name: GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS
+            value: "true"
+          - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
+            value: "true"
+
+          - name: CSM_WORKLOAD_NAME
+            value: psm-grpc-client
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: NAMESPACE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: psm-grpc-client
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME),k8s.container.name=$(CONTAINER_NAME)
+        volumeMounts:
+          - mountPath: /tmp/grpc-xds/
+            name: grpc-td-conf
+            readOnly: true
+      initContainers:
+        - name: grpc-td-init
+          image:  gcr.io/trafficdirector-prod/td-grpc-bootstrap:0.18.0
+          imagePullPolicy: Always
+          args:
+            - "--output=/tmp/bootstrap/td-grpc-bootstrap.json"
+            - "--vpc-network-name=default"
+            - "--xds-server-uri=trafficdirector.googleapis.com:443"
+            - "--config-mesh=${config_mesh}"
+            - "--is-trusted-xds-server-experimental=true"
+          volumeMounts:
+            - mountPath: /tmp/bootstrap/
+              name: grpc-td-conf
+      volumes:
+        - name: grpc-td-conf
+          emptyDir:
+            medium: Memory
+...
