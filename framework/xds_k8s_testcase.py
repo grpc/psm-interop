@@ -40,11 +40,13 @@ import framework.helpers.highlighter
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
+from framework.infrastructure.gcp.compute import ComputeV1
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_app.runners.c6n import c6n_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_cases import base_testcase
@@ -64,6 +66,8 @@ flags.adopt_module_key_flags(xds_k8s_flags)
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 TrafficDirectorAppNetManager = traffic_director.TrafficDirectorAppNetManager
 TrafficDirectorSecureManager = traffic_director.TrafficDirectorSecureManager
+CloudRunServerRunner = c6n_xds_server_runner.CloudRunServerRunner
+TrafficDirectorCloudRunManager = traffic_director.TrafficDirectorCloudRunManager
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
@@ -213,6 +217,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             cls.resource_suffix = xds_flags.RESOURCE_SUFFIX.value
 
         # Test server
+        cls.cloudrun_server_image = xds_k8s_flags.CLOUDRUN_SERVER_IMAGE.value
         cls.server_image = xds_k8s_flags.SERVER_IMAGE.value
         cls.server_name = xds_flags.SERVER_NAME.value
         cls.server_port = xds_flags.SERVER_PORT.value
@@ -221,6 +226,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         cls.server_xds_port = xds_flags.SERVER_XDS_PORT.value
 
         # Test client
+        cls.cloudrun_client_image = xds_k8s_flags.CLOUDRUN_CLIENT_IMAGE.value
         cls.client_image = xds_k8s_flags.CLIENT_IMAGE.value
         cls.client_name = xds_flags.CLIENT_NAME.value
         cls.client_port = xds_flags.CLIENT_PORT.value
@@ -1395,3 +1401,99 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             return "missing"
         sha1 = hashlib.sha1(cert)
         return f"sha1={sha1.hexdigest()}, len={len(cert)}"
+
+
+class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
+    server_runner: CloudRunServerRunner
+    td: TrafficDirectorCloudRunManager
+    region: str
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.compute = cls.gcp_api_manager.compute(cls.compute_api_version)
+        cls.compute_v1 = ComputeV1(
+            cls.gcp_api_manager, cls.project, version=cls.compute_api_version
+        )
+        cls.region = xds_flags.REGION.value
+
+    def initTrafficDirectorManager(self) -> TrafficDirectorManager:
+        return TrafficDirectorCloudRunManager(
+            self.gcp_api_manager,
+            project=self.project,
+            resource_prefix=self.resource_prefix,
+            resource_suffix=self.resource_suffix,
+            network=self.network,
+            compute_api_version=self.compute_api_version,
+            enable_dualstack=self.enable_dualstack,
+        )
+
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return KubernetesClientRunner(
+            k8s.KubernetesNamespace(
+                self.k8s_api_manager, self.client_namespace
+            ),
+            deployment_name=self.client_name,
+            deployment_template="client.cloudrun.deployment.yaml",
+            image_name=self.cloudrun_client_image,
+            td_bootstrap_image=self.td_bootstrap_image,
+            gcp_project=self.project,
+            gcp_api_manager=self.gcp_api_manager,
+            gcp_service_account=self.gcp_service_account,
+            xds_server_uri=self.xds_server_uri,
+            network=self.network,
+            debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            stats_port=self.client_port,
+            reuse_namespace=self.server_namespace == self.client_namespace,
+            **kwargs,
+        )
+
+    def setupServerBackends(
+        self,
+        *,
+        wait_for_healthy_status=True,
+        server_runner=None,
+        max_rate_per_endpoint: Optional[int] = None,
+    ):
+        if server_runner is None:
+            server_runner = self.server_runner
+        service_url = server_runner.get_service_url()
+        self.td.backend_service_add_backends([service_url])
+
+    def startTestServers(
+        self, server_runner=None, **kwargs
+    ) -> List[XdsTestServer]:
+        logger.info(self.cloudrun_server_image)
+        if server_runner is None:
+            self.server_runner = CloudRunServerRunner(
+                project=self.project,
+                service_name=self.server_namespace,
+                image_name=self.cloudrun_server_image,
+                network=self.network,
+                region=self.region,
+            )
+        test_servers = self.server_runner.run()
+        for test_server in test_servers:
+            test_server.set_xds_address(
+                self.server_xds_host, self.server_xds_port
+            )
+        return test_servers
+
+    def startTestClient(
+        self, test_server: XdsTestServer, **kwargs
+    ) -> XdsTestClient:
+        return self._start_test_client(test_server.xds_uri, **kwargs)
+
+    def backend_service_add_serverless_neg_backends(self):
+        logger.info("Creating serverless NEG")
+        neg = self.compute_v1.create_serverless_neg(
+            self.server_namespace,
+            self.region,
+            self.server_namespace,
+            "serverless",
+        )
+        return neg
+
+    def tearDown(self):
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
