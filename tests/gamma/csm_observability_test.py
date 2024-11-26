@@ -195,7 +195,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
             ),
             namespace_template="gamma/namespace.yaml",
-            deployment_template="gamma/client.deployment.yaml"
+            deployment_template="gamma/client.deployment.yaml",
         )
 
     # These parameters are more pertaining to the test itself, not to
@@ -208,7 +208,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
             ),
             namespace_template="gamma/namespace.yaml",
-            deployment_template="gamma/server.deployment.yaml"
+            deployment_template="gamma/server.deployment.yaml",
         )
 
     def test_csm_observability(self):
