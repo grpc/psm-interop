@@ -781,7 +781,7 @@ activate_gke_cluster() {
       GKE_CLUSTER_ZONE="us-central1-a"
       ;;
     GKE_CLUSTER_PSM_CSM)
-      GKE_CLUSTER_NAME="psm-interop-csm"
+      GKE_CLUSTER_NAME="psm-interop-csm-gateway"
       GKE_CLUSTER_REGION="us-central1"
       ;;
     GKE_CLUSTER_PSM_GAMMA)
