@@ -172,7 +172,7 @@ class KubernetesApiManager:
         api_name = "gateway.networking.k8s.io"
         kind = "GRPCRoute"
         supported_versions = {
-            "v1alpha2",
+            "v1",
         }
         if version not in supported_versions:
             raise NotImplementedError(
@@ -185,7 +185,7 @@ class KubernetesApiManager:
     def http_route(self, version: str) -> dynamic_res.Resource:
         api_name = "gateway.networking.k8s.io"
         kind = "HTTPRoute"
-        supported_versions = {"v1alpha2", "v1beta1"}
+        supported_versions = {"v1", "v1beta1"}
         if version not in supported_versions:
             raise NotImplementedError(
                 f"{kind} {api_name}/{version} not implemented."
@@ -331,7 +331,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     @functools.cache
     def api_grpc_route(self) -> dynamic_res.Resource:
         return self._get_dynamic_api(
-            "gateway.networking.k8s.io/v1alpha2",
+            "gateway.networking.k8s.io/v1",
             "GRPCRoute",
         )
 
