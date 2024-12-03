@@ -193,9 +193,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 enable_csm_observability=True,
                 csm_workload_name=CSM_WORKLOAD_NAME_CLIENT,
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_CLIENT,
-            ),
-            namespace_template="gamma/namespace.yaml",
-            deployment_template="gamma/client.deployment.yaml",
+            )
         )
 
     # These parameters are more pertaining to the test itself, not to
@@ -206,9 +204,7 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
                 enable_csm_observability=True,
                 csm_workload_name=CSM_WORKLOAD_NAME_SERVER,
                 csm_canonical_service_name=CSM_CANONICAL_SERVICE_NAME_SERVER,
-            ),
-            namespace_template="gamma/namespace.yaml",
-            deployment_template="gamma/server.deployment.yaml",
+            )
         )
 
     def test_csm_observability(self):
@@ -288,7 +284,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # values
         with self.subTest("7_check_metrics_labels_histogram_client"):
             expected_metric_labels = {
-                # TODO(arvindbright): Add assetion to CSM_MESH_ID
                 "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
                 "csm_remote_workload_cluster_name": ANY,
@@ -320,7 +315,6 @@ class CsmObservabilityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         # values
         with self.subTest("8_check_metrics_labels_histogram_server"):
             expected_metric_labels = {
-                # TODO(arvindbright): Add assetion to CSM_MESH_ID
                 "csm_mesh_id": ANY,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "csm_remote_workload_cluster_name": ANY,
