@@ -225,10 +225,10 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         cls.k8s_api_manager = k8s.KubernetesApiManager(
             xds_k8s_flags.KUBE_CONTEXT.value
         )
-        if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
-            cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
-                xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value
-            )
+        #if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
+        #    cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
+        #        xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value
+        #    )
         cls.gcp_api_manager = gcp.api.GcpApiManager()
 
         # Other
