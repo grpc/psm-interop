@@ -49,8 +49,8 @@ RESPONSE_PAYLOAD_SIZE = 31415
 GRPC_METHOD_NAME = "grpc.testing.TestService/UnaryCall"
 CSM_WORKLOAD_NAME_SERVER = "psm-grpc-server"
 CSM_WORKLOAD_NAME_CLIENT = "psm-grpc-client"
-CSM_CANONICAL_SERVICE_NAME_SERVER = "deployment-psm-grpc-server"
-CSM_CANONICAL_SERVICE_NAME_CLIENT = "deployment-psm-grpc-client"
+CSM_CANONICAL_SERVICE_NAME_SERVER = "deployment-" + CSM_WORKLOAD_NAME_SERVER
+CSM_CANONICAL_SERVICE_NAME_CLIENT = "deployment-" + CSM_WORKLOAD_NAME_CLIENT
 PROMETHEUS_HOST = "prometheus.googleapis.com"
 METRIC_CLIENT_ATTEMPT_SENT = (
     f"{PROMETHEUS_HOST}/"
@@ -288,8 +288,7 @@ class CsmObservabilityTestWithInjection(xds_gamma_testcase.GammaXdsKubernetesTes
         # values
         with self.subTest("7_check_metrics_labels_histogram_client"):
             expected_metric_labels = {
-                # TODO(arvindbright): Add assetion to CSM_MESH_ID
-                "csm_mesh_id": ANY,
+                "csm_mesh_id": "proj-" + self.project_number,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,
                 "csm_remote_workload_cluster_name": ANY,
                 "csm_remote_workload_location": ANY,
@@ -321,8 +320,7 @@ class CsmObservabilityTestWithInjection(xds_gamma_testcase.GammaXdsKubernetesTes
         # values
         with self.subTest("8_check_metrics_labels_histogram_server"):
             expected_metric_labels = {
-                # TODO(arvindbright): Add assetion to CSM_MESH_ID
-                "csm_mesh_id": ANY,
+                "csm_mesh_id": "proj-" + self.project_number,
                 "csm_remote_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_CLIENT,
                 "csm_remote_workload_cluster_name": ANY,
                 "csm_remote_workload_location": ANY,
