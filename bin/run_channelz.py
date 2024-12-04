@@ -49,47 +49,9 @@ from framework.test_app import client_app
 from framework.test_app import server_app
 
 # Flags
-_MODE = flags.DEFINE_enum(
-    "mode",
-    default="default",
-    enum_values=[
-        "default",
-        "secure",
-        "app_net",
-        "gamma",
-    ],
-    help="Select test mode",
-)
-_SECURITY = flags.DEFINE_enum(
-    "security",
-    default=None,
-    enum_values=[
-        "mtls",
-        "tls",
-        "plaintext",
-        "mtls_error",
-        "server_authz_error",
-    ],
-    help="Show info for a security setup",
-)
 flags.adopt_module_key_flags(common)
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
-# Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-
-
-@flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _MODE.name),
-    message=(
-        "Run outside of a test suite, must provide"
-        " the exact port value (must be greater than 0)."
-    ),
-)
-def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_MODE.name] == "gamma":
-        return True
-    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
 
 
 logger = logging.get_absl_logger()
@@ -244,7 +206,11 @@ def main(argv):
     enable_workload_identity: bool = (
         xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
     )
-    is_secure: bool = bool(_SECURITY.value)
+    is_secure: bool = bool(common.SECURITY.value)
+    security_mode = common.SECURITY.value
+    if security_mode:
+        flags.set_default(common.MODE, "secure")
+    mode = common.MODE.value
 
     # Server.
     server_namespace = common.make_server_namespace()
@@ -252,7 +218,7 @@ def main(argv):
         server_namespace,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode=_MODE.value,
+        mode=mode,
     )
     # Find server pod.
     server_pods = common.get_server_pods(
@@ -270,7 +236,7 @@ def main(argv):
         client_namespace,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode=_MODE.value,
+        mode=mode,
     )
     # Find client pod.
     client_pod: k8s.V1Pod = common.get_client_pod(
@@ -292,7 +258,7 @@ def main(argv):
     )
 
     # Create client app for the client pod.
-    if _MODE.value == "gamma":
+    if mode == "gamma":
         server_target = (
             f"xds:///{server_runner.frontend_service_name}"
             f".{server_runner.k8s_namespace.name}.svc.cluster.local"
@@ -309,9 +275,9 @@ def main(argv):
     )
 
     with test_client, test_server:
-        if _SECURITY.value in ("mtls", "tls", "plaintext"):
+        if security_mode in ("mtls", "tls", "plaintext"):
             debug_security_setup_positive(test_client, test_server)
-        elif _SECURITY.value in ("mtls_error", "server_authz_error"):
+        elif security_mode in ("mtls_error", "server_authz_error"):
             debug_security_setup_negative(test_client)
         else:
             debug_basic_setup(test_client, test_server)
