@@ -49,8 +49,8 @@ spec:
             % if address_type:
             - "--address_type=${address_type}"
             % endif
-          ######################################################################
-          # TODO(cl/698639274): Remove the these env once this CL is released.
+          ## ####################################################################
+          ## TODO(cl/698639274): Remove the these env once this CL is released.
           env:
             - name: POD_NAME
               valueFrom:
@@ -62,7 +62,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
-          #######################################################################
+          ## #####################################################################
           ports:
             - containerPort: ${test_port}
           resources:
