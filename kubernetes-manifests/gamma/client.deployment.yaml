@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${deployment_name}
+  namespace: ${namespace_name}
+  labels:
+    app: ${app_label}
+    deployment_id: ${deployment_id}
+    owner: xds-k8s-interop-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${app_label}
+      deployment_id: ${deployment_id}
+  template:
+    metadata:
+      labels:
+        app: ${app_label}
+        deployment_id: ${deployment_id}
+        owner: xds-k8s-interop-test
+    spec:
+      % if service_account_name:
+      serviceAccountName: ${service_account_name}
+      % endif
+      containers:
+        - name: ${deployment_name}
+          image: ${image_name}
+          imagePullPolicy: Always
+          startupProbe:
+            tcpSocket:
+              port: ${stats_port}
+            periodSeconds: 3
+            ## Extend the number of probes well beyond the duration of the test
+            ## driver waiting for the container to start.
+            failureThreshold: 1000
+          args:
+            - "--server=${server_target}"
+            - "--stats_port=${stats_port}"
+            - "--qps=${qps}"
+            - "--rpc=${rpc}"
+            - "--metadata=${metadata}"
+            % if request_payload_size > 0:
+            - "--request_payload_size=${request_payload_size}"
+            % endif
+            % if response_payload_size > 0:
+            - "--response_payload_size=${response_payload_size}"
+            % endif
+            - "--print_response=${print_response}"
+            % if enable_csm_observability:
+            - "--enable_csm_observability=true"
+            % endif
+          ## ####################################################################
+          ## TODO(cl/698639274): Remove the these env once this CL is released.
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+          ## #####################################################################
+          ports:
+            - containerPort: ${stats_port}
+          resources:
+            limits:
+              cpu: 800m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+...

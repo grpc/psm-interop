@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${deployment_name}
+  namespace: ${namespace_name}
+  labels:
+    app: ${app_label}
+    deployment_id: ${deployment_id}
+    owner: xds-k8s-interop-test
+spec:
+  replicas: ${replica_count}
+  selector:
+    matchLabels:
+      app: ${app_label}
+      deployment_id: ${deployment_id}
+  template:
+    metadata:
+      labels:
+        app: ${app_label}
+        deployment_id: ${deployment_id}
+        owner: xds-k8s-interop-test
+    spec:
+      % if service_account_name:
+      serviceAccountName: ${service_account_name}
+      % endif
+      % if termination_grace_period_seconds:
+      terminationGracePeriodSeconds: ${termination_grace_period_seconds}
+      % endif
+      containers:
+        - name: ${deployment_name}
+          image: ${image_name}
+          imagePullPolicy: Always
+          ## TODO:(lsafran) test without this when ipv6 HC fw rules are in place
+          % if address_type != "ipv6":
+          startupProbe:
+            tcpSocket:
+              port: ${test_port}
+            periodSeconds: 3
+            ## Extend the number of probes well beyond the duration of the test
+            ## driver waiting for the container to start.
+            failureThreshold: 1000
+          % endif
+          args:
+            - "--port=${test_port}"
+            % if enable_csm_observability:
+            - "--enable_csm_observability=true"
+            % endif
+            % if address_type:
+            - "--address_type=${address_type}"
+            % endif
+          ## ####################################################################
+          ## TODO(cl/698639274): Remove the these env once this CL is released.
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+          ## #####################################################################
+          ports:
+            - containerPort: ${test_port}
+          resources:
+            limits:
+              cpu: 800m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+...
