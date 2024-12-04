@@ -52,7 +52,7 @@ spec:
             - "--enable_csm_observability=true"
             % endif
           ######################################################################
-          # TODO(cl/698639274): Remove the leading \\ once this CL is released.
+          # TODO(cl/698639274): Remove the these env once this CL is released.
           env:
             - name: POD_NAME
               valueFrom:
