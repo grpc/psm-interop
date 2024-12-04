@@ -169,7 +169,9 @@ class PrometheusLogger:
         self.log_stream.close()
 
 
-class CsmObservabilityTestWithInjection(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+class CsmObservabilityTestWithInjection(
+    xds_gamma_testcase.GammaXdsKubernetesTestCase
+):
     metric_client: monitoring_v3.MetricServiceClient
 
     @staticmethod
@@ -293,8 +295,7 @@ class CsmObservabilityTestWithInjection(xds_gamma_testcase.GammaXdsKubernetesTes
                 "csm_remote_workload_cluster_name": ANY,
                 "csm_remote_workload_location": ANY,
                 "csm_remote_workload_name": CSM_WORKLOAD_NAME_SERVER,
-                # TODO(cl/698639274): Remove the leading \\ once this CL is released.
-                "csm_remote_workload_namespace_name": "\\" + self.server_namespace,
+                "csm_remote_workload_namespace_name": self.server_namespace,
                 "csm_remote_workload_project_id": self.project,
                 "csm_remote_workload_type": "gcp_kubernetes_engine",
                 "csm_service_name": self.server_runner.service_name,
@@ -325,8 +326,7 @@ class CsmObservabilityTestWithInjection(xds_gamma_testcase.GammaXdsKubernetesTes
                 "csm_remote_workload_cluster_name": ANY,
                 "csm_remote_workload_location": ANY,
                 "csm_remote_workload_name": CSM_WORKLOAD_NAME_CLIENT,
-                # TODO(cl/698639274): Remove the leading \\ once this CL is released.
-                "csm_remote_workload_namespace_name": "\\" + self.client_namespace,
+                "csm_remote_workload_namespace_name": self.client_namespace,
                 "csm_remote_workload_project_id": self.project,
                 "csm_remote_workload_type": "gcp_kubernetes_engine",
                 "csm_workload_canonical_service": CSM_CANONICAL_SERVICE_NAME_SERVER,

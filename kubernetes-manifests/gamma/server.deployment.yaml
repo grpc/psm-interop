@@ -49,6 +49,20 @@ spec:
             % if address_type:
             - "--address_type=${address_type}"
             % endif
+          ######################################################################
+          # TODO(cl/698639274): Remove the leading \\ once this CL is released.
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
+          #######################################################################
           ports:
             - containerPort: ${test_port}
           resources:
