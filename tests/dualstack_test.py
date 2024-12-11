@@ -17,7 +17,7 @@ from typing import Final
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
