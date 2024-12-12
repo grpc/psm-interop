@@ -84,6 +84,8 @@ psm::lb::get_tests() {
     "remove_neg_test"
     "round_robin_test"
     "circuit_breaking_test"
+    "app_net_ssa_test"
+    "app_net_csm_observability_test"
   )
   # master-only tests
   if [[ "${TESTING_VERSION}" =~ "master" ]]; then
@@ -319,8 +321,6 @@ psm::csm::get_tests() {
     "gamma.affinity_session_drain_test"
     "gamma.csm_observability_test"
     "gamma.csm_observability_with_injection_test"
-    "app_net_ssa_test"
-    "app_net_csm_observability_test"
   )
 }
 
