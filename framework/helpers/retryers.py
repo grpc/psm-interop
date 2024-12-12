@@ -22,7 +22,7 @@ We use tenacity as a general-purpose retrying library.
 """
 import datetime
 import logging
-from typing import Any, Callable, List, Optional, Tuple, Type
+from typing import Any, Callable, List, Tuple, Type
 
 import tenacity
 from tenacity import _utils as tenacity_utils
@@ -41,8 +41,8 @@ _ExceptionClasses = Tuple[Type[Exception], ...]
 
 def _build_retry_conditions(
     *,
-    retry_on_exceptions: Optional[_ExceptionClasses] = None,
-    check_result: Optional[CheckResultFn] = None,
+    retry_on_exceptions: _ExceptionClasses | None = None,
+    check_result: CheckResultFn | None = None,
 ) -> List[retry_base]:
     # Retry on all exceptions by default
     if retry_on_exceptions is None:
@@ -63,10 +63,10 @@ def exponential_retryer_with_timeout(
     wait_min: timedelta,
     wait_max: timedelta,
     timeout: timedelta,
-    retry_on_exceptions: Optional[_ExceptionClasses] = None,
-    check_result: Optional[CheckResultFn] = None,
-    logger: Optional[logging.Logger] = None,
-    log_level: Optional[int] = logging.DEBUG,
+    retry_on_exceptions: _ExceptionClasses | None = None,
+    check_result: CheckResultFn | None = None,
+    logger: logging.Logger | None = None,
+    log_level: int | None = logging.DEBUG,
     error_note: str = "",
 ) -> Retrying:
     if logger is None:
@@ -95,11 +95,11 @@ def constant_retryer(
     *,
     wait_fixed: timedelta,
     attempts: int = 0,
-    timeout: Optional[timedelta] = None,
-    retry_on_exceptions: Optional[_ExceptionClasses] = None,
-    check_result: Optional[CheckResultFn] = None,
-    logger: Optional[logging.Logger] = None,
-    log_level: Optional[int] = logging.DEBUG,
+    timeout: timedelta | None = None,
+    retry_on_exceptions: _ExceptionClasses | None = None,
+    check_result: CheckResultFn | None = None,
+    logger: logging.Logger | None = None,
+    log_level: int | None = logging.DEBUG,
     error_note: str = "",
 ) -> Retrying:
     if logger is None:
@@ -134,9 +134,9 @@ def constant_retryer(
 
 def _on_error_callback(
     *,
-    timeout: Optional[timedelta] = None,
+    timeout: timedelta | None = None,
     attempts: int = 0,
-    check_result: Optional[CheckResultFn] = None,
+    check_result: CheckResultFn | None = None,
     error_note: str = "",
 ):
     """A helper to propagate the initial state to the RetryError, so that
@@ -234,9 +234,9 @@ class RetryError(tenacity.RetryError):
         self,
         retry_state,
         *,
-        timeout: Optional[timedelta] = None,
+        timeout: timedelta | None = None,
         attempts: int = 0,
-        check_result: Optional[CheckResultFn] = None,
+        check_result: CheckResultFn | None = None,
         note: str = "",
     ):
         last_attempt: tenacity.Future = retry_state.outcome
@@ -292,7 +292,7 @@ class RetryError(tenacity.RetryError):
         return self.exception_str() if self.exception() else self.result_str()
 
     @classmethod
-    def _exception_str(cls, err: Optional[BaseException]) -> str:
+    def _exception_str(cls, err: BaseException | None) -> str:
         return f"{type(err).__name__}: {err}" if err else "???"
 
     # TODO(sergiitk): Remove in py3.11, this will be built-in. See PEP 678.
