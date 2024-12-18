@@ -267,10 +267,8 @@ class Client(GrpcProcess):
             image=image,
             name=name,
             command=[
-                "--server",
-                url,
-                "--stats_port",
-                str(port),
+                f"--server={url}",
+                f"--stats_port={port}",
             ],
             ports={str(port): port},
             volumes={
