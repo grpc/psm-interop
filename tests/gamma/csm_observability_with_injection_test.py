@@ -176,11 +176,7 @@ class CsmObservabilityTestWithInjection(
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.CPP:
-            return config.version_gte("v1.62.x")
-        elif config.client_lang in _Lang.GO | _Lang.JAVA | _Lang.PYTHON:
-            return config.version_gte("v1.65.x")
-        return False
+        return config.version_gte("v1.68.x")
 
     @classmethod
     def setUpClass(cls):
