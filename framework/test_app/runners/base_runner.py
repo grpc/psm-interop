@@ -19,7 +19,7 @@ from abc import abstractmethod
 import functools
 import pathlib
 import threading
-from typing import Dict, Optional
+from typing import Dict
 import urllib.parse
 
 from absl import flags
@@ -36,8 +36,8 @@ class RunnerError(Exception):
 
 
 class BaseRunner(metaclass=ABCMeta):
-    _logs_subdir: Optional[pathlib.Path] = None
-    _log_stop_event: Optional[threading.Event] = None
+    _logs_subdir: pathlib.Path | None = None
+    _log_stop_event: threading.Event | None = None
 
     def __init__(self):
         if xds_flags.COLLECT_APP_LOGS.value:
@@ -86,7 +86,7 @@ class BaseRunner(metaclass=ABCMeta):
         gcp_ui_url: str,
         gcp_project: str,
         query: Dict[str, str],
-        request: Optional[Dict[str, str]] = None,
+        request: Dict[str, str] | None = None,
     ) -> str:
         req_merged = {"query": cls._logs_explorer_query(query)}
         if request is not None:
