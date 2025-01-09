@@ -49,7 +49,11 @@ _STATUS_TIMEOUT_MS = flags.DEFINE_integer(
 _STATUS_POLL_INTERVAL_MS = flags.DEFINE_integer(
     "status_poll_interval_ms", 300, "Channel status poll interval (in ms)"
 )
-
+_STATS_REQUEST_TIMEOUT_S = flags.DEFINE_integer(
+    "stats_request_timeout_s",
+    300,
+    "Number of seconds the client will wait for the requested number of RPCs",
+)
 _LISTENER = "listener_0"
 
 absl.flags.adopt_module_key_flags(framework.xds_k8s_testcase)
@@ -92,6 +96,7 @@ class FallbackTest(absltest.TestCase):
             port=port or get_free_port(),
             url=f"xds:///{_LISTENER}",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
+            stats_request_timeout_s = _STATS_REQUEST_TIMEOUT_S.value,
         )
 
     def start_control_plane(
