@@ -96,7 +96,7 @@ class FallbackTest(absltest.TestCase):
             port=port or get_free_port(),
             url=f"xds:///{_LISTENER}",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
-            stats_request_timeout_s = _STATS_REQUEST_TIMEOUT_S.value,
+            stats_request_timeout_s=_STATS_REQUEST_TIMEOUT_S.value,
         )
 
     def start_control_plane(
