@@ -14,7 +14,6 @@
 
 import datetime
 import logging
-import math
 import pathlib
 import threading
 import time
@@ -260,6 +259,7 @@ class Client(GrpcProcess):
         name: str,
         url: str,
         image: str,
+        stats_request_timeout_s: str,
     ):
         super().__init__(
             manager=manager,
@@ -278,13 +278,14 @@ class Client(GrpcProcess):
                 }
             },
         )
+        self.stats_request_timeout_s = stats_request_timeout_s
 
     def get_stats(self, num_rpcs: int):
         logger.debug("Sending %d requests", num_rpcs)
         stub = test_pb2_grpc.LoadBalancerStatsServiceStub(self.channel())
         res = stub.GetClientStats(
             messages_pb2.LoadBalancerStatsRequest(
-                num_rpcs=num_rpcs, timeout_sec=math.ceil(num_rpcs * 10)
+                num_rpcs=num_rpcs, timeout_sec=self.stats_request_timeout_s
             )
         )
         return res
