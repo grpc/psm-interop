@@ -44,17 +44,6 @@ from framework.test_app import client_app
 from framework.test_app import server_app
 
 # Flags
-_MODE = flags.DEFINE_enum(
-    "mode",
-    default="default",
-    enum_values=[
-        "default",
-        "secure",
-        "app_net",
-        "gamma",
-    ],
-    help="Select a deployment of the client/server",
-)
 _NUM_RPCS = flags.DEFINE_integer(
     "num_rpcs",
     default=100,
@@ -65,22 +54,6 @@ _NUM_RPCS = flags.DEFINE_integer(
 flags.adopt_module_key_flags(common)
 flags.adopt_module_key_flags(xds_flags)
 flags.adopt_module_key_flags(xds_k8s_flags)
-# Running outside of a test suite, so require explicit resource_suffix.
-flags.mark_flag_as_required(xds_flags.RESOURCE_SUFFIX.name)
-
-
-@flags.multi_flags_validator(
-    (xds_flags.SERVER_XDS_PORT.name, _MODE.name),
-    message=(
-        "Run outside of a test suite, must provide"
-        " the exact port value (must be greater than 0)."
-    ),
-)
-def _check_server_xds_port_flag(flags_dict):
-    if flags_dict[_MODE.name] == "gamma":
-        return True
-    return flags_dict[xds_flags.SERVER_XDS_PORT.name] > 0
-
 
 logger = logging.get_absl_logger()
 
@@ -141,7 +114,7 @@ def main(argv):
         common.make_server_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode=_MODE.value,
+        mode=common.MODE.value,
     )
     # Ensure server pods are running
     common.get_server_pods(server_runner, xds_flags.SERVER_NAME.value)
@@ -151,7 +124,7 @@ def main(argv):
         common.make_client_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
-        mode=_MODE.value,
+        mode=common.MODE.value,
     )
     # Find client pod.
     client_pod: k8s.V1Pod = common.get_client_pod(
@@ -162,7 +135,7 @@ def main(argv):
     common.register_graceful_exit(server_runner, client_runner)
 
     # Create client app for the client pod.
-    if _MODE.value == "gamma":
+    if common.MODE.value == "gamma":
         server_target = (
             f"xds:///{server_runner.frontend_service_name}"
             f".{server_runner.k8s_namespace.name}.svc.cluster.local"
