@@ -445,9 +445,6 @@ psm::run::test() {
   # Some test suites have canonical server image configured in the flagfiles.
   if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     PSM_TEST_FLAGS+=("--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}")
-  elif [[ "${GRPC_LANGUAGE}" == "node"  ]]; then
-    # TODO(b/261911148): To be replaced with --server_image_use_canonical when implemented.
-    PSM_TEST_FLAGS+=("--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:canonical-v1.66")
   fi
 
   # So far, only LB test uses secondary GKE cluster.
@@ -535,14 +532,9 @@ psm::setup::docker_image_names() {
   SERVER_IMAGE_USE_CANONICAL=""
 
   case "${language}" in
-    java | cpp | python | go)
+    java | cpp | python | go | node)
       CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
       SERVER_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
-      ;;
-    node)
-      CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
-      SERVER_IMAGE_NAME=""
-      SERVER_IMAGE_USE_CANONICAL="1"
       ;;
     *)
       psm::tools::log "Unknown Language: ${1}"

@@ -46,7 +46,8 @@ class CustomLbTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         # gRPC Java implemented server "error-code-" rpc-behavior in v1.47.x.
         # gRPC CPP implemented rpc-behavior in the same version, as custom_lb.
-        if client_lang in _Lang.JAVA | _Lang.CPP:
+        # gRPC Node implemented the server in 1.13.x
+        if client_lang in _Lang.JAVA | _Lang.CPP | _Lang.NODE:
             return
 
         # gRPC Go implemented server "error-code-" rpc-behavior in v1.59.x,
@@ -54,7 +55,7 @@ class CustomLbTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         if client_lang == _Lang.GO and cls.lang_spec.version_gte("v1.59.x"):
             return
 
-        # gRPC go, python and node fallback to the gRPC Java.
+        # gRPC go and python fallback to the gRPC Java.
         # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
         cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
