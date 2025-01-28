@@ -7,6 +7,7 @@
 
 ## Project settings
 --project=${PROJECT_ID}
+--project_number=${PROJECT_NUMBER}
 --gcp_service_account=${WORKLOAD_SA_EMAIL}
 --private_api_key_secret_name=projects/${PROJECT_NUMBER}/secrets/xds-interop-tests-private-api-access-key
 

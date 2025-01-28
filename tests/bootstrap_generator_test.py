@@ -53,6 +53,8 @@ GCR_TESTING: Final[str] = (
 # after the release is published.
 def bootstrap_version_testcases() -> Sequence[dict[str, str]]:
     return (
+        dict(version="v0.18.0", image=f"{GCR_PROD}:0.18.0"),
+        dict(version="v0.17.0", image=f"{GCR_PROD}:0.17.0"),
         dict(version="v0.16.0", image=f"{GCR_PROD}:0.16.0"),
         dict(version="v0.15.0", image=f"{GCR_PROD}:0.15.0"),
         dict(version="v0.14.0", image=f"{GCR_PROD}:0.14.0"),

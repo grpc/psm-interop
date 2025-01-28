@@ -136,6 +136,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     secondary_k8s_api_manager: Optional[k8s.KubernetesApiManager] = None
     network: str
     project: str
+    project_number: str
     resource_prefix: str
     resource_suffix: str = ""
     # Whether to randomize resources names for each test by appending a
@@ -180,6 +181,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
         # GCP
         cls.project = xds_flags.PROJECT.value
+        cls.project_number = xds_flags.PROJECT_NUMBER.value
         cls.network = xds_flags.NETWORK.value
         cls.gcp_service_account = xds_k8s_flags.GCP_SERVICE_ACCOUNT.value
         cls.td_bootstrap_image = xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value

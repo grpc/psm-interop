@@ -22,6 +22,9 @@ from framework.helpers import highlighter
 PROJECT = flags.DEFINE_string(
     "project", default=None, help="(required) GCP Project ID."
 )
+PROJECT_NUMBER = flags.DEFINE_string(
+    "project_number", default=None, help="GCP Project Number."
+)
 RESOURCE_PREFIX = flags.DEFINE_string(
     "resource_prefix",
     default=None,
