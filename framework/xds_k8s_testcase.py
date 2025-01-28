@@ -28,6 +28,7 @@ from absl import flags
 from absl.testing import absltest
 from google.protobuf import json_format
 import grpc
+from typing_extensions import TypeAlias
 
 from framework import xds_flags
 from framework import xds_k8s_flags
@@ -68,6 +69,8 @@ XdsTestClient = client_app.XdsTestClient
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
+TestConfig: TypeAlias = skips.TestConfig
+Lang: TypeAlias = skips.Lang
 _LoadBalancerStatsResponse = grpc_testing.LoadBalancerStatsResponse
 _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
@@ -89,28 +92,27 @@ TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 _TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
 
-def evaluate_test_config(
-    check: Callable[[skips.TestConfig], bool]
-) -> skips.TestConfig:
-    """Evaluates the test config check against Abseil flags.
-
-    TODO(sergiitk): split into parse_lang_spec and check_is_supported.
-    """
-    # NOTE(lidiz) a manual skip mechanism is needed because absl/flags
-    # cannot be used in the built-in test-skipping decorators. See the
-    # official FAQs:
-    # https://abseil.io/docs/python/guides/flags#faqs
-    test_config = skips.TestConfig(
+def parse_lang_spec_from_flags() -> TestConfig:
+    test_config = TestConfig(
         client_lang=skips.get_lang(xds_k8s_flags.CLIENT_IMAGE.value),
         server_lang=skips.get_lang(xds_k8s_flags.SERVER_IMAGE.value),
         version=xds_flags.TESTING_VERSION.value,
     )
-    if not check(test_config):
-        logger.info("Skipping %s", test_config)
-        raise absltest.SkipTest(f"Unsupported test config: {test_config}")
-
     logger.info("Detected language and version: %s", test_config)
     return test_config
+
+
+def evaluate_is_supported(
+    test_config: TestConfig, is_supported_fn: Callable[[TestConfig], bool]
+):
+    """Evaluates the suite-specific is_supported against the test_config."""
+    # NOTE(lidiz) a manual skip mechanism is needed because absl/flags
+    # cannot be used in the built-in test-skipping decorators. See the
+    # official FAQs:
+    # https://abseil.io/docs/python/guides/flags#faqs
+    if not is_supported_fn(test_config):
+        logger.info("Skipping %s", test_config)
+        raise absltest.SkipTest(f"Unsupported test config: {test_config}")
 
 
 class TdPropagationRetryableError(Exception):
@@ -118,7 +120,7 @@ class TdPropagationRetryableError(Exception):
 
 
 class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
-    lang_spec: skips.TestConfig
+    lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
     ensure_firewall: bool = False
@@ -151,7 +153,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     enable_dualstack: bool = False
 
     @staticmethod
-    def is_supported(config: skips.TestConfig) -> bool:
+    def is_supported(config: TestConfig) -> bool:
         """Overridden by the test class to decide if the config is supported.
 
         Returns:
@@ -168,9 +170,20 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         logger.info("----- Testing %s -----", cls.__name__)
         logger.info("Logs timezone: %s", time.localtime().tm_zone)
 
+        lang_spec = parse_lang_spec_from_flags()
+
+        # Currently it's possible to lang_spec.server_lang to be out of sync
+        # with the server_image when a test_suite overrides the server_image
+        # at the end of its setUpClass().
+        # A common example is overriding the server image to canonical.
+        # This can be fixed by moving server image overrides to its own
+        # class method and re-parsing the lang spec.
+        # TODO(sergiitk): provide custom server_image_override(TestConfig)
+
         # Raises unittest.SkipTest if given client/server/version does not
         # support current test case.
-        cls.lang_spec = evaluate_test_config(cls.is_supported)
+        evaluate_is_supported(lang_spec, cls.is_supported)
+        cls.lang_spec = lang_spec
 
         # Must be called before KubernetesApiManager or GcpApiManager init.
         xds_flags.set_socket_default_timeout_from_flag()

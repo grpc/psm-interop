@@ -220,9 +220,11 @@ class XdsUrlMapTestCase(
         logging.info("----- Testing %s -----", cls.__name__)
         logging.info("Logs timezone: %s", time.localtime().tm_zone)
 
+        lang_spec = xds_k8s_testcase.parse_lang_spec_from_flags()
+
         # Raises unittest.SkipTest if given client/server/version does not
         # support current test case.
-        xds_k8s_testcase.evaluate_test_config(cls.is_supported)
+        xds_k8s_testcase.evaluate_is_supported(lang_spec, cls.is_supported)
 
         # Configure cleanup to run after all tests regardless of
         # whether setUpClass failed.
