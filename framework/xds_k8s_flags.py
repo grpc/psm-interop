@@ -33,6 +33,18 @@ TD_BOOTSTRAP_IMAGE = flags.DEFINE_string(
     help="Traffic Director gRPC Bootstrap Docker image",
 )
 
+CLOUDRUN_SERVER_IMAGE = flags.DEFINE_string(
+    "cloudrun_server_image",
+    default=None,
+    help="Cloudrun Server Docker image name",
+)
+
+CLOUDRUN_CLIENT_IMAGE = flags.DEFINE_string(
+    "cloudrun_client_image",
+    default=None,
+    help="Cloudrun Client Docker image name",
+)
+
 # Test app
 SERVER_IMAGE = flags.DEFINE_string(
     "server_image", default=None, help="Server Docker image name"
