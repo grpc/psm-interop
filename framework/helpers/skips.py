@@ -16,7 +16,6 @@ from dataclasses import dataclass
 import enum
 import logging
 import re
-from typing import Optional
 
 from packaging import version as pkg_version
 
@@ -51,7 +50,7 @@ class TestConfig:
 
     client_lang: Lang
     server_lang: Lang
-    version: Optional[str]
+    version: str | None
 
     def version_gte(self, another: str) -> bool:
         """Returns a bool for whether this VERSION is >= then ANOTHER version.

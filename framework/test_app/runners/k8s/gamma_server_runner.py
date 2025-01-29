@@ -17,7 +17,7 @@ Run xDS Test Client on Kubernetes using Gamma
 import dataclasses
 import datetime
 import logging
-from typing import Final, Optional
+from typing import Final
 
 from typing_extensions import override
 
@@ -41,11 +41,11 @@ class ServerDeploymentArgs(k8s_xds_server_runner.ServerDeploymentArgs):
 
 class GammaServerRunner(KubernetesServerRunner):
     # Mutable state.
-    route: Optional[k8s.GammaHttpRoute] = None
-    frontend_service: Optional[k8s.V1Service] = None
-    session_affinity_filter: Optional[k8s.GcpSessionAffinityFilter] = None
-    session_affinity_policy: Optional[k8s.GcpSessionAffinityPolicy] = None
-    backend_policy: Optional[k8s.GcpBackendPolicy] = None
+    route: k8s.GammaHttpRoute | None = None
+    frontend_service: k8s.V1Service | None = None
+    session_affinity_filter: k8s.GcpSessionAffinityFilter | None = None
+    session_affinity_policy: k8s.GcpSessionAffinityPolicy | None = None
+    backend_policy: k8s.GcpBackendPolicy | None = None
 
     route_kind: Final[RouteKind]
     route_name: Final[str]
@@ -65,23 +65,23 @@ class GammaServerRunner(KubernetesServerRunner):
         td_bootstrap_image: str,
         app_label: str = "",
         network: str = "default",
-        xds_server_uri: Optional[str] = None,
+        xds_server_uri: str | None = None,
         gcp_api_manager: gcp.api.GcpApiManager,
         gcp_project: str,
         gcp_service_account: str,
-        service_account_name: Optional[str] = None,
-        service_name: Optional[str] = None,
+        service_account_name: str | None = None,
+        service_name: str | None = None,
         route_kind: k8s.RouteKind = k8s.RouteKind.HTTP,
-        neg_name: Optional[str] = None,
+        neg_name: str | None = None,
         deployment_template: str = "server.deployment.yaml",
         service_account_template: str = "service-account.yaml",
         service_template: str = "gamma/service.yaml",
         reuse_service: bool = False,
         reuse_namespace: bool = False,
-        namespace_template: Optional[str] = None,
+        namespace_template: str | None = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        deployment_args: Optional[ServerDeploymentArgs] = None,
+        deployment_args: ServerDeploymentArgs | None = None,
     ):
         # pylint: disable=too-many-locals
         super().__init__(
@@ -118,11 +118,11 @@ class GammaServerRunner(KubernetesServerRunner):
         self,
         *,
         test_port: int = KubernetesServerRunner.DEFAULT_TEST_PORT,
-        maintenance_port: Optional[int] = None,
+        maintenance_port: int | None = None,
         secure_mode: bool = False,
         replica_count: int = 1,
         log_to_stdout: bool = False,
-        bootstrap_version: Optional[str] = None,
+        bootstrap_version: str | None = None,
         route_template: str = "gamma/route_http.yaml",
         generate_mesh_id: bool = False,
     ) -> list[XdsTestServer]:
@@ -266,7 +266,7 @@ class GammaServerRunner(KubernetesServerRunner):
     def create_backend_policy(
         self,
         *,
-        draining_timeout: Optional[datetime.timedelta] = None,
+        draining_timeout: datetime.timedelta | None = None,
     ):
         draining_timeout_sec: int = 0
         if draining_timeout:
