@@ -20,7 +20,7 @@ from typing import List, Optional
 import uuid
 
 from absl import flags
-from absl import logging
+
 from typing_extensions import override
 
 from framework import xds_flags

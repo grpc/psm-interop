@@ -217,7 +217,6 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             cls.resource_suffix = xds_flags.RESOURCE_SUFFIX.value
 
         # Test server
-        cls.cloudrun_server_image = xds_k8s_flags.CLOUDRUN_SERVER_IMAGE.value
         cls.server_image = xds_k8s_flags.SERVER_IMAGE.value
         cls.server_name = xds_flags.SERVER_NAME.value
         cls.server_port = xds_flags.SERVER_PORT.value
@@ -1464,12 +1463,12 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     def startTestServers(
         self, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
-        logger.info(self.cloudrun_server_image)
+        logger.info(self.server_image)
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
                 project=self.project,
                 service_name=self.server_namespace,
-                image_name=self.cloudrun_server_image,
+                image_name=self.server_image,
                 network=self.network,
                 region=self.region,
             )
