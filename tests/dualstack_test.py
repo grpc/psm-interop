@@ -49,6 +49,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.66.x")
         if config.client_lang == _Lang.NODE:
             return config.version_gte("v1.12.x")
+        if config.client_lang == _Lang.GO:
+            return config.version_gte("v1.71.x")
         return False
 
     @classmethod
