@@ -69,7 +69,7 @@ LEGACY_DRIVER_ZONE = "us-central1-a"
 LEGACY_DRIVER_SECONDARY_ZONE = "us-west1-b"
 
 PSM_INTEROP_PREFIX = "psm-interop"  # Prefix for gke resources to delete.
-GAMMA_PREFIX = "csm-psm" # Prefix for csm gke resources to delete.
+GAMMA_PREFIX = "psm-csm" # Prefix for csm gke resources to delete.
 URL_MAP_TEST_PREFIX = (
     "interop-psm-url-map"  # Prefix for url-map test resources to delete.
 )
@@ -442,6 +442,10 @@ def cleanup_gamma_server(
         gcp_api_manager=gcp_api_manager,
         image_name="",
         td_bootstrap_image="",
+        frontend_service_name=(
+            f"{xds_flags.RESOURCE_PREFIX.value}-"
+            f"{xds_flags.RESOURCE_SUFFIX.value}"
+        )
     )
 
     logger.info("Cleanup gamma server")
