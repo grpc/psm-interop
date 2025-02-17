@@ -22,7 +22,7 @@ from absl import logging
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import c6n
+from framework.infrastructure.gcp import c6n
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.test_app import client_app

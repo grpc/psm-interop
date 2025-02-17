@@ -246,6 +246,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         affinity_header: Optional[str] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
+        is_cloudrun: Optional[bool] = False,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -261,10 +262,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             locality_lb_policies=locality_lb_policies,
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
+            is_cloudrun=is_cloudrun,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
-        logger.info("backend service protocal")
+        logger.info("backend service protocol")
         logger.info(self.backend_service_protocol)
 
     def load_backend_service(self):
@@ -1320,9 +1322,11 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
         )
 
         # API
-        self.netsvc = gcp.network_services.NetworkServicesV1(
-            gcp_api_manager, project
-        )
+        # netsvc: gcp.network_services.NetworkServicesV1
+        # self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
+        # self.netsvc = gcp.network_services.NetworkServicesV1(
+        #     gcp_api_manager, project
+        # )
 
         # Managed resources
         # TODO(gnossen) PTAL at the pylint error
@@ -1373,6 +1377,7 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
         self.compute.backend_service_patch_backends(
             backend_service,
             backends,
+            is_cloudrun=True,
         )
 
     def create_grpc_route(self, src_host: str, src_port: int):
@@ -1399,7 +1404,6 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
             }
             if hasattr(self, "mesh") and self.mesh:
                 route_body["meshes"] = self.mesh.url
-
             resource = self.netsvc.create_grpc_route(route_name, route_body)
             self.grpc_route = self.netsvc.get_grpc_route(route_name)
             logger.info("gRPC Route created successfully: %s", self.grpc_route)

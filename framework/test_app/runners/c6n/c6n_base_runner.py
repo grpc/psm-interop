@@ -22,7 +22,7 @@ import logging
 from typing import Optional
 
 import framework
-from framework.infrastructure import c6n
+from framework.infrastructure.gcp import c6n
 from framework.test_app.runners import base_runner
 
 logger = logging.getLogger(__name__)
@@ -51,8 +51,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     network: Optional[str] = None
     tag: str = "latest"
     region: Optional[str] = None
-    _current_revision: Optional[str] = None
-    gcp_project: Optional[str] = None
+    current_revision: Optional[str] = None
+    # gcp_project: Optional[str] = None
     gcp_ui_url: Optional[str] = None
 
     run_history: collections.deque[RunHistory]
@@ -77,9 +77,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.network = network
         self.region = region
         self.current_revision = None
-        self.gcp_project = None
+        # self.gcp_project = None
         self.gcp_ui_url = None
-        self.run_history = collections.deque()
 
         # Persistent across many runs.
         self.run_history = collections.deque()
@@ -111,19 +110,19 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             )
 
         self._reset_state()
-        self.time_start_requested = dt.datetime.now(tz=dt.timezone.utc)
-        self._current_revision = self.cloudrun_api_manager.deploy_service(
-            self.service_name, self.image_name
+        self.time_start_requested = _datetime.now()
+        self.current_revision = self.cloudrun_api_manager.deploy_service(
+            self.service_name, self.image_name, 
         )
 
     def _start_completed(self):
-        self.time_start_completed = dt.datetime.now(tz=dt.timezone.utc)
+        self.time_start_completed = _datetime.now()
 
     def _stop(self):
-        self.time_stopped = dt.datetime.now(tz=dt.timezone.utc)
+        self.time_stopped = _datetime.now()
         if self.time_start_requested:
             run_history = RunHistory(
-                revision_id=self._current_revision,
+                revision_id=self.current_revision,
                 time_start_requested=self.time_start_requested,
                 time_start_completed=self.time_start_completed,
                 time_stopped=self.time_stopped,

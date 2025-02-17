@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Run xDS Test Client on Kubernetes.
+Run xDS Test Server on Cloud Run.
 """
 import dataclasses
 import logging
@@ -25,7 +25,7 @@ from typing_extensions import override
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure import c6n
+from framework.infrastructure.gcp import c6n
 from framework.test_app.runners.c6n import c6n_base_runner
 from framework.test_app.server_app import XdsTestServer
 
@@ -86,16 +86,15 @@ class CloudRunServerRunner(c6n_base_runner.CloudRunBaseRunner):
         """Deploys and manages the xDS Test Server on Cloud Run."""
         logger.info(self.service_name)
         logger.info(self.image_name)
-        deployed_service_url = self.cloudrun_api_manager.deploy_service(
-            service_name=self.service_name,
-            image_name=self.image_name,
-        )
+        
+        super().run(**kwargs)
         servers = [
             XdsTestServer(
-                ip="0.0.0.0", rpc_port=0, hostname=deployed_service_url
+                ip="0.0.0.0", rpc_port=0, hostname=self.current_revision
             )
         ]
         self.servers = servers  # Add servers to the list
+        self._start_completed()
         return servers
 
     def get_service_url(self):
@@ -103,4 +102,6 @@ class CloudRunServerRunner(c6n_base_runner.CloudRunBaseRunner):
 
     @override
     def cleanup(self, *, force=False):
-        return super().cleanup(force=force)
+       super().cleanup(force=force)
+       self._stop()
+       return

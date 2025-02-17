@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: psm-grpc-client
-        image: ${image_name}
+        image: us-docker.pkg.dev/grpc-testing/psm-interop/java-client:v1.63.x
         imagePullPolicy: Always
         args:         
           - "--xds_creds"
@@ -32,43 +32,33 @@ spec:
             value: "true"
           - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
             value: "true"
-% if csm_workload_name:
-            - name: CSM_WORKLOAD_NAME
-              value: ${csm_workload_name}
-            % endif
-            % if csm_canonical_service_name:
-            - name: CSM_CANONICAL_SERVICE_NAME
-              value: ${csm_canonical_service_name}
-            % endif
-            % if enable_csm_observability:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: NAMESPACE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: OTEL_RESOURCE_ATTRIBUTES
-              value: k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(NAMESPACE_NAME)
-            % endif
+
+          - name: CSM_WORKLOAD_NAME
+            value: psm-grpc-client
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: NAMESPACE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONTAINER_NAME
+            value: psm-grpc-client
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: k8s.pod.name=\$(POD_NAME),k8s.namespace.name=\$(NAMESPACE_NAME),k8s.container.name=\$(CONTAINER_NAME)
         volumeMounts:
           - mountPath: /tmp/grpc-xds/
             name: grpc-td-conf
             readOnly: true
       initContainers:
         - name: grpc-td-init
-          image: ${td_bootstrap_image}
+          image: us-docker.pkg.dev/grpc-testing/trafficdirector/td-grpc-bootstrap:ad35743ff01c0dc16a785e421591d7d52f3cdda4
           imagePullPolicy: Always
           args:
             - "--output=/tmp/bootstrap/td-grpc-bootstrap.json"
-            - "--vpc-network-name=${network}"
-            % if xds_server_uri:
-            - "--xds-server-uri=${xds_server_uri}"
-            % endif
-            % if config_mesh:
-            - "--config-mesh-experimental=${config_mesh}"
-            % endif
+            - "--vpc-network-name=default"
+            - "--config-mesh-experimental=emchandwani-psm-grpc-mesh-20250217-0927-24ueq"
             - "--is-trusted-xds-server-experimental=true"
             # - "--gcp-project=emchandwani-default"
           volumeMounts:

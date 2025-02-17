@@ -36,7 +36,7 @@ spec:
             ## driver waiting for the container to start.
             failureThreshold: 1000
           args:
-            - "--server=psm-grpc-server:8080"
+            - "--server=${server_target}"
             - "--stats_port=${stats_port}"
             - "--qps=${qps}"
             - "--rpc=${rpc}"

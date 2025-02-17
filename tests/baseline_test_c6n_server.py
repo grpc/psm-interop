@@ -23,8 +23,8 @@ _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
-class BaselineTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
-    def test_traffic_director_grpc_setup(self):
+class CloudRunServerBaselineTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
+    def test_GKE_client_cloudrun_service(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
 
@@ -35,9 +35,7 @@ class BaselineTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
             neg = self.backend_service_add_serverless_neg_backends()
 
         with self.subTest("3_create_backend_service"):
-            self.td.create_backend_service(
-                protocol=self.compute_v1.BackendServiceProtocol.HTTP2
-            )
+            self.td.create_backend_service(protocol=self.compute_v1.BackendServiceProtocol.HTTP2,is_cloudrun=True)
 
         with self.subTest("4_add_server_backends_to_backend_service"):
             neg_resource = self.compute_v1.GcpResource(

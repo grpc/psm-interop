@@ -152,15 +152,20 @@ class ComputeV1(
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         enable_dualstack: bool = False,
+        is_cloudrun: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
         body = {
             "name": name,
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
-            # "healthChecks": [health_check.url],
             "protocol": protocol.name,
         }
+        # If it is not for cloud run, add heath check since cloud run does not
+        #  support health check.
+        if not is_cloudrun:
+            body["healthChecks"] = [health_check.url]
+
         # If add dualstack support is specified True, config the backend service
         # to support IPv6
         if enable_dualstack:
@@ -204,17 +209,26 @@ class ComputeV1(
         max_rate_per_endpoint: Optional[int] = None,
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
+        is_cloudrun: bool = False,
     ):
-        if max_rate_per_endpoint is None:
-            max_rate_per_endpoint = 5
-        backend_list = [
-            {
-                "group": backend.url,
-                #                "balancingMode": "CONNECTION",
-                #                "maxRatePerEndpoint": max_rate_per_endpoint,
-            }
-            for backend in backends
-        ]
+        if is_cloudrun:
+            backend_list = [
+                {"group": backend.url}
+                for backend in backends
+            ]
+        else:
+            if max_rate_per_endpoint is None:
+                max_rate_per_endpoint = 5
+
+            backend_list = [
+                {
+                    "group": backend.url,
+                    "balancingMode": "RATE",
+                    "maxRatePerEndpoint": max_rate_per_endpoint,
+                }
+                for backend in backends
+            ]
+
 
         request = {"backends": backend_list}
         if circuit_breakers:
@@ -559,7 +573,7 @@ class ComputeV1(
         )
 
     def create_serverless_neg(
-        self, name: str, region: str, service_name: str, network: str
+        self, name: str, region: str, service_name: str
     ):
         """Creates a serverless NEG.
 
@@ -587,7 +601,7 @@ class ComputeV1(
                 .execute()
             )
             neg = self.get_serverless_network_endpoint_group(name, region)
-            print(neg)
+            logger.info(neg)
             return neg
 
         except Exception as e:

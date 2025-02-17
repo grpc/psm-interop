@@ -13,14 +13,18 @@
 # limitations under the License.
 
 #emchandwani : check
+import abc
 import logging
 
 from google.cloud import run_v2
 
+from framework.infrastructure.gcp.api import GcpProjectApiResource
+
 logger = logging.getLogger(__name__)
 
 
-class CloudRunApiManager:
+class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
+    DEFAULT_TEST_PORT = 8080
     project: str
     region: str
     _parent: str
@@ -40,7 +44,7 @@ class CloudRunApiManager:
         self._parent = f"projects/{self.project}/locations/{self.region}"
         self._service = None
 
-    def deploy_service(self, service_name: str, image_name: str):
+    def deploy_service(self, service_name: str, image_name: str, *,test_port: int = DEFAULT_TEST_PORT):
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
         if not image_name:
@@ -55,7 +59,8 @@ class CloudRunApiManager:
                         ports=[
                             run_v2.ContainerPort(
                                 name="http1",
-                                container_port=50051,
+                                # emchandwani : change to self.server_xds_port
+                                container_port=test_port,
                             ),
                         ],
                     )
@@ -69,7 +74,8 @@ class CloudRunApiManager:
 
         try:
             operation = self._client.create_service(request=request)
-            self._service = operation.result(timeout=300)
+            # operation=GcpProjectApiResource.wait_for_operation(operation_request=request,test_success_fn=logger.info("done"))
+            self._service = operation.result(timeout=600)
             logger.info("Deployed service: %s", self._service.uri)
             return self._service.uri
         except Exception as e:
