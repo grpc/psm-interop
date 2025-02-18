@@ -58,7 +58,7 @@ class GammaServerRunner(KubernetesServerRunner):
     def __init__(
         self,
         k8s_namespace: k8s.KubernetesNamespace,
-        frontend_service_name: str, #
+        frontend_service_name: str,
         *,
         deployment_name: str,
         image_name: str,
@@ -71,7 +71,7 @@ class GammaServerRunner(KubernetesServerRunner):
         gcp_service_account: str,
         service_account_name: Optional[str] = None,
         service_name: Optional[str] = None,
-        route_kind: k8s.RouteKind = k8s.RouteKind.HTTP, #
+        route_kind: k8s.RouteKind = k8s.RouteKind.HTTP,
         neg_name: Optional[str] = None,
         deployment_template: str = "server.deployment.yaml",
         service_account_template: str = "service-account.yaml",

@@ -40,11 +40,12 @@ import dateutil
 from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.helpers import retryers
+from framework.test_app.runners.k8s import gamma_server_runner
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
 from framework.test_app.runners.k8s import k8s_xds_client_runner
-from framework.test_app.runners.k8s import k8s_xds_server_runner, gamma_server_runner
+from framework.test_app.runners.k8s import k8s_xds_server_runner
 
 logger = logging.getLogger(__name__)
 Json = Any
@@ -69,7 +70,7 @@ LEGACY_DRIVER_ZONE = "us-central1-a"
 LEGACY_DRIVER_SECONDARY_ZONE = "us-west1-b"
 
 PSM_INTEROP_PREFIX = "psm-interop"  # Prefix for gke resources to delete.
-GAMMA_PREFIX = "psm-csm" # Prefix for csm gke resources to delete.
+GAMMA_PREFIX = "psm-csm"  # Prefix for csm gke resources to delete.
 URL_MAP_TEST_PREFIX = (
     "interop-psm-url-map"  # Prefix for url-map test resources to delete.
 )
@@ -414,16 +415,17 @@ def cleanup_client(
         )
         raise
 
+
 # cleanup_gamma_server creates a server runner, and calls its cleanup() method.
 def cleanup_gamma_server(
-        project,
-        network,
-        k8s_api_manager,
-        server_namespace,
-        gcp_api_manager,
-        gcp_service_account,
-        *,
-        suffix: Optional[str] = "",
+    project,
+    network,
+    k8s_api_manager,
+    server_namespace,
+    gcp_api_manager,
+    gcp_service_account,
+    *,
+    suffix: Optional[str] = "",
 ):
     deployment_name = xds_flags.SERVER_NAME.value
     if suffix:
@@ -445,7 +447,7 @@ def cleanup_gamma_server(
         frontend_service_name=(
             f"{xds_flags.RESOURCE_PREFIX.value}-"
             f"{xds_flags.RESOURCE_SUFFIX.value}"
-        )
+        ),
     )
 
     logger.info("Cleanup gamma server")
