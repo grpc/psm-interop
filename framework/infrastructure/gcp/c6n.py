@@ -75,7 +75,7 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
         try:
             operation = self._client.create_service(request=request)
             # operation=GcpProjectApiResource.wait_for_operation(operation_request=request,test_success_fn=logger.info("done"))
-            self._service = operation.result(timeout=600)
+            self._service = operation.result(timeout=800)
             logger.info("Deployed service: %s", self._service.uri)
             return self._service.uri
         except Exception as e:

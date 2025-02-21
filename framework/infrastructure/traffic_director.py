@@ -1380,34 +1380,36 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
             is_cloudrun=True,
         )
 
-    def create_grpc_route(self, src_host: str, src_port: int):
-        hostname = src_host
-        route_name = f"{self.resource_prefix}-grpc-route-{self.resource_suffix}"
-        logger.info("Creating gRPC route: %s", route_name)
+    # def create_grpc_route(self, src_host: str, src_port: int):
+    #     self.create_grpc_route(src_host, src_port)
+        # hostname = f"{src_host}:{src_port}"
+        # route_name = f"{self.resource_prefix}-grpc-route-{self.resource_suffix}"
+        # logger.info("Creating gRPC route: %s", route_name)
+        # service_name=self.netsvc.resource_full_name(
+        #     self.backend_service.name, "backendServices"
+        # )
+        # try:
+        #     # backend_service_url = self.backend_service.url.split("v1/")[-1]
+        #     # URL of the backend service
+        #     route_body = {
+        #         "name": route_name,
+        #         "hostnames": [hostname],
+        #         "rules": [
+        #             {
+        #                 "action": {
+        #                     "destinations": [
+        #                         {"serviceName": service_name}
+        #                     ]
+        #                 },
+        #             }
+        #         ],
+        #     }
+        #     if hasattr(self, "mesh") and self.mesh:
+        #         route_body["meshes"] = self.mesh.url
+        #     resource = self.netsvc.create_grpc_route(route_name, route_body)
+        #     self.grpc_route = self.netsvc.get_grpc_route(route_name)
+        #     logger.info("gRPC Route created successfully: %s", self.grpc_route)
 
-        try:
-            backend_service_url = self.backend_service.url.split("v1/")[-1]
-            # URL of the backend service
-            route_body = {
-                "name": route_name,
-                "hostnames": [hostname],
-                "rules": [
-                    {
-                        "matches": [],  #  Empty matches means any rpc
-                        "action": {
-                            "destinations": [
-                                {"serviceName": backend_service_url}
-                            ]
-                        },
-                    }
-                ],
-            }
-            if hasattr(self, "mesh") and self.mesh:
-                route_body["meshes"] = self.mesh.url
-            resource = self.netsvc.create_grpc_route(route_name, route_body)
-            self.grpc_route = self.netsvc.get_grpc_route(route_name)
-            logger.info("gRPC Route created successfully: %s", self.grpc_route)
-
-        except Exception as e:  # Catching generic exceptions for now
-            logger.exception("Error creating gRPC route: %s", e)
-            raise
+        # except Exception as e:  # Catching generic exceptions for now
+        #     logger.exception("Error creating gRPC route: %s", e)
+        #     raise

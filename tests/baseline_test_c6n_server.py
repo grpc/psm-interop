@@ -45,7 +45,7 @@ class CloudRunServerBaselineTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase)
             self.td.backend_service_add_backends([neg_resource], self.region)
 
         with self.subTest("5_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_port)
+            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
 
         with self.subTest("7_start_test_client"):
             test_client: _XdsTestClient = self.startTestClient(

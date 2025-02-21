@@ -1441,7 +1441,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
-            deployment_template="client.cloudrun.deployment.yaml",
+            deployment_template="client.deployment.yaml",
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             **kwargs,
@@ -1483,7 +1483,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     ) -> XdsTestClient:
         # logger.info("emchandwani : test server : %v",test_server)
         logger.info("emchandwani : xds URI : %s",test_server.xds_uri)
-        return self._start_test_client(test_server.xds_uri, **kwargs)
+        return self._start_test_client(test_server.xds_uri,secure_mode=True, **kwargs)
 
     def backend_service_add_serverless_neg_backends(self):
         logger.info("Creating serverless NEG")

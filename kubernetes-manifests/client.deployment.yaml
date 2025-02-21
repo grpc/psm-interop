@@ -54,24 +54,16 @@ spec:
           ports:
             - containerPort: ${stats_port}
           env:
+            - name: GRPC_TRACE
+              value: "xds_client"
             - name: GRPC_XDS_BOOTSTRAP
               value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
-            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RING_HASH
+            - name: GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE
               value: "true"
-            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RETRY
+            - name: GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS
               value: "true"
-            - name: GRPC_EXPERIMENTAL_ENABLE_OUTLIER_DETECTION
+            - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
               value: "true"
-            - name: GRPC_EXPERIMENTAL_XDS_CUSTOM_LB_CONFIG
-              value: "true"
-            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
-              value: "true"
-            % if enable_dualstack:
-            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
-              value: "true"
-            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
-              value: "true"
-            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}
@@ -114,11 +106,12 @@ spec:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
             % if config_mesh:
-            - "--config-mesh-experimental=${config_mesh}"
+            - "--config-mesh=${config_mesh}"
             % endif
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"
             % endif
+            - "--is-trusted-xds-server-experimental=true"
           resources:
             limits:
               cpu: 100m
