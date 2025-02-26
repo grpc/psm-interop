@@ -40,8 +40,8 @@ import framework.helpers.highlighter
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
-import framework.infrastructure.traffic_director_cloudrun as td_cloudrun
 from framework.infrastructure.gcp.compute import ComputeV1
+import framework.infrastructure.traffic_director_cloudrun as td_cloudrun
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
@@ -1459,7 +1459,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
         service_url = server_runner.get_service_url()
         self.td.backend_service_add_backends([service_url])
 
-    def  startTestServers(
+    def startTestServers(
         self, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
         logger.info(self.server_image)
@@ -1479,16 +1479,15 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
         return test_servers
 
     def startTestClient(
-       self,
-       test_server: XdsTestServer,
-       **kwargs,
-   ) -> XdsTestClient:
-       return self._start_test_client(
-           server_target=test_server.xds_uri,
-           secure_mode=True,
-           **kwargs,
-       )
-
+        self,
+        test_server: XdsTestServer,
+        **kwargs,
+    ) -> XdsTestClient:
+        return self._start_test_client(
+            server_target=test_server.xds_uri,
+            secure_mode=True,
+            **kwargs,
+        )
 
     def backend_service_add_serverless_neg_backends(self):
         logger.info("Creating serverless NEG")
@@ -1497,9 +1496,9 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             self.region,
             self.server_namespace,
         )
-        self.neg=neg
+        self.neg = neg
         return neg
-    
+
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
@@ -1535,7 +1534,6 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )
-
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)

@@ -13,10 +13,13 @@
 # limitations under the License.
 import logging
 from typing import Optional, Sequence
+
+from framework.infrastructure import gcp
 from framework.infrastructure.gcp.network_security import NetworkSecurityV1Beta1
 from framework.infrastructure.gcp.network_services import NetworkServicesV1Beta1
-from framework.infrastructure.traffic_director import TrafficDirectorAppNetManager
-from framework.infrastructure import gcp
+from framework.infrastructure.traffic_director import (
+    TrafficDirectorAppNetManager,
+)
 
 # _NetworkSecurityV1Beta1 = gcp.network_security.NetworkSecurityV1Beta1
 ServerTlsPolicy = gcp.network_security.ServerTlsPolicy
@@ -29,6 +32,7 @@ EndpointPolicy = gcp.network_services.EndpointPolicy
 GrpcRoute = gcp.network_services.GrpcRoute
 HttpRoute = gcp.network_services.HttpRoute
 Mesh = gcp.network_services.Mesh
+
 
 class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
     MESH_NAME = "grpc-mesh"
@@ -88,7 +92,6 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
     ):
-
         new_backends = []
         for backend in backends:
             new_backend = {

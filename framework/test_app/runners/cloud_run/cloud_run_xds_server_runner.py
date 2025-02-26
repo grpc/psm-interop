@@ -20,7 +20,6 @@ from typing import List, Optional
 import uuid
 
 from absl import flags
-
 from typing_extensions import override
 
 from framework import xds_flags
@@ -86,7 +85,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         """Deploys and manages the xDS Test Server on Cloud Run."""
         logger.info(self.service_name)
         logger.info(self.image_name)
-        
+
         super().run(**kwargs)
         servers = [
             XdsTestServer(
@@ -105,6 +104,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         try:
             if self.service:
                 self.stop()
-                self.service_name=None
+                self.service_name = None
         finally:
             self._stop()

@@ -22,9 +22,9 @@ from absl import logging
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure.gcp import cloud_run
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.infrastructure.gcp import cloud_run
 from framework.test_app import client_app
 from framework.test_app import server_app
 from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner

@@ -131,7 +131,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         log_to_stdout: bool = False,
         request_payload_size: int = 0,
         response_payload_size: int = 0,
-        is_trusted_xds_server_experimental: bool=False
+        is_trusted_xds_server_experimental: bool = False,
     ) -> client_app.XdsTestClient:
         logger.info(
             (
@@ -147,7 +147,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             metadata,
             secure_mode,
             print_response,
-            is_trusted_xds_server_experimental
+            is_trusted_xds_server_experimental,
         )
         super().run()
 

@@ -111,7 +111,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self._reset_state()
         self.time_start_requested = _datetime.now()
         self.current_revision = self.cloudrun_api_manager.deploy_service(
-            self.service_name, self.image_name, 
+            self.service_name,
+            self.image_name,
         )
 
     def _start_completed(self):

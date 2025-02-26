@@ -212,10 +212,7 @@ class ComputeV1(
         is_cloudrun: bool = False,
     ):
         if is_cloudrun:
-            backend_list = [
-                {"group": backend.url}
-                for backend in backends
-            ]
+            backend_list = [{"group": backend.url} for backend in backends]
         else:
             if max_rate_per_endpoint is None:
                 max_rate_per_endpoint = 5
@@ -228,7 +225,6 @@ class ComputeV1(
                 }
                 for backend in backends
             ]
-
 
         request = {"backends": backend_list}
         if circuit_breakers:
@@ -572,9 +568,7 @@ class ComputeV1(
             .execute()
         )
 
-    def create_serverless_neg(
-        self, name: str, region: str, service_name: str
-    ):
+    def create_serverless_neg(self, name: str, region: str, service_name: str):
         """Creates a serverless NEG.
 
         Args:

@@ -42,7 +42,13 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
         self._parent = f"projects/{self.project}/locations/{self.region}"
         self._service = None
 
-    def deploy_service(self, service_name: str, image_name: str, *,test_port: int = DEFAULT_TEST_PORT):
+    def deploy_service(
+        self,
+        service_name: str,
+        image_name: str,
+        *,
+        test_port: int = DEFAULT_TEST_PORT,
+    ):
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
         if not image_name:

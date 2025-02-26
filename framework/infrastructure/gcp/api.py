@@ -514,6 +514,7 @@ class GcpProjectApiResource:
 
 class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
     GLOBAL_LOCATION = "global"
+
     def parent(self, location: Optional[str] = GLOBAL_LOCATION):
         if location is None:
             location = self.GLOBAL_LOCATION
