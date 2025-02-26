@@ -574,7 +574,8 @@ class ComputeV1(
         Args:
             name: The name of the NEG.
             region: The region in which to create the NEG.
-            service_name: The name of the Cloud Run service.  Format: "namespaces/{namespace}/services/{service}"
+            service_name: The name of the Cloud Run service.
+            service_name format is "namespaces/{namespace}/services/{service}"
 
         Returns:
             The NEG selfLink URL
@@ -588,11 +589,9 @@ class ComputeV1(
 
         try:
             logger.info("Creating serverless NEG %s in %s", name, region)
-            operation = (
-                self.api.regionNetworkEndpointGroups()
-                .insert(project=self.project, region=region, body=neg_body)
-                .execute()
-            )
+            self.api.regionNetworkEndpointGroups().insert(
+                project=self.project, region=region, body=neg_body
+            ).execute()
             neg = self.get_serverless_network_endpoint_group(name, region)
             logger.info(neg)
             return neg

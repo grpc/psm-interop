@@ -1450,17 +1450,18 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     def setupServerBackends(
         self,
         *,
-        wait_for_healthy_status=True,
         server_runner=None,
         max_rate_per_endpoint: Optional[int] = None,
     ):
         if server_runner is None:
             server_runner = self.server_runner
         service_url = server_runner.get_service_url()
-        self.td.backend_service_add_backends([service_url])
+        self.td.backend_service_add_backends(
+            [service_url], max_rate_per_endpoint=max_rate_per_endpoint
+        )
 
     def startTestServers(
-        self, server_runner=None, **kwargs
+        self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
         logger.info(self.server_image)
         if server_runner is None:
@@ -1496,7 +1497,6 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             self.region,
             self.server_namespace,
         )
-        self.neg = neg
         return neg
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):

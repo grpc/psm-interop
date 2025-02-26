@@ -47,7 +47,7 @@ SERVER_REPLICA_COUNT = flags.DEFINE_integer(
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 GammaServerRunner = gamma_server_runner.GammaServerRunner
-CloudRunServerRunner=cloud_run_xds_server_runner.CloudRunServerRunner
+CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -64,7 +64,7 @@ def gcp_api_manager():
 
 @functools.cache
 def c6n_api_manager():
-    return cloud_run.CloudRunApiManager()
+    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value, region=xds_flags.REGION.value)
 
 def td_attrs():
     return dict(
@@ -161,14 +161,14 @@ def make_server_runner(
 
     return server_runner(namespace, **runner_kwargs)
 
-def make_c6n_server_runner() -> CloudRunServerRunner:
+def make_cloud_run_server_runner() -> CloudRunServerRunner:
     # CloudRunServerRunner arguments.
     runner_kwargs = dict(
-        project = xds_flags.PROJECT.value,
-        service_name = xds_flags.SERVER_NAME.value,
-        image_name = xds_k8s_flags.SERVER_IMAGE.value,
-        network = xds_flags.NETWORK.value,
-        region = xds_flags.REGION.value,
+        project=xds_flags.PROJECT.value,
+        service_name=xds_flags.SERVER_NAME.value,
+        image_name=xds_k8s_flags.SERVER_IMAGE.value,
+        network=xds_flags.NETWORK.value,
+        region=xds_flags.REGION.value,
     )
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)

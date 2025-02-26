@@ -15,8 +15,6 @@ import logging
 from typing import Optional, Sequence
 
 from framework.infrastructure import gcp
-from framework.infrastructure.gcp.network_security import NetworkSecurityV1Beta1
-from framework.infrastructure.gcp.network_services import NetworkServicesV1Beta1
 from framework.infrastructure.traffic_director import (
     TrafficDirectorAppNetManager,
 )
@@ -85,7 +83,6 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
     def backend_service_add_backends(
         self,
         backends: Sequence[str],
-        region: Optional[str] = None,
         balancing_mode: str = "CONNECTION",
         max_rate_per_endpoint: Optional[int] = None,
         capacity_scaler: float = 1.0,
