@@ -1450,6 +1450,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     def setupServerBackends(
         self,
         *,
+        wait_for_healthy_status=True,
         server_runner=None,
         max_rate_per_endpoint: Optional[int] = None,
     ):
@@ -1459,6 +1460,10 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
         self.td.backend_service_add_backends(
             [service_url], max_rate_per_endpoint=max_rate_per_endpoint
         )
+        if wait_for_healthy_status:
+            self.td.wait_for_backends_healthy_status(
+                replica_count=server_runner.replica_count
+            )
 
     def startTestServers(
         self, replica_count=1, server_runner=None, **kwargs

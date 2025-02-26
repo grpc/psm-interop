@@ -64,7 +64,8 @@ def gcp_api_manager():
 
 @functools.cache
 def c6n_api_manager():
-    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value, region=xds_flags.REGION.value)
+    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value,
+                                        region=xds_flags.REGION.value)
 
 def td_attrs():
     return dict(
