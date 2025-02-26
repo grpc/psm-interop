@@ -38,9 +38,9 @@ _timedelta = datetime.timedelta
 
 # Constants
 GCR_PROD: Final[str] = "gcr.io/trafficdirector-prod/td-grpc-bootstrap"
-GCR_TESTING: Final[str] = (
-    "us-docker.pkg.dev/grpc-testing/trafficdirector/td-grpc-bootstrap"
-)
+GCR_TESTING: Final[
+    str
+] = "us-docker.pkg.dev/grpc-testing/trafficdirector/td-grpc-bootstrap"
 
 
 # Returns a list of bootstrap generator versions to be tested along with their

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#emchandwani : check
 import abc
 import logging
 
@@ -58,8 +56,7 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
                         image=image_name,
                         ports=[
                             run_v2.ContainerPort(
-                                name="http1",
-                                # emchandwani : change to self.server_xds_port
+                                name="h2c",
                                 container_port=test_port,
                             ),
                         ],
@@ -74,8 +71,7 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
 
         try:
             operation = self._client.create_service(request=request)
-            # operation=GcpProjectApiResource.wait_for_operation(operation_request=request,test_success_fn=logger.info("done"))
-            self._service = operation.result(timeout=800)
+            self._service = operation.result(timeout=600)
             logger.info("Deployed service: %s", self._service.uri)
             return self._service.uri
         except Exception as e:

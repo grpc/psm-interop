@@ -581,7 +581,6 @@ class ComputeV1(
             name: The name of the NEG.
             region: The region in which to create the NEG.
             service_name: The name of the Cloud Run service.  Format: "namespaces/{namespace}/services/{service}"
-            network: The network of the NEG. Format: "projects/{project}/global/networks/{network}"
 
         Returns:
             The NEG selfLink URL

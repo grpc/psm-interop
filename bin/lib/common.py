@@ -22,12 +22,12 @@ from absl import logging
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure.gcp import c6n
+from framework.infrastructure.gcp import cloud_run
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_app.runners.c6n import c6n_xds_server_runner
+from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
@@ -47,7 +47,7 @@ SERVER_REPLICA_COUNT = flags.DEFINE_integer(
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 GammaServerRunner = gamma_server_runner.GammaServerRunner
-CloudRunServerRunner=c6n_xds_server_runner.CloudRunServerRunner
+CloudRunServerRunner=cloud_run_xds_server_runner.CloudRunServerRunner
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -64,7 +64,7 @@ def gcp_api_manager():
 
 @functools.cache
 def c6n_api_manager():
-    return c6n.CloudRunApiManager()
+    return cloud_run.CloudRunApiManager()
 
 def td_attrs():
     return dict(

@@ -17,23 +17,23 @@ Run test xds server.
 Typical usage examples:
 
     # Help.
-    ./run.sh ./bin/run_test_server_c6n.py --help
+    ./run.sh ./bin/run_test_server_cloud_run.py --help
 
     # Run modes.
-    ./run.sh ./bin/run_test_server_c6n.py --mode=app_net
-    ./run.sh ./bin/run_test_server_c6n.py --mode=secure
+    ./run.sh ./bin/run_test_server_cloud_run.py --mode=app_net
+    ./run.sh ./bin/run_test_server_cloud_run.py --mode=secure
 
     # Gamma run mode: uses HTTPRoute by default.
-    ./run.sh ./bin/run_test_server_c6n.py --mode=gamma
+    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma
 
     # Gamma run mode: use GRPCRoute.
-    ./run.sh ./bin/run_test_server_c6n.py --mode=gamma --gamma_route_kind=grpc
+    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma --gamma_route_kind=grpc
 
     # Running multipler server replicas.
-    ./run.sh ./bin/run_test_server_c6n.py --server_replica_count=3
+    ./run.sh ./bin/run_test_server_cloud_run.py --server_replica_count=3
 
     # Cleanup: make sure to set the same mode used to create.
-    ./run.sh ./bin/run_test_server_c6n.py --mode=gamma --cmd=cleanup
+    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma --cmd=cleanup
 """
 import logging
 
@@ -58,7 +58,7 @@ def main(argv):
     xds_flags.set_socket_default_timeout_from_flag()
 
     run_kwargs = dict()
-    server_runner = common.make_c6n_server_runner()
+    server_runner = common.make_cloud_run_server_runner()
     server_runner.run(**run_kwargs)
 
 

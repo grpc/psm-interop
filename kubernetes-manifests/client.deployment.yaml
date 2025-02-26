@@ -41,6 +41,9 @@ spec:
             - "--qps=${qps}"
             - "--rpc=${rpc}"
             - "--metadata=${metadata}"
+            % if secure_mode:
+            - "--secure_mode=${secure_mode}"
+            % endif
             % if request_payload_size > 0:
             - "--request_payload_size=${request_payload_size}"
             % endif
@@ -64,6 +67,22 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
               value: "true"
+            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RING_HASH
+              value: "true"
+            - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RETRY
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_ENABLE_OUTLIER_DETECTION
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_CUSTOM_LB_CONFIG
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
+              value: "true"
+            % if enable_dualstack:
+            - name: GRPC_EXPERIMENTAL_ENABLE_NEW_PICK_FIRST
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
+              value: "true"
+            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}
@@ -111,7 +130,9 @@ spec:
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"
             % endif
+            % if is_trusted_xds_server_experimental:
             - "--is-trusted-xds-server-experimental=true"
+            % endif
           resources:
             limits:
               cpu: 100m

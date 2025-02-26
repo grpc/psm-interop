@@ -201,7 +201,7 @@ ENABLE_DUALSTACK = flags.DEFINE_bool(
 
 REGION = flags.DEFINE_string(
     "region",
-    default="us-central1",
+    default=None,
     help="The region for deployment",
 )
 

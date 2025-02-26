@@ -1,4 +1,4 @@
-# Copyright 2022 gRPC authors.
+# Copyright 2025 gRPC authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ from typing_extensions import override
 
 from framework import xds_flags
 from framework import xds_k8s_flags
-from framework.infrastructure.gcp import c6n
-from framework.test_app.runners.c6n import c6n_base_runner
+from framework.infrastructure.gcp import cloud_run
+from framework.test_app.runners.cloud_run import cloud_run_base_runner
 from framework.test_app.server_app import XdsTestServer
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class CloudRunDeploymentArgs:
         }
 
 
-class CloudRunServerRunner(c6n_base_runner.CloudRunBaseRunner):
+class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
     """Manages xDS Test Servers running on Cloud Run."""
 
     def __init__(
@@ -102,6 +102,9 @@ class CloudRunServerRunner(c6n_base_runner.CloudRunBaseRunner):
 
     @override
     def cleanup(self, *, force=False):
-       super().cleanup(force=force)
-       self._stop()
-       return
+        try:
+            if self.service:
+                self.stop()
+                self.service_name=None
+        finally:
+            self._stop()

@@ -22,7 +22,7 @@ import logging
 from typing import Optional
 
 import framework
-from framework.infrastructure.gcp import c6n
+from framework.infrastructure.gcp import cloud_run
 from framework.test_app.runners import base_runner
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     image_name: str
     network: Optional[str] = None
     tag: str = "latest"
-    region: Optional[str] = None
+    region: str = "us-central1"
     current_revision: Optional[str] = None
     # gcp_project: Optional[str] = None
     gcp_ui_url: Optional[str] = None
@@ -66,8 +66,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         project: str,
         service_name: str,
         image_name: str,
+        region: str,
         network: Optional[str] = None,
-        region: Optional[str] = None,
     ) -> None:
         super().__init__()
 
@@ -77,7 +77,6 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.network = network
         self.region = region
         self.current_revision = None
-        # self.gcp_project = None
         self.gcp_ui_url = None
 
         # Persistent across many runs.
@@ -93,7 +92,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
     def _initalize_cloudrun_api_manager(self):
         """Initializes the CloudRunApiManager."""
-        self.cloudrun_api_manager = c6n.CloudRunApiManager(
+        self.cloudrun_api_manager = cloud_run.CloudRunApiManager(
             project=self.project, region=self.region
         )
 
@@ -129,17 +128,13 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             )
             self.run_history.append(run_history)
 
-    @classmethod
-    def _get_workload_identity_member_name(
-        cls, project, namespace_name, service_account_name
-    ):
-        """
-        Returns workload identity member name used to authenticate Kubernetes
-        service accounts.
-
-        https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity
-        """
-        return (
-            f"serviceAccount:{project}.svc.id.goog"
-            f"[{namespace_name}/{service_account_name}]"
-        )
+    def stop(self):
+        """Deletes Cloud Run Service"""
+        logger.info("Deleting Cloud Run service: %s", self.service_name)
+        try:
+            self.cloudrun_api_manager.delete_service(self.service_name)
+            logger.info("Cloud Run service %s deleted", self.service_name)
+        except Exception as e:
+            logger.warning(
+                "Cloud Run service %s deletion failed: %s", self.service_name, e
+            )

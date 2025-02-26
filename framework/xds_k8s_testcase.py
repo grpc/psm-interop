@@ -40,13 +40,14 @@ import framework.helpers.highlighter
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
+import framework.infrastructure.traffic_director_cloudrun as td_cloudrun
 from framework.infrastructure.gcp.compute import ComputeV1
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_app.runners.c6n import c6n_xds_server_runner
+from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_cases import base_testcase
@@ -66,8 +67,8 @@ flags.adopt_module_key_flags(xds_k8s_flags)
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 TrafficDirectorAppNetManager = traffic_director.TrafficDirectorAppNetManager
 TrafficDirectorSecureManager = traffic_director.TrafficDirectorSecureManager
-CloudRunServerRunner = c6n_xds_server_runner.CloudRunServerRunner
-TrafficDirectorCloudRunManager = traffic_director.TrafficDirectorCloudRunManager
+CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
+TrafficDirectorCloudRunManager = td_cloudrun.TrafficDirectorCloudRunManager
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
@@ -1404,7 +1405,6 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     server_runner: CloudRunServerRunner
     td: TrafficDirectorCloudRunManager
-    region: str
 
     @classmethod
     def setUpClass(cls):
@@ -1479,11 +1479,16 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
         return test_servers
 
     def startTestClient(
-        self, test_server: XdsTestServer, **kwargs
-    ) -> XdsTestClient:
-        # logger.info("emchandwani : test server : %v",test_server)
-        logger.info("emchandwani : xds URI : %s",test_server.xds_uri)
-        return self._start_test_client(test_server.xds_uri,secure_mode=True, **kwargs)
+       self,
+       test_server: XdsTestServer,
+       **kwargs,
+   ) -> XdsTestClient:
+       return self._start_test_client(
+           server_target=test_server.xds_uri,
+           secure_mode=True,
+           **kwargs,
+       )
+
 
     def backend_service_add_serverless_neg_backends(self):
         logger.info("Creating serverless NEG")
@@ -1492,7 +1497,77 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             self.region,
             self.server_namespace,
         )
+        self.neg=neg
         return neg
+    
+    def assertXdsConfigExists(self, test_client: XdsTestClient):
+        config = test_client.csds.fetch_client_status(log_level=logging.INFO)
+        self.assertIsNotNone(config)
+        seen = set()
+        want = frozenset(
+            [
+                "listener_config",
+                "cluster_config",
+                "route_config",
+            ]
+        )
+        for xds_config in config.xds_config:
+            seen.add(xds_config.WhichOneof("per_xds_config"))
+        for generic_xds_config in config.generic_xds_configs:
+            if re.search(r"\.Listener$", generic_xds_config.type_url):
+                seen.add("listener_config")
+            elif re.search(
+                r"\.RouteConfiguration$", generic_xds_config.type_url
+            ):
+                seen.add("route_config")
+            elif re.search(r"\.Cluster$", generic_xds_config.type_url):
+                seen.add("cluster_config")
+
+        logger.debug(
+            "Received xDS config dump: %s",
+            json_format.MessageToJson(config, indent=2),
+        )
+        self.assertSameElements(want, seen)
+
+    def cleanup(self):
+        self.td.cleanup(force=self.force_cleanup)
+        self.server_runner.cleanup(force=self.force_cleanup)
+        self.client_runner.cleanup(
+            force=self.force_cleanup, force_namespace=self.force_cleanup
+        )
+
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)
+        logger.debug("Getting pods restart times")
+        client_restarts: int = 0
+        try:
+            client_restarts = self.client_runner.get_pod_restarts(
+                self.client_runner.deployment
+            )
+        except (retryers.RetryError, k8s.NotFound) as e:
+            logger.exception(e)
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=_timedelta(seconds=10),
+            attempts=3,
+            log_level=logging.INFO,
+        )
+        try:
+            retryer(self.cleanup)
+        except retryers.RetryError:
+            logger.exception("Got error during teardown")
+        finally:
+            logger.info("----- Test client/server logs -----")
+            self.client_runner.logs_explorer_run_history_links()
+
+            # Fail if any of the pods restarted.
+            self.assertEqual(
+                client_restarts,
+                0,
+                msg=(
+                    "Client container unexpectedly restarted"
+                    f" {client_restarts} times during test. In most cases, this"
+                    " is caused by the test client app crash."
+                ),
+            )

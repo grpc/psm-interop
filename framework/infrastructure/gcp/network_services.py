@@ -112,19 +112,14 @@ class GrpcRoute:
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "GrpcRoute.RouteMatch":
             return cls(
-                method=(
-                    GrpcRoute.MethodMatch.from_response(d["method"])
-                    if "method" in d
-                    else None
-                ),
-                headers=(
-                    tuple(
-                        GrpcRoute.HeaderMatch.from_response(h)
-                        for h in d["headers"]
-                    )
-                    if "headers" in d
-                    else ()
-                ),
+                method=GrpcRoute.MethodMatch.from_response(d["method"])
+                if "method" in d
+                else None,
+                headers=tuple(
+                    GrpcRoute.HeaderMatch.from_response(h) for h in d["headers"]
+                )
+                if "headers" in d
+                else (),
             )
 
     @dataclasses.dataclass(frozen=True)
@@ -229,19 +224,14 @@ class HttpRoute:
         @classmethod
         def from_response(cls, d: Dict[str, Any]) -> "HttpRoute.RouteMatch":
             return cls(
-                method=(
-                    HttpRoute.MethodMatch.from_response(d["method"])
-                    if "method" in d
-                    else None
-                ),
-                headers=(
-                    tuple(
-                        HttpRoute.HeaderMatch.from_response(h)
-                        for h in d["headers"]
-                    )
-                    if "headers" in d
-                    else ()
-                ),
+                method=HttpRoute.MethodMatch.from_response(d["method"])
+                if "method" in d
+                else None,
+                headers=tuple(
+                    HttpRoute.HeaderMatch.from_response(h) for h in d["headers"]
+                )
+                if "headers" in d
+                else (),
             )
 
     @dataclasses.dataclass(frozen=True)
