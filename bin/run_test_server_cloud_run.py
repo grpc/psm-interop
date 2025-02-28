@@ -18,7 +18,7 @@ Typical usage examples:
 
     # Help.
     ./run.sh ./bin/run_test_server_cloud_run.py --help
-    
+
 """
 import logging
 
