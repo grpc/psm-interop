@@ -34,7 +34,7 @@ class CloudRunServerBaselineTest(
             test_server: _XdsTestServer = self.startTestServers()[0]
 
         with self.subTest("2_create_serverless_neg"):
-            neg = self.backend_service_add_serverless_neg_backends()
+            neg = self.backendServiceAddServerlessNegBackends()
 
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(

@@ -162,7 +162,7 @@ class ComputeV1(
             "protocol": protocol.name,
         }
         # If it is not for cloud run, add heath check since cloud run does not
-        #  support health check.
+        # support health check.
         if not is_cloudrun:
             body["healthChecks"] = [health_check.url]
 
@@ -736,8 +736,6 @@ class ComputeV1(
             )
             request.headers[DEBUG_HEADER_KEY] = self.gfe_debug_header
             request.add_response_callback(self._log_debug_header)
-        logger.info("Executing request: %s", request)
-        logger.info(request.to_json())
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
         logger.debug("Operation %s", operation)
         return self._wait(operation["name"], timeout_sec)

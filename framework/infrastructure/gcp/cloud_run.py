@@ -1,4 +1,4 @@
-# Copyright 2024 gRPC authors.
+# Copyright 2025 gRPC authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,9 +20,11 @@ from framework.infrastructure.gcp.api import GcpProjectApiResource
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_TEST_PORT = 8080
+DEFAULT_TIMEOUT = 600
+
 
 class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
-    DEFAULT_TEST_PORT = 8080
     project: str
     region: str
     _parent: str
@@ -77,7 +79,7 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
 
         try:
             operation = self._client.create_service(request=request)
-            self._service = operation.result(timeout=600)
+            self._service = operation.result(timeout=DEFAULT_TIMEOUT)
             logger.info("Deployed service: %s", self._service.uri)
             return self._service.uri
         except Exception as e:

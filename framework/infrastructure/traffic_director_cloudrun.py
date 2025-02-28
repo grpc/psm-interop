@@ -19,29 +19,12 @@ from framework.infrastructure.traffic_director import (
     TrafficDirectorAppNetManager,
 )
 
-# _NetworkSecurityV1Beta1 = gcp.network_security.NetworkSecurityV1Beta1
-ServerTlsPolicy = gcp.network_security.ServerTlsPolicy
-ClientTlsPolicy = gcp.network_security.ClientTlsPolicy
-AuthorizationPolicy = gcp.network_security.AuthorizationPolicy
-
-# Network Services
-# _NetworkServicesV1Beta1 = gcp.network_services.NetworkServicesV1Beta1
-EndpointPolicy = gcp.network_services.EndpointPolicy
 GrpcRoute = gcp.network_services.GrpcRoute
-HttpRoute = gcp.network_services.HttpRoute
 Mesh = gcp.network_services.Mesh
 
 
 class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
     MESH_NAME = "grpc-mesh"
-    SERVER_TLS_POLICY_NAME = "server-tls-policy"
-    CLIENT_TLS_POLICY_NAME = "client-tls-policy"
-    AUTHZ_POLICY_NAME = "authz-policy"
-    ENDPOINT_POLICY = "endpoint-policy"
-    CERTIFICATE_PROVIDER_INSTANCE = "google_cloud_private_spiffe"
-
-    # netsec: _NetworkSecurityV1Beta1
-    # netsvc: _NetworkServicesV1Beta1
 
     def __init__(
         self,
@@ -64,21 +47,9 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
             enable_dualstack=enable_dualstack,
         )
 
-        # API
-        # self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
-        # self.netsvc = _NetworkSecurityV1Beta1(gcp_api_manager, project)
-
         # Managed resources
-        # TODO(gnossen) PTAL at the pylint error
         self.grpc_route: Optional[GrpcRoute] = None
-        self.http_route: Optional[HttpRoute] = None
         self.mesh: Optional[Mesh] = None
-
-        # Managed resources
-        self.server_tls_policy: Optional[ServerTlsPolicy] = None
-        self.client_tls_policy: Optional[ClientTlsPolicy] = None
-        self.authz_policy: Optional[AuthorizationPolicy] = None
-        self.endpoint_policy: Optional[EndpointPolicy] = None
 
     def backend_service_add_backends(
         self,
@@ -103,17 +74,16 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
 
             new_backends.append(new_backend)
 
-        # self.backends.update(new_backends)
-        backend_service = self.backend_service
+        # backend_service = self.backend_service
 
         logging.info(
             "Adding backends to Backend Service %s: %r",
-            backend_service.name,
+            self.backend_service.name,
             new_backends,
         )
 
         self.compute.backend_service_patch_backends(
-            backend_service,
+            self.backend_service,
             backends,
             is_cloudrun=True,
         )

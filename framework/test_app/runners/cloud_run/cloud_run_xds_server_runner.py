@@ -83,8 +83,11 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
     @override
     def run(self, **kwargs) -> List[XdsTestServer]:
         """Deploys and manages the xDS Test Server on Cloud Run."""
-        logger.info(self.service_name)
-        logger.info(self.image_name)
+        logger.info(
+            "Starting cloud run server with service %s and image %s",
+            self.service_name,
+            self.image_name,
+        )
 
         super().run(**kwargs)
         servers = [
@@ -105,5 +108,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             if self.service:
                 self.stop()
                 self.service_name = None
+                self.service = None
         finally:
             self._stop()

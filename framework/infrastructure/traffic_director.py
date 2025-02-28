@@ -265,8 +265,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
-        logger.info("backend service protocol")
-        logger.info(self.backend_service_protocol)
 
     def load_backend_service(self):
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)

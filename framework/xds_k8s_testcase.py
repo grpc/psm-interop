@@ -1468,7 +1468,6 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
     def startTestServers(
         self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
-        logger.info(self.server_image)
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
                 project=self.project,
@@ -1495,7 +1494,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             **kwargs,
         )
 
-    def backend_service_add_serverless_neg_backends(self):
+    def backendServiceAddServerlessNegBackends(self):
         logger.info("Creating serverless NEG")
         neg = self.compute_v1.create_serverless_neg(
             self.server_namespace,

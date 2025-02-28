@@ -18,22 +18,7 @@ Typical usage examples:
 
     # Help.
     ./run.sh ./bin/run_test_server_cloud_run.py --help
-
-    # Run modes.
-    ./run.sh ./bin/run_test_server_cloud_run.py --mode=app_net
-    ./run.sh ./bin/run_test_server_cloud_run.py --mode=secure
-
-    # Gamma run mode: uses HTTPRoute by default.
-    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma
-
-    # Gamma run mode: use GRPCRoute.
-    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma --gamma_route_kind=grpc
-
-    # Running multipler server replicas.
-    ./run.sh ./bin/run_test_server_cloud_run.py --server_replica_count=3
-
-    # Cleanup: make sure to set the same mode used to create.
-    ./run.sh ./bin/run_test_server_cloud_run.py --mode=gamma --cmd=cleanup
+    
 """
 import logging
 
