@@ -40,7 +40,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             # https://github.com/grpc/grpc/blob/master/doc/grpc_xds_features.md
             return config.version_gte("v1.41.x")
         elif config.client_lang == _Lang.NODE:
-            return False
+            return config.version_gte("v1.13.x")
         return True
 
     def test_mtls(self):
