@@ -245,7 +245,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         affinity_header: Optional[str] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
-        is_cloudrun: Optional[bool] = False,
+        is_cloud_run: Optional[bool] = False,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -261,7 +261,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             locality_lb_policies=locality_lb_policies,
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
-            is_cloudrun=is_cloudrun,
+            is_cloud_run=is_cloud_run,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol

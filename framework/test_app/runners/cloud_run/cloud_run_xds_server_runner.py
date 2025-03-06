@@ -100,7 +100,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         return servers
 
     def get_service_url(self):
-        return self.cloudrun_api_manager.get_service_url()
+        return self.cloud_run_api_manager.get_service_url()
 
     @override
     def cleanup(self, *, force=False):

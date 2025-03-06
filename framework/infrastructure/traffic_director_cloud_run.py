@@ -85,5 +85,5 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
         self.compute.backend_service_patch_backends(
             self.backend_service,
             backends,
-            is_cloudrun=True,
+            is_cloud_run=True,
         )

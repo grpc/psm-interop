@@ -152,7 +152,7 @@ class ComputeV1(
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         enable_dualstack: bool = False,
-        is_cloudrun: bool = False,
+        is_cloud_run: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
@@ -163,7 +163,7 @@ class ComputeV1(
         }
         # If it is not for cloud run, add heath check since cloud run does not
         # support health check.
-        if not is_cloudrun:
+        if not is_cloud_run:
             body["healthChecks"] = [health_check.url]
 
         # If add dualstack support is specified True, config the backend service
@@ -209,9 +209,9 @@ class ComputeV1(
         max_rate_per_endpoint: Optional[int] = None,
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
-        is_cloudrun: bool = False,
+        is_cloud_run: bool = False,
     ):
-        if is_cloudrun:
+        if is_cloud_run:
             backend_list = [{"group": backend.url} for backend in backends]
         else:
             if max_rate_per_endpoint is None:
@@ -600,7 +600,7 @@ class ComputeV1(
             logger.exception("Error creating serverless NEG: %s", e)
             raise
 
-    def delete_serverless_neg(self, name: str, zone: str):
+    def delete_serverless_neg(self, name: str, region: str):
         """Deletes a serverless NEG.
 
         Args:
@@ -608,11 +608,11 @@ class ComputeV1(
             zone: The zone of the NEG.
         """
         try:
-            logger.info("Deleting serverless NEG %s in %s", name, zone)
+            logger.info("Deleting serverless NEG %s in %s", name, region)
             operation = (
-                self.api.networkEndpointGroups()
+                self.api.regionNetworkEndpointGroups()
                 .delete(
-                    project=self.project, zone=zone, networkEndpointGroup=name
+                    project=self.project, region=region, networkEndpointGroup=name
                 )
                 .execute()
             )
@@ -625,7 +625,7 @@ class ComputeV1(
                 logger.debug(
                     "NEG %s not found in zone %s. Skipping deletion.",
                     name,
-                    zone,
+                    region,
                 )
                 return
             logger.exception("Error deleting serverless NEG: %s", error)
@@ -635,12 +635,15 @@ class ComputeV1(
             raise
 
     def get_serverless_network_endpoint_group(self, name, region):
-        neg = (
+        try:
+            neg = (
             self.api.regionNetworkEndpointGroups()
             .get(project=self.project, networkEndpointGroup=name, region=region)
             .execute()
-        )
-        # TODO(sergiitk): dataclass
+            )
+        except Exception as e:
+            logger.exception("Error getting serverless NEG: %s", e)
+            raise
         return neg
 
     def _get_resource(

@@ -41,7 +41,7 @@ from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
 from framework.infrastructure.gcp.compute import ComputeV1
-import framework.infrastructure.traffic_director_cloudrun as td_cloudrun
+import framework.infrastructure.traffic_director_cloud_run as td_cloud_run
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
@@ -68,7 +68,7 @@ TrafficDirectorManager = traffic_director.TrafficDirectorManager
 TrafficDirectorAppNetManager = traffic_director.TrafficDirectorAppNetManager
 TrafficDirectorSecureManager = traffic_director.TrafficDirectorSecureManager
 CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
-TrafficDirectorCloudRunManager = td_cloudrun.TrafficDirectorCloudRunManager
+TrafficDirectorCloudRunManager = td_cloud_run.TrafficDirectorCloudRunManager
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
@@ -1402,10 +1402,10 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         return f"sha1={sha1.hexdigest()}, len={len(cert)}"
 
 
-class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
+class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
     server_runner: CloudRunServerRunner
     td: TrafficDirectorCloudRunManager
-
+    neg:Any
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -1483,17 +1483,6 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             )
         return test_servers
 
-    def startTestClient(
-        self,
-        test_server: XdsTestServer,
-        **kwargs,
-    ) -> XdsTestClient:
-        return self._start_test_client(
-            server_target=test_server.xds_uri,
-            secure_mode=True,
-            **kwargs,
-        )
-
     def backendServiceAddServerlessNegBackends(self):
         logger.info("Creating serverless NEG")
         neg = self.compute_v1.create_serverless_neg(
@@ -1501,6 +1490,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             self.region,
             self.server_namespace,
         )
+        self.neg=neg
         return neg
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):
@@ -1534,6 +1524,7 @@ class CloudRunXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
 
     def cleanup(self):
         self.td.cleanup(force=self.force_cleanup)
+        self.compute_v1.delete_serverless_neg(self.neg["name"],self.region)
         self.server_runner.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup

@@ -1,4 +1,4 @@
-# Copyright 2022 gRPC authors.
+# Copyright 2025 gRPC authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -88,11 +88,11 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Highlighter.
         self._highlighter = _HighlighterYaml()
 
-        self._initalize_cloudrun_api_manager()
+        self._initalize_cloud_run_api_manager()
 
-    def _initalize_cloudrun_api_manager(self):
+    def _initalize_cloud_run_api_manager(self):
         """Initializes the CloudRunApiManager."""
-        self.cloudrun_api_manager = cloud_run.CloudRunApiManager(
+        self.cloud_run_api_manager = cloud_run.CloudRunApiManager(
             project=self.project, region=self.region
         )
 
@@ -110,7 +110,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
         self._reset_state()
         self.time_start_requested = _datetime.now()
-        self.current_revision = self.cloudrun_api_manager.deploy_service(
+        self.current_revision = self.cloud_run_api_manager.deploy_service(
             self.service_name,
             self.image_name,
         )
@@ -133,7 +133,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         """Deletes Cloud Run Service"""
         logger.info("Deleting Cloud Run service: %s", self.service_name)
         try:
-            self.cloudrun_api_manager.delete_service(self.service_name)
+            self.cloud_run_api_manager.delete_service(self.service_name)
             logger.info("Cloud Run service %s deleted", self.service_name)
         except Exception as e:
             logger.warning(
