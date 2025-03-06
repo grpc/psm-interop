@@ -20,9 +20,7 @@ networkservices.googleapis.com API.
 """
 import datetime as dt
 import logging
-from typing import Final, Sequence, Union
-
-from typing_extensions import TypeAlias
+from typing import Final, Sequence, TypeAlias, Union
 
 from framework import xds_k8s_testcase
 from framework.helpers import retryers
