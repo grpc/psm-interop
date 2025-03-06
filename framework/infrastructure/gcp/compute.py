@@ -612,7 +612,9 @@ class ComputeV1(
             operation = (
                 self.api.regionNetworkEndpointGroups()
                 .delete(
-                    project=self.project, region=region, networkEndpointGroup=name
+                    project=self.project,
+                    region=region,
+                    networkEndpointGroup=name,
                 )
                 .execute()
             )
@@ -637,9 +639,13 @@ class ComputeV1(
     def get_serverless_network_endpoint_group(self, name, region):
         try:
             neg = (
-            self.api.regionNetworkEndpointGroups()
-            .get(project=self.project, networkEndpointGroup=name, region=region)
-            .execute()
+                self.api.regionNetworkEndpointGroups()
+                .get(
+                    project=self.project,
+                    networkEndpointGroup=name,
+                    region=region,
+                )
+                .execute()
             )
         except Exception as e:
             logger.exception("Error getting serverless NEG: %s", e)

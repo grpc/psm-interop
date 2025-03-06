@@ -1405,7 +1405,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
     server_runner: CloudRunServerRunner
     td: TrafficDirectorCloudRunManager
-    neg:Any
+    neg: Any
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -1466,7 +1467,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
             )
 
     def startTestServers(
-        self, replica_count=1, server_runner=None, **kwargs
+        self, server_runner=None
     ) -> List[XdsTestServer]:
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
@@ -1490,7 +1491,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
             self.region,
             self.server_namespace,
         )
-        self.neg=neg
+        self.neg = neg
         return neg
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):
@@ -1524,7 +1525,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
 
     def cleanup(self):
         self.td.cleanup(force=self.force_cleanup)
-        self.compute_v1.delete_serverless_neg(self.neg["name"],self.region)
+        self.compute_v1.delete_serverless_neg(self.neg["name"], self.region)
         self.server_runner.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
