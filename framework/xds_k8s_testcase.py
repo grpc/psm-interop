@@ -1466,9 +1466,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
                 replica_count=server_runner.replica_count
             )
 
-    def startTestServers(
-        self, server_runner=None
-    ) -> List[XdsTestServer]:
+    def startTestServers(self, server_runner=None) -> List[XdsTestServer]:
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
                 project=self.project,
