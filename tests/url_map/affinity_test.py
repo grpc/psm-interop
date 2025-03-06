@@ -101,9 +101,9 @@ class TestHeaderBasedAffinity(xds_url_map_testcase.XdsUrlMapTestCase):
         host_rule: HostRule, path_matcher: PathMatcher
     ) -> Tuple[HostRule, PathMatcher]:
         # Update default service to the affinity service.
-        path_matcher[
-            "defaultService"
-        ] = GcpResourceManager().affinity_backend_service()
+        path_matcher["defaultService"] = (
+            GcpResourceManager().affinity_backend_service()
+        )
         return host_rule, path_matcher
 
     def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
@@ -176,9 +176,9 @@ class TestHeaderBasedAffinityMultipleHeaders(
         host_rule: HostRule, path_matcher: PathMatcher
     ) -> Tuple[HostRule, PathMatcher]:
         # Update default service to the affinity service.
-        path_matcher[
-            "defaultService"
-        ] = GcpResourceManager().affinity_backend_service()
+        path_matcher["defaultService"] = (
+            GcpResourceManager().affinity_backend_service()
+        )
         return host_rule, path_matcher
 
     def xds_config_validate(self, xds_config: grpc_csds.DumpedXdsConfig):
