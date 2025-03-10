@@ -124,8 +124,9 @@ class TdPropagationRetryableError(Exception):
     """Indicates that TD config hasn't propagated yet, and it's safe to retry"""
 
 
-class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase): # pylint: disable=too-many-public-methods
-
+class XdsKubernetesBaseTestCase(
+    base_testcase.BaseTestCase
+):  # pylint: disable=too-many-public-methods
     lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
@@ -559,9 +560,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase): # pylint: disable=t
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
-    def assertEDSConfigExists(
-        self, config: ClientConfig, seen: set, want: frozenset
-    ):
+    @staticmethod
+    def assertEDSConfigExists(config: ClientConfig, seen: set, want: frozenset):
         want = want.union(["endpoint_config"])
         for generic_xds_config in config.generic_xds_configs:
             if re.search(
