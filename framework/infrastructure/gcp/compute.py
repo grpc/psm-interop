@@ -610,10 +610,10 @@ class ComputeV1(
         try:
             logger.info("Deleting serverless NEG %s in %s", name, region)
             self.api.regionNetworkEndpointGroups().delete(
-                    project=self.project,
-                    region=region,
-                    networkEndpointGroup=name,
-                ).execute()
+                project=self.project,
+                region=region,
+                networkEndpointGroup=name,
+            ).execute()
             logger.info("Deleted serverless neg : %s", name)
         except googleapiclient.errors.HttpError as error:
             if error.resp.status == 404:  # NEG not found

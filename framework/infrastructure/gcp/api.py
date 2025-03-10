@@ -195,9 +195,9 @@ class GcpApiManager:
         api_name = "run"
         if version == "v2":
             return self._build_from_discovery_v2(
-             api_name,
-             version,
-             )
+                api_name,
+                version,
+            )
         raise NotImplementedError(f"Cloud run {version} not supported")
 
     @functools.lru_cache(None)
@@ -530,11 +530,17 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             location = self.GLOBAL_LOCATION
         return f"projects/{self.project}/locations/{location}"
 
-    def resource_full_name(self, name, collection_name,location: Optional[str] = None):
+    def resource_full_name(
+        self, name, collection_name, location: Optional[str] = None
+    ):
         return f"{self.parent(location)}/{collection_name}/{name}"
 
     def _create_resource(
-        self, collection: discovery.Resource, body: dict,location:Optional[str]=None, **kwargs
+        self,
+        collection: discovery.Resource,
+        body: dict,
+        location: Optional[str] = None,
+        **kwargs,
     ):
         logger.info(
             "Creating %s resource:\n%s",

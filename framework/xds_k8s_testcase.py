@@ -558,11 +558,15 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
-    def assertEDSConfigExists(self, config:ClientConfig, seen:set , want:frozenset):
-        want=want.union(["endpoint_config"])
+    def assertEDSConfigExists(
+        self, config: ClientConfig, seen: set, want: frozenset
+    ):
+        want = want.union(["endpoint_config"])
         for generic_xds_config in config.generic_xds_configs:
-           if re.search(r"\.ClusterLoadAssignment$", generic_xds_config.type_url):
-               seen.add("endpoint_config")
+            if re.search(
+                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
+            ):
+                seen.add("endpoint_config")
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
@@ -587,7 +591,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
 
-        self.assertEDSConfigExists(config,seen,want)
+        self.assertEDSConfigExists(config, seen, want)
 
         logger.debug(
             "Received xDS config dump: %s",
@@ -1487,7 +1491,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
         return test_servers
 
     def backendServiceAddServerlessNegBackends(self):
-        name=self.td.make_resource_name("neg")
+        name = self.td.make_resource_name("neg")
         logger.info("Creating serverless NEG")
         neg = self.compute_v1.create_serverless_neg(
             name,
@@ -1497,7 +1501,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
         self.neg = neg
         return neg
 
-    def assertEDSConfigExists(self,config,seen,want):
+    def assertEDSConfigExists(self, config, seen, want):
         """No-op for Cloud Run as EDS is not required."""
         _ = (seen, config, want)
 
