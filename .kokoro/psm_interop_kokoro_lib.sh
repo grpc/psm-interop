@@ -178,7 +178,7 @@ psm::cloud_run::setup() {
 #######################################
 psm::cloud_run::get_tests() {
   TESTS=(
-    "cloud_run_server_baseline_test"
+    "cloud_run_csm_inbound_test"
   )
 }
 
