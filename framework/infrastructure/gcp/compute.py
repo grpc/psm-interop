@@ -152,15 +152,20 @@ class ComputeV1(
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         enable_dualstack: bool = False,
+        is_cloud_run: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
         body = {
             "name": name,
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
-            "healthChecks": [health_check.url],
             "protocol": protocol.name,
         }
+        # If it is not for cloud run, add heath check since cloud run does not
+        # support health check.
+        if not is_cloud_run:
+            body["healthChecks"] = [health_check.url]
+
         # If add dualstack support is specified True, config the backend service
         # to support IPv6
         if enable_dualstack:
@@ -204,17 +209,22 @@ class ComputeV1(
         max_rate_per_endpoint: Optional[int] = None,
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
+        is_cloud_run: bool = False,
     ):
-        if max_rate_per_endpoint is None:
-            max_rate_per_endpoint = 5
-        backend_list = [
-            {
-                "group": backend.url,
-                "balancingMode": "RATE",
-                "maxRatePerEndpoint": max_rate_per_endpoint,
-            }
-            for backend in backends
-        ]
+        if is_cloud_run:
+            backend_list = [{"group": backend.url} for backend in backends]
+        else:
+            if max_rate_per_endpoint is None:
+                max_rate_per_endpoint = 5
+
+            backend_list = [
+                {
+                    "group": backend.url,
+                    "balancingMode": "RATE",
+                    "maxRatePerEndpoint": max_rate_per_endpoint,
+                }
+                for backend in backends
+            ]
 
         request = {"backends": backend_list}
         if circuit_breakers:
@@ -557,6 +567,79 @@ class ComputeV1(
             )
             .execute()
         )
+
+    def create_serverless_neg(self, name: str, region: str, service_name: str):
+        """Creates a serverless NEG.
+
+        Args:
+            name: The name of the NEG.
+            region: The region in which to create the NEG.
+            service_name: The name of the Cloud Run service.
+            service_name format is "namespaces/{namespace}/services/{service}"
+
+        Returns:
+            The NEG selfLink URL
+        """
+        name = name + "-neg"
+        neg_body = {
+            "name": name,
+            "networkEndpointType": "SERVERLESS",
+            "cloudRun": {"service": service_name},
+        }
+
+        try:
+            logger.info("Creating serverless NEG %s in %s", name, region)
+            self.api.regionNetworkEndpointGroups().insert(
+                project=self.project, region=region, body=neg_body
+            ).execute()
+            neg = self.get_serverless_network_endpoint_group(name, region)
+            logger.info("Created serverless neg %s ", neg)
+            return neg
+
+        except Exception as e:
+            logger.exception("Error creating serverless NEG: %s", e)
+            raise
+
+    def delete_serverless_neg(self, name: str, region: str):
+        """Deletes a serverless NEG.
+
+        Args:
+            name: The name of the NEG to delete.
+            zone: The zone of the NEG.
+        """
+        try:
+            logger.info("Deleting serverless NEG %s in %s", name, region)
+            self.api.regionNetworkEndpointGroups().delete(
+                project=self.project,
+                region=region,
+                networkEndpointGroup=name,
+            ).execute()
+            logger.info("Deleted serverless neg : %s", name)
+        except googleapiclient.errors.HttpError as error:
+            if error.resp.status == 404:  # NEG not found
+                logger.debug(
+                    "NEG %s not found in zone %s. Skipping deletion.",
+                    name,
+                    region,
+                )
+                return
+            logger.exception("Error deleting serverless NEG: %s", error)
+            raise
+        except Exception as e:
+            logger.exception("Error deleting serverless NEG: %s", e)
+            raise
+
+    def get_serverless_network_endpoint_group(self, name, region):
+        neg = (
+            self.api.regionNetworkEndpointGroups()
+            .get(
+                project=self.project,
+                networkEndpointGroup=name,
+                region=region,
+            )
+            .execute()
+        )
+        return neg
 
     def _get_resource(
         self, collection: discovery.Resource, **kwargs
