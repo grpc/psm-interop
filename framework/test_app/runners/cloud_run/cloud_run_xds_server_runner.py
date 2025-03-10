@@ -17,14 +17,8 @@ Run xDS Test Server on Cloud Run.
 import dataclasses
 import logging
 from typing import List, Optional
-import uuid
-
-from absl import flags
 from typing_extensions import override
 
-from framework import xds_flags
-from framework import xds_k8s_flags
-from framework.infrastructure.gcp import cloud_run
 from framework.test_app.runners.cloud_run import cloud_run_base_runner
 from framework.test_app.server_app import XdsTestServer
 
@@ -100,14 +94,13 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         return servers
 
     def get_service_url(self):
-        return self.cloud_run_api_manager.get_service_url()
+        return self.cloud_run_api_manager.get_service_uri(self.service_name)
 
     @override
     def cleanup(self, *, force=False):
         try:
-            if self.service:
-                self.stop()
-                self.service_name = None
-                self.service = None
+            self.stop()
+            self.service_name = None
+            self.service = None
         finally:
             self._stop()

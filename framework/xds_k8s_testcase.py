@@ -558,6 +558,12 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
+    def assertEDSConfigExists(self, config:ClientConfig, seen:set , want:frozenset):
+        want=want.union(["endpoint_config"])
+        for generic_xds_config in config.generic_xds_configs:
+           if re.search(r"\.ClusterLoadAssignment$", generic_xds_config.type_url):
+               seen.add("endpoint_config")
+
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
@@ -567,7 +573,6 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 "listener_config",
                 "cluster_config",
                 "route_config",
-                "endpoint_config",
             ]
         )
         for xds_config in config.xds_config:
@@ -581,10 +586,9 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 seen.add("route_config")
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
-            elif re.search(
-                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
-            ):
-                seen.add("endpoint_config")
+
+        self.assertEDSConfigExists(config,seen,want)
+
         logger.debug(
             "Received xDS config dump: %s",
             json_format.MessageToJson(config, indent=2),
@@ -1483,48 +1487,24 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
         return test_servers
 
     def backendServiceAddServerlessNegBackends(self):
+        name=self.td.make_resource_name("neg")
         logger.info("Creating serverless NEG")
         neg = self.compute_v1.create_serverless_neg(
-            self.server_namespace,
+            name,
             self.region,
             self.server_namespace,
         )
         self.neg = neg
         return neg
 
-    def assertXdsConfigExists(self, test_client: XdsTestClient):
-        config = test_client.csds.fetch_client_status(log_level=logging.INFO)
-        self.assertIsNotNone(config)
-        seen = set()
-        want = frozenset(
-            [
-                "listener_config",
-                "cluster_config",
-                "route_config",
-            ]
-        )
-        for xds_config in config.xds_config:
-            seen.add(xds_config.WhichOneof("per_xds_config"))
-        for generic_xds_config in config.generic_xds_configs:
-            if re.search(r"\.Listener$", generic_xds_config.type_url):
-                seen.add("listener_config")
-            elif re.search(
-                r"\.RouteConfiguration$", generic_xds_config.type_url
-            ):
-                seen.add("route_config")
-            elif re.search(r"\.Cluster$", generic_xds_config.type_url):
-                seen.add("cluster_config")
-
-        logger.debug(
-            "Received xDS config dump: %s",
-            json_format.MessageToJson(config, indent=2),
-        )
-        self.assertSameElements(want, seen)
+    def assertEDSConfigExists(self,config,seen,want):
+        """No-op for Cloud Run as EDS is not required."""
+        _ = (seen, config, want)
 
     def cleanup(self):
+        self.server_runner.cleanup(force=self.force_cleanup)
         self.td.cleanup(force=self.force_cleanup)
         self.compute_v1.delete_serverless_neg(self.neg["name"], self.region)
-        self.server_runner.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )

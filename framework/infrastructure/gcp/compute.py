@@ -593,7 +593,7 @@ class ComputeV1(
                 project=self.project, region=region, body=neg_body
             ).execute()
             neg = self.get_serverless_network_endpoint_group(name, region)
-            logger.info(neg)
+            logger.info("Created serverless neg %s ", neg)
             return neg
 
         except Exception as e:
@@ -609,19 +609,12 @@ class ComputeV1(
         """
         try:
             logger.info("Deleting serverless NEG %s in %s", name, region)
-            operation = (
-                self.api.regionNetworkEndpointGroups()
-                .delete(
+            self.api.regionNetworkEndpointGroups().delete(
                     project=self.project,
                     region=region,
                     networkEndpointGroup=name,
-                )
-                .execute()
-            )
-            self._wait(
-                operation["name"], self._WAIT_FOR_OPERATION_SEC
-            )  # Wait for operation completion
-
+                ).execute()
+            logger.info("Deleted serverless neg : %s", name)
         except googleapiclient.errors.HttpError as error:
             if error.resp.status == 404:  # NEG not found
                 logger.debug(
@@ -637,19 +630,15 @@ class ComputeV1(
             raise
 
     def get_serverless_network_endpoint_group(self, name, region):
-        try:
-            neg = (
-                self.api.regionNetworkEndpointGroups()
-                .get(
-                    project=self.project,
-                    networkEndpointGroup=name,
-                    region=region,
-                )
-                .execute()
+        neg = (
+            self.api.regionNetworkEndpointGroups()
+            .get(
+                project=self.project,
+                networkEndpointGroup=name,
+                region=region,
             )
-        except Exception as e:
-            logger.exception("Error getting serverless NEG: %s", e)
-            raise
+            .execute()
+        )
         return neg
 
     def _get_resource(

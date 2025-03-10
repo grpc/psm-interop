@@ -13,10 +13,8 @@
 # limitations under the License.
 import abc
 import logging
-
-from google.cloud import run_v2
-
-from framework.infrastructure.gcp.api import GcpProjectApiResource
+from framework.infrastructure import gcp
+from googleapiclient import discovery
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +22,60 @@ DEFAULT_TEST_PORT = 8080
 DEFAULT_TIMEOUT = 600
 
 
-class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
+class CloudRunApiManager(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
     project: str
     region: str
     _parent: str
-    _client: run_v2.ServicesClient
-    _service: run_v2.Service
+    service :discovery.Resource
+    api_manager: gcp.api.GcpApiManager
+    discovery_url="https://run.googleapis.com/$discovery/rest?"
 
-    def __init__(self, project: str, region: str):
+    def __init__(self, project: str,region: str):
         if not project:
             raise ValueError("Project ID cannot be empty or None.")
         if not region:
             raise ValueError("Region cannot be empty or None.")
-
+        self.api_manager = gcp.api.GcpApiManager(v2_discovery_uri="https://run.googleapis.com/$discovery/rest?")
         self.project = project
         self.region = region
-        client_options = {"api_endpoint": f"{self.region}-run.googleapis.com"}
-        self._client = run_v2.ServicesClient(client_options=client_options)
+        service:discovery.Resource=self.api_manager.cloudrun("v2")
+        self.service=service
         self._parent = f"projects/{self.project}/locations/{self.region}"
-        self._service = None
+        super().__init__(self.service, project)
+
+    @property
+    def api_name(self) -> str:
+        """Returns the API name for Cloud Run."""
+        return "run"
+    
+    @property
+    def api_version(self) -> str:
+        """Returns the API version for Cloud Run."""
+        return "v2"
+    
+    def create_cloud_run_resource(self,service:discovery.Resource,service_name:str,body:dict):
+            return self._create_resource(
+            collection=service.projects().locations().services(),
+            body=body,
+            serviceId=service_name,
+            location=self.region
+        )
+    
+    def get_cloud_run_resource(self,service:discovery.Resource,service_name:str):
+        return self._get_resource(
+            collection=service.projects().locations().services(),
+            full_name=self.resource_full_name(service_name,"services",self.region)
+        )
+
+    def get_service_uri(self,service_name:str)->str:
+        response=self.get_cloud_run_resource(self.service,service_name)
+        return response.get('uri')
+    
+    def delete_cloud_run_resource(self,service:discovery.Resource,service_name:str):
+        return self._delete_resource(
+            collection=service.projects().locations().services(),
+            full_name=self.resource_full_name(service_name,"services",self.region)
+            )
 
     def deploy_service(
         self,
@@ -55,50 +88,32 @@ class CloudRunApiManager(GcpProjectApiResource, metaclass=abc.ABCMeta):
             raise ValueError("service_name cannot be empty or None")
         if not image_name:
             raise ValueError("image_name cannot be empty or None")
-        service_name = service_name[:49]
-
-        service = run_v2.Service(
-            template=run_v2.RevisionTemplate(
-                containers=[
-                    run_v2.Container(
-                        image=image_name,
-                        ports=[
-                            run_v2.ContainerPort(
-                                name="h2c",
-                                container_port=test_port,
-                            ),
-                        ],
-                    )
-                ]
-            ),
-        )
-
-        request = run_v2.CreateServiceRequest(
-            parent=self._parent, service=service, service_id=service_name
-        )
-
+        
         try:
-            operation = self._client.create_service(request=request)
-            self._service = operation.result(timeout=DEFAULT_TIMEOUT)
-            logger.info("Deployed service: %s", self._service.uri)
-            return self._service.uri
-        except Exception as e:
-            logger.exception("Error deploying service: %s", e)
-            raise
+            service_body = {}
+            service_body={
+              "launch_stage":"alpha",
+             "template":
+                       {
+                            "containers": [
+                               {
+                                  "image": image_name,
+                                    "ports": [{"containerPort": test_port, "name": "h2c"}],            
+                                }
+                             ],
+                        },
+                    }
 
-    def get_service_url(self):
-        if self._service is None:
-            raise RuntimeError("Cloud Run service not deployed yet.")
-        return self._service.uri
+            self.create_cloud_run_resource(self.service,service_name,service_body)
+            logger.info("Deploying Cloud Run service '%s'", service_name)
+            return self.get_service_uri(service_name)
+        
+        except Exception as e: # noqa pylint: disable=broad-except
+            logger.exception("Error deploying Cloud Run service: %s", e)
 
     def delete_service(self, service_name: str):
         try:
-            request = run_v2.DeleteServiceRequest(
-                name=f"{self._parent}/services/{service_name}"
-            )
-            operation = self._client.delete_service(request=request)
-            operation.result(timeout=300)
-            logger.info("Deleted service: %s", service_name)
+            self.delete_cloud_run_resource(self.service,service_name)
         except Exception as e:
             logger.exception("Error deleting service: %s", e)
             raise

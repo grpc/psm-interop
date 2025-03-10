@@ -191,6 +191,16 @@ class GcpApiManager:
         raise NotImplementedError(f"Network Security {version} not supported")
 
     @functools.lru_cache(None)
+    def cloudrun(self, version):
+        api_name = "run"
+        if version == "v2":
+            return self._build_from_discovery_v2(
+             api_name,
+             version,
+             )
+        raise NotImplementedError(f"Cloud run {version} not supported")
+
+    @functools.lru_cache(None)
     def networkservices(self, version):
         api_name = "networkservices"
         if version == "v1alpha1":
@@ -520,11 +530,11 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             location = self.GLOBAL_LOCATION
         return f"projects/{self.project}/locations/{location}"
 
-    def resource_full_name(self, name, collection_name):
-        return f"{self.parent()}/{collection_name}/{name}"
+    def resource_full_name(self, name, collection_name,location: Optional[str] = None):
+        return f"{self.parent(location)}/{collection_name}/{name}"
 
     def _create_resource(
-        self, collection: discovery.Resource, body: dict, **kwargs
+        self, collection: discovery.Resource, body: dict,location:Optional[str]=None, **kwargs
     ):
         logger.info(
             "Creating %s resource:\n%s",
@@ -532,7 +542,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             self.resource_pretty_format(body),
         )
         create_req = collection.create(
-            parent=self.parent(), body=body, **kwargs
+            parent=self.parent(location), body=body, **kwargs
         )
         self._execute(create_req)
 

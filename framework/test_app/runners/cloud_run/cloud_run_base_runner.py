@@ -134,8 +134,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         logger.info("Deleting Cloud Run service: %s", self.service_name)
         try:
             self.cloud_run_api_manager.delete_service(self.service_name)
-            logger.info("Cloud Run service %s deleted", self.service_name)
-        except Exception as e:
+            logger.info("Deleted cloud run service: %s", self.service_name)
+        except Exception as e: # noqa pylint: disable=broad-except
             logger.warning(
                 "Cloud Run service %s deletion failed: %s", self.service_name, e
             )
