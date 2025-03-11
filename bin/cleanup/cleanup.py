@@ -43,6 +43,7 @@ from framework.helpers import retryers
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
+from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 
@@ -50,6 +51,7 @@ logger = logging.getLogger(__name__)
 Json = Any
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
+_GammaServerRunner = gamma_server_runner.GammaServerRunner
 
 GCLOUD = os.environ.get("GCLOUD", "gcloud")
 GCLOUD_CMD_TIMEOUT_S = datetime.timedelta(seconds=5).total_seconds()
@@ -68,6 +70,7 @@ LEGACY_DRIVER_ZONE = "us-central1-a"
 LEGACY_DRIVER_SECONDARY_ZONE = "us-west1-b"
 
 PSM_INTEROP_PREFIX = "psm-interop"  # Prefix for gke resources to delete.
+GAMMA_PREFIX = "psm-csm"  # Prefix for csm gke resources to delete.
 URL_MAP_TEST_PREFIX = (
     "interop-psm-url-map"  # Prefix for url-map test resources to delete.
 )
@@ -95,7 +98,7 @@ TD_RESOURCE_PREFIXES = flags.DEFINE_list(
 )
 SERVER_PREFIXES = flags.DEFINE_list(
     "server_prefixes",
-    default=[PSM_INTEROP_PREFIX],
+    default=[PSM_INTEROP_PREFIX, GAMMA_PREFIX],
     help=(
         "a comma-separated list of prefixes for which the leaked servers will"
         " be deleted"
@@ -103,7 +106,7 @@ SERVER_PREFIXES = flags.DEFINE_list(
 )
 CLIENT_PREFIXES = flags.DEFINE_list(
     "client_prefixes",
-    default=[PSM_INTEROP_PREFIX, URL_MAP_TEST_PREFIX],
+    default=[PSM_INTEROP_PREFIX, URL_MAP_TEST_PREFIX, GAMMA_PREFIX],
     help=(
         "a comma-separated list of prefixes for which the leaked clients will"
         " be deleted"
@@ -413,6 +416,53 @@ def cleanup_client(
         raise
 
 
+# cleanup_gamma_server creates a server runner, and calls its cleanup() method.
+def cleanup_gamma_server(
+    project,
+    network,
+    k8s_api_manager,
+    server_namespace,
+    gcp_api_manager,
+    gcp_service_account,
+    *,
+    suffix: Optional[str] = "",
+):
+    deployment_name = xds_flags.SERVER_NAME.value
+    if suffix:
+        deployment_name = f"{deployment_name}-{suffix}"
+
+    ns = k8s.KubernetesNamespace(k8s_api_manager, server_namespace)
+    # Shorten the timeout to avoid waiting for the stuck namespaces.
+    # Normal ns deletion during the cleanup takes less two minutes.
+    ns.wait_for_namespace_deleted_timeout_sec = 5 * 60
+    server_runner = _GammaServerRunner(
+        k8s_namespace=ns,
+        deployment_name=deployment_name,
+        gcp_project=project,
+        network=network,
+        gcp_service_account=gcp_service_account,
+        gcp_api_manager=gcp_api_manager,
+        image_name="",
+        td_bootstrap_image="",
+        frontend_service_name=(
+            f"{xds_flags.RESOURCE_PREFIX.value}-"
+            f"{xds_flags.RESOURCE_SUFFIX.value}"
+        ),
+    )
+
+    logger.info("Cleanup gamma server")
+    try:
+        server_runner.cleanup(force=True, force_namespace=True)
+    except retryers.RetryError as err:
+        logger.error(
+            "Timeout waiting for namespace %s deletion. "
+            "Failed resource status:\n\n%s",
+            ns.name,
+            ns.pretty_format_status(err.result()),
+        )
+        raise
+
+
 # cleanup_server creates a server runner, and calls its cleanup() method.
 def cleanup_server(
     project,
@@ -580,9 +630,14 @@ def find_and_remove_leaked_k8s_resources(
             K8sResourceRule(f"{prefix}-client-(.*)", cleanup_client)
         )
     for prefix in SERVER_PREFIXES.value:
-        k8s_resource_rules.append(
-            K8sResourceRule(f"{prefix}-server-(.*)", cleanup_server)
-        )
+        if prefix == GAMMA_PREFIX:
+            k8s_resource_rules.append(
+                K8sResourceRule(f"{prefix}-server-(.*)", cleanup_gamma_server)
+            )
+        else:
+            k8s_resource_rules.append(
+                K8sResourceRule(f"{prefix}-server-(.*)", cleanup_server)
+            )
 
     # Delete leaked k8s namespaces, those usually mean there are leaked testing
     # client/servers from the gke framework.
