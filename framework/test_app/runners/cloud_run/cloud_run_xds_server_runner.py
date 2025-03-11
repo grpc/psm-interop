@@ -26,27 +26,6 @@ from framework.test_app.server_app import XdsTestServer
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
-class CloudRunDeploymentArgs:
-    """Arguments for deploying a server to Cloud Run."""
-
-    env_vars: dict = dataclasses.field(default_factory=dict)
-    max_instances: int = 10  # Example: Maximum number of instances
-    min_instances: int = 0  # Example: Minimum number of instances
-    service_account_email: str = ""  # Email address of the service account
-    timeout_seconds: int = 300  # Timeout for requests
-    revision_suffix: Optional[str] = None
-
-    def as_dict(self):
-        return {
-            "env_vars": self.env_vars,
-            "max_instances": self.max_instances,
-            "min_instances": self.min_instances,
-            "service_account_email": self.service_account_email,
-            "timeout_seconds": self.timeout_seconds,
-        }
-
-
 class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
     """Manages xDS Test Servers running on Cloud Run."""
 
