@@ -34,10 +34,15 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 
 
-@absltest.skip("switching to a single regional sandbox due to b/397859175")
 class FailoverTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     REPLICA_COUNT = 3
     MAX_RATE_PER_ENDPOINT = 100
+
+    @staticmethod
+    def is_supported(config: skips.TestConfig) -> bool:
+        # removing support as we're switching to a single regional
+        # sandbox due to b/397859175"
+        return False
 
     @classmethod
     def setUpClass(cls):
