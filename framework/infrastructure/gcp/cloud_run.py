@@ -32,7 +32,6 @@ class CloudRunApiManager(
     _parent: str
     service: discovery.Resource
     api_manager: gcp.api.GcpApiManager
-    discovery_url = "https://run.googleapis.com/$discovery/rest?"
 
     def __init__(self, project: str, region: str):
         if not project:
@@ -62,12 +61,9 @@ class CloudRunApiManager(
     def create_cloud_run_resource(
         self, service: discovery.Resource, service_name: str, body: dict
     ):
-        return self._create_resource(
-            collection=service.projects().locations().services(),
-            body=body,
-            serviceId=service_name,
-            location=self.region,
-        )
+        service.projects().locations().services().create(
+            parent=self._parent, serviceId=service_name, body=body
+        ).execute()
 
     def get_cloud_run_resource(
         self, service: discovery.Resource, service_name: str
@@ -86,12 +82,9 @@ class CloudRunApiManager(
     def delete_cloud_run_resource(
         self, service: discovery.Resource, service_name: str
     ):
-        return self._delete_resource(
-            collection=service.projects().locations().services(),
-            full_name=self.resource_full_name(
-                service_name, "services", self.region
-            ),
-        )
+        service.projects().locations().services().delete(
+            name=self.resource_full_name(service_name, "services", self.region)
+        ).execute()
 
     def deploy_service(
         self,
@@ -106,7 +99,6 @@ class CloudRunApiManager(
             raise ValueError("image_name cannot be empty or None")
 
         try:
-            service_body = {}
             service_body = {
                 "launch_stage": "alpha",
                 "template": {
@@ -121,14 +113,15 @@ class CloudRunApiManager(
                 },
             }
 
+            logger.info("Deploying Cloud Run service '%s'", service_name)
             self.create_cloud_run_resource(
                 self.service, service_name, service_body
             )
-            logger.info("Deploying Cloud Run service '%s'", service_name)
             return self.get_service_uri(service_name)
 
         except Exception as e:  # noqa pylint: disable=broad-except
             logger.exception("Error deploying Cloud Run service: %s", e)
+            raise
 
     def delete_service(self, service_name: str):
         try:

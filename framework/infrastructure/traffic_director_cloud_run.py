@@ -74,8 +74,6 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
 
             new_backends.append(new_backend)
 
-        # backend_service = self.backend_service
-
         logging.info(
             "Adding backends to Backend Service %s: %r",
             self.backend_service.name,

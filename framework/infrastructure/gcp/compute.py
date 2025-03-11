@@ -580,7 +580,6 @@ class ComputeV1(
         Returns:
             The NEG selfLink URL
         """
-        name = name + "-neg"
         neg_body = {
             "name": name,
             "networkEndpointType": "SERVERLESS",

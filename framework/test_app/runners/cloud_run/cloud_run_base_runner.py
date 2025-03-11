@@ -52,7 +52,6 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     tag: str = "latest"
     region: str = "us-central1"
     current_revision: Optional[str] = None
-    # gcp_project: Optional[str] = None
     gcp_ui_url: Optional[str] = None
 
     run_history: collections.deque[RunHistory]
