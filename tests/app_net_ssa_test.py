@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Final, List, Optional
+from typing import Final, List, Optional, TypeAlias
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import TypeAlias
 
 from framework import xds_k8s_testcase
 from framework.helpers import skips
