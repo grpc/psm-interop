@@ -41,6 +41,9 @@ spec:
             - "--qps=${qps}"
             - "--rpc=${rpc}"
             - "--metadata=${metadata}"
+            % if secure_mode:
+            - "--secure_mode=${secure_mode}"
+            % endif
             % if request_payload_size > 0:
             - "--request_payload_size=${request_payload_size}"
             % endif
@@ -54,8 +57,16 @@ spec:
           ports:
             - containerPort: ${stats_port}
           env:
+            - name: GRPC_TRACE
+              value: "xds_client"
             - name: GRPC_XDS_BOOTSTRAP
               value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
+            - name: GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
+              value: "true"
             - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RING_HASH
               value: "true"
             - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RETRY
@@ -114,10 +125,13 @@ spec:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
             % if config_mesh:
-            - "--config-mesh-experimental=${config_mesh}"
+            - "--config-mesh=${config_mesh}"
             % endif
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"
+            % endif
+            % if is_trusted_xds_server_experimental:
+            - "--is-trusted-xds-server-experimental=true"
             % endif
           resources:
             limits:
