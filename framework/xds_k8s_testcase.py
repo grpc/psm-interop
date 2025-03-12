@@ -1483,6 +1483,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
                 image_name=self.server_image,
                 network=self.network,
                 region=self.region,
+                gcp_api_manager=self.gcp_api_manager,
             )
         test_servers = self.server_runner.run()
         for test_server in test_servers:
@@ -1537,6 +1538,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
         finally:
             logger.info("----- Test client/server logs -----")
             self.client_runner.logs_explorer_run_history_links()
+            self.server_runner.logs_explorer_run_history_links()
 
             # Fail if any of the pods restarted.
             self.assertEqual(

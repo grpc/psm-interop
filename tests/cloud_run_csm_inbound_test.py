@@ -23,10 +23,8 @@ _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
-class CloudRunServerBaselineTest(
-    xds_k8s_testcase.CloudRunXdsKubernetesTestCase
-):
-    def test_GKE_client_cloud_run_service(self):
+class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
+    def test_gke_to_cloud_run_setup(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
 

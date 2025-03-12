@@ -66,6 +66,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         service_name: str,
         image_name: str,
         region: str,
+        gcp_ui_url: str,
         network: Optional[str] = None,
     ) -> None:
         super().__init__()
@@ -76,7 +77,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.network = network
         self.region = region
         self.current_revision = None
-        self.gcp_ui_url = None
+        self.gcp_ui_url = gcp_ui_url
 
         # Persistent across many runs.
         self.run_history = collections.deque()
@@ -127,6 +128,68 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 time_stopped=self.time_stopped,
             )
             self.run_history.append(run_history)
+
+    @classmethod
+    def _logs_explorer_link(
+        cls,
+        *,
+        service_name: str,
+        gcp_project: str,
+        gcp_ui_url: str,
+        location: str,
+        start_time: Optional[_datetime] = None,
+        end_time: Optional[_datetime] = None,
+        cursor_time: Optional[_datetime] = None,
+    ):
+        """Output the link to test server/client logs in GCP Logs Explorer."""
+        if not start_time:
+            start_time = _datetime.now()
+        if not end_time:
+            end_time = start_time + _timedelta(minutes=30)
+
+        logs_start = _helper_datetime.iso8601_utc_time(start_time)
+        logs_end = _helper_datetime.iso8601_utc_time(end_time)
+        request = {"timeRange": f"{logs_start}/{logs_end}"}
+        if cursor_time:
+            request["cursorTimestamp"] = _helper_datetime.iso8601_utc_time(
+                cursor_time
+            )
+        query = {
+            "resource.type": "cloud_run_revision",
+            "resource.labels.project_id": gcp_project,
+            "resource.labels.service_name": service_name,
+            "resource.labels.location": location,
+        }
+
+        link = cls._logs_explorer_link_from_params(
+            gcp_ui_url=gcp_ui_url,
+            gcp_project=gcp_project,
+            query=query,
+            request=request,
+        )
+        link_to = service_name
+        # A whitespace at the end to indicate the end of the url.
+        logger.info("GCP Logs Explorer link to %s:\n%s ", link_to, link)
+
+    def logs_explorer_run_history_links(self):
+        """Prints a separate GCP Logs Explorer link for each run *completed* by
+        the runner.
+
+        This excludes the current run, if it hasn't been completed.
+        """
+        if not self.run_history:
+            logger.info("No completed deployments of %s", self.service_name)
+            return
+        for run in self.run_history:
+            self._logs_explorer_link(
+                service_name=self.service_name,
+                gcp_project=self.project,
+                gcp_ui_url=self.gcp_ui_url,
+                location=self.region,
+                start_time=run.time_start_requested,
+                cursor_time=run.time_start_completed,
+                end_time=run.time_stopped,
+            )
 
     def stop(self):
         """Deletes Cloud Run Service"""
