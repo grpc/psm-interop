@@ -249,24 +249,28 @@ class CsmObservabilityTestWithInjection(
                 HISTOGRAM_SERVER_METRICS,
                 self.build_histogram_query,
                 self.server_namespace,
+                self.client_namespace,
                 interval,
             )
             client_histogram_results = self.query_metrics(
                 HISTOGRAM_CLIENT_METRICS,
                 self.build_histogram_query,
                 self.client_namespace,
+                self.server_namespace,
                 interval,
             )
             server_counter_results = self.query_metrics(
                 COUNTER_SERVER_METRICS,
                 self.build_counter_query,
                 self.server_namespace,
+                self.client_namespace,
                 interval,
             )
             client_counter_results = self.query_metrics(
                 COUNTER_CLIENT_METRICS,
                 self.build_counter_query,
                 self.client_namespace,
+                self.server_namespace,
                 interval,
             )
             all_results = {
@@ -441,15 +445,18 @@ class CsmObservabilityTestWithInjection(
                 )
 
     @classmethod
-    def build_histogram_query(cls, metric_type: str, namespace: str) -> str:
+    def build_histogram_query(
+        cls, metric_type: str, namespace: str, remote_namespace: str
+    ) -> str:
         #
         # The list_time_series API requires us to query one metric
         # at a time.
         #
-        # The 'grpc_status = "OK"' filter condition is needed because
-        # some time series data points were logged when the grpc_status
-        # was "UNAVAILABLE" when the client/server were establishing
-        # connections.
+        # The 'grpc_status = "OK"' and
+        # 'csm_remote_workload_namespace_name = "remote_namespace"' filter
+        # condition is needed because some time series data points were logged
+        # when the grpc_status was "UNAVAILABLE" when the client/server were
+        # establishing connections.
         #
         # The 'grpc_method' filter condition is needed because the
         # server metrics are also serving on the Channelz requests.
@@ -460,13 +467,16 @@ class CsmObservabilityTestWithInjection(
             f'metric.type = "{metric_type}" AND '
             'metric.labels.grpc_status = "OK" AND '
             f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
+            f'metric.labels.csm_remote_workload_namespace_name = "{remote_namespace}" AND '
             f'resource.labels.namespace = "{namespace}"'
         )
 
     @classmethod
-    def build_counter_query(cls, metric_type: str, namespace: str) -> str:
+    def build_counter_query(
+        cls, metric_type: str, namespace: str, _remote_namespace: str
+    ) -> str:
         # For these num rpcs started counter metrics, they do not have the
-        # 'grpc_status' label
+        # 'grpc_status' label, nor do they have remote namespace.
         return (
             f'metric.type = "{metric_type}" AND '
             f'metric.labels.grpc_method = "{GRPC_METHOD_NAME}" AND '
@@ -490,6 +500,7 @@ class CsmObservabilityTestWithInjection(
         metric_names: Iterable[str],
         build_query_fn: BuildQueryFn,
         namespace: str,
+        remote_namespace: str,
         interval: monitoring_v3.TimeInterval,
     ) -> dict[str, MetricTimeSeries]:
         """
@@ -520,7 +531,7 @@ class CsmObservabilityTestWithInjection(
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
-                filter=build_query_fn(metric, namespace),
+                filter=build_query_fn(metric, namespace, remote_namespace),
                 interval=interval,
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,

@@ -47,8 +47,8 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         https://github.com/grpc/grpc/blob/master/doc/xds-test-descriptions.md#server
         """
         super().setUpClass()
-        if cls.lang_spec.client_lang is not _Lang.JAVA:
-            # gRPC C++, go, python and node fallback to the gRPC Java.
+        if cls.lang_spec.client_lang is not _Lang.JAVA | _Lang.NODE:
+            # gRPC C++, go, and python fallback to the gRPC Java.
             # TODO(https://github.com/grpc/grpc-go/issues/6288): use go server.
             # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
