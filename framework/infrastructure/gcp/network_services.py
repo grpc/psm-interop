@@ -356,36 +356,6 @@ class _NetworkServicesBase(
         )
 
 
-class NetworkServicesV1Beta1(_NetworkServicesBase):
-    """NetworkServices API v1beta1."""
-
-    ENDPOINT_POLICIES = "endpointPolicies"
-
-    @property
-    def api_version(self) -> str:
-        return "v1beta1"
-
-    def create_endpoint_policy(self, name, body: dict) -> GcpResource:
-        return self._create_resource(
-            collection=self._api_locations.endpointPolicies(),
-            body=body,
-            endpointPolicyId=name,
-        )
-
-    def get_endpoint_policy(self, name: str) -> EndpointPolicy:
-        response = self._get_resource(
-            collection=self._api_locations.endpointPolicies(),
-            full_name=self.resource_full_name(name, self.ENDPOINT_POLICIES),
-        )
-        return EndpointPolicy.from_response(name, response)
-
-    def delete_endpoint_policy(self, name: str) -> bool:
-        return self._delete_resource(
-            collection=self._api_locations.endpointPolicies(),
-            full_name=self.resource_full_name(name, self.ENDPOINT_POLICIES),
-        )
-
-
 class NetworkServicesV1(_NetworkServicesBase):
     """NetworkServices API v1."""
 
@@ -475,3 +445,11 @@ class NetworkServicesV1(_NetworkServicesBase):
             collection=self._api_locations.httpRoutes(),
             full_name=self.resource_full_name(name, self.HTTP_ROUTES),
         )
+
+
+class NetworkServicesV1Alpha1(NetworkServicesV1):
+    """NetworkServices API v1alpha1."""
+
+    @property
+    def api_version(self) -> str:
+        return "v1alpha1"
