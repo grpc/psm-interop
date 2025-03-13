@@ -1079,7 +1079,7 @@ test_driver_compile_protos() {
 
 #######################################
 # Installs the test driver and it's requirements.
-# https://github.com/grpc/psm-interop#basic-usage#installation
+# https://github.com/grpc/psm-interop#installation
 # Globals:
 #   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
 #                         the test driver
