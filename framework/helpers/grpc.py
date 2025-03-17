@@ -15,7 +15,6 @@
 import collections
 import dataclasses
 import functools
-from typing import Optional
 
 import grpc
 from typing_extensions import TypeAlias
@@ -31,7 +30,7 @@ _MetadatasByPeerPretty: TypeAlias = dict[str, _MetadataByPeerPretty]
 
 
 @functools.cache
-def status_from_int(grpc_status_int: int) -> Optional[grpc.StatusCode]:
+def status_from_int(grpc_status_int: int) -> grpc.StatusCode | None:
     """Converts the integer gRPC status code to the grpc.StatusCode enum."""
     for grpc_status in grpc.StatusCode:
         if grpc_status.value[0] == grpc_status_int:
@@ -77,7 +76,7 @@ class PrettyStatsPerMethod:
     ) -> "PrettyStatsPerMethod":
         stats: dict[str, int] = dict()
         for status_int, count in method_stats.result.items():
-            status: Optional[grpc.StatusCode] = status_from_int(status_int)
+            status: grpc.StatusCode | None = status_from_int(status_int)
             status_formatted = status_pretty(status) if status else "None"
             stats[status_formatted] = count
         return PrettyStatsPerMethod(

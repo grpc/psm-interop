@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List, Optional
+from typing import List
 
 from absl import flags
 from absl.testing import absltest
@@ -50,7 +50,7 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
         test_client: _XdsTestClient,
         num_rpcs: int,
         *,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         return super().getClientRpcStats(

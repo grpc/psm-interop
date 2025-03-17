@@ -14,7 +14,7 @@
 """Base test case used for xds test suites."""
 import inspect
 import traceback
-from typing import Optional, Union
+from typing import Union
 import unittest
 
 from absl import logging
@@ -23,7 +23,7 @@ from absl.testing import absltest
 
 class BaseTestCase(absltest.TestCase):
     # @override
-    def run(self, result: Optional[unittest.TestResult] = None) -> None:
+    def run(self, result: unittest.TestResult | None = None) -> None:
         super().run(result)
         # TODO(sergiitk): should this method be returning result? See
         #   super().run and xds_k8s_testcase.XdsKubernetesBaseTestCase.subTest
