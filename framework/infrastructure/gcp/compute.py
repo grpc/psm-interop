@@ -158,7 +158,7 @@ class ComputeV1(
         body = {
             "name": name,
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
-            "healthChecks": [health_check.url],
+            # "healthChecks": [health_check.url],
             "protocol": protocol.name,
         }
         # If add dualstack support is specified True, config the backend service
@@ -210,8 +210,8 @@ class ComputeV1(
         backend_list = [
             {
                 "group": backend.url,
-                "balancingMode": "RATE",
-                "maxRatePerEndpoint": max_rate_per_endpoint,
+                #                "balancingMode": "CONNECTION",
+                #                "maxRatePerEndpoint": max_rate_per_endpoint,
             }
             for backend in backends
         ]
@@ -558,6 +558,85 @@ class ComputeV1(
             .execute()
         )
 
+    def create_serverless_neg(
+        self, name: str, region: str, service_name: str, network: str
+    ):
+        """Creates a serverless NEG.
+
+        Args:
+            name: The name of the NEG.
+            region: The region in which to create the NEG.
+            service_name: The name of the Cloud Run service.  Format: "namespaces/{namespace}/services/{service}"
+            network: The network of the NEG. Format: "projects/{project}/global/networks/{network}"
+
+        Returns:
+            The NEG selfLink URL
+        """
+        name = name + "-neg"
+        neg_body = {
+            "name": name,
+            "networkEndpointType": "SERVERLESS",
+            "cloudRun": {"service": service_name},
+        }
+
+        try:
+            logger.info("Creating serverless NEG %s in %s", name, region)
+            operation = (
+                self.api.regionNetworkEndpointGroups()
+                .insert(project=self.project, region=region, body=neg_body)
+                .execute()
+            )
+            neg = self.get_serverless_network_endpoint_group(name, region)
+            print(neg)
+            return neg
+
+        except Exception as e:
+            logger.exception("Error creating serverless NEG: %s", e)
+            raise
+
+    def delete_serverless_neg(self, name: str, zone: str):
+        """Deletes a serverless NEG.
+
+        Args:
+            name: The name of the NEG to delete.
+            zone: The zone of the NEG.
+        """
+        try:
+            logger.info("Deleting serverless NEG %s in %s", name, zone)
+            operation = (
+                self.api.networkEndpointGroups()
+                .delete(
+                    project=self.project, zone=zone, networkEndpointGroup=name
+                )
+                .execute()
+            )
+            self._wait(
+                operation["name"], self._WAIT_FOR_OPERATION_SEC
+            )  # Wait for operation completion
+
+        except googleapiclient.errors.HttpError as error:
+            if error.resp.status == 404:  # NEG not found
+                logger.debug(
+                    "NEG %s not found in zone %s. Skipping deletion.",
+                    name,
+                    zone,
+                )
+                return
+            logger.exception("Error deleting serverless NEG: %s", error)
+            raise
+        except Exception as e:
+            logger.exception("Error deleting serverless NEG: %s", e)
+            raise
+
+    def get_serverless_network_endpoint_group(self, name, region):
+        neg = (
+            self.api.regionNetworkEndpointGroups()
+            .get(project=self.project, networkEndpointGroup=name, region=region)
+            .execute()
+        )
+        # TODO(sergiitk): dataclass
+        return neg
+
     def _get_resource(
         self, collection: discovery.Resource, **kwargs
     ) -> "GcpResource":
@@ -651,6 +730,8 @@ class ComputeV1(
             )
             request.headers[DEBUG_HEADER_KEY] = self.gfe_debug_header
             request.add_response_callback(self._log_debug_header)
+        logger.info("Executing request: %s", request)
+        logger.info(request.to_json())
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
         logger.debug("Operation %s", operation)
         return self._wait(operation["name"], timeout_sec)
