@@ -42,7 +42,7 @@ REPLICA_COUNT: Final[int] = 3
 # TODO(sergiitk): update comment
 TERMINATION_GRACE_PERIOD: Final[dt.timedelta] = dt.timedelta(minutes=10)
 DRAINING_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=10)
-TRAFFIC_PIN_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=1)
+TRAFFIC_PIN_TIMEOUT: Final[dt.timedelta] = dt.timedelta(minutes=2)
 TRAFFIC_PIN_RETRY_WAIT: Final[dt.timedelta] = dt.timedelta(seconds=5)
 
 

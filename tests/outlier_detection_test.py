@@ -56,7 +56,8 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         client_lang = cls.lang_spec.client_lang
 
         # gRPC Java implemented server "error-code-" rpc-behavior in v1.47.x.
-        if client_lang == _Lang.JAVA:
+        # gRPC Node implemented the server in v1.13.x
+        if client_lang == _Lang.JAVA | _Lang.NODE:
             return
 
         # gRPC CPP implemented server "hostname" rpc-behavior in v1.57.x,
@@ -69,7 +70,7 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         if client_lang == _Lang.GO and cls.lang_spec.version_gte("v1.59.x"):
             return
 
-        # gRPC go, python and node fallback to the gRPC Java.
+        # gRPC go and python fallback to the gRPC Java.
         # TODO(https://github.com/grpc/grpc-go/issues/6288): use go server.
         # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
         cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value

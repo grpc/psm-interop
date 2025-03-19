@@ -49,6 +49,8 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.66.x")
         if config.client_lang == _Lang.NODE:
             return config.version_gte("v1.12.x")
+        if config.client_lang == _Lang.GO:
+            return config.version_gte("v1.71.x")
         return False
 
     @classmethod
@@ -57,7 +59,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         # TODO: when Java 1.66 is available, make sure the canonical server is switched to it so
         #  that we have all features we need for the dualstack test
         super().setUpClass()
-        if cls.lang_spec.client_lang is not _Lang.JAVA:
+        if cls.lang_spec.client_lang not in _Lang.JAVA | _Lang.NODE:
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
     def setUp(self):
