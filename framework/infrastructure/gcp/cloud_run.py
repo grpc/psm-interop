@@ -42,7 +42,7 @@ class CloudRunApiManager(
             v2_discovery_uri="https://run.googleapis.com/$discovery/rest?"
         )
         self.project = project
-        self.region = region
+        self.region = "us-central1"
         service: discovery.Resource = self.api_manager.cloudrun("v2")
         self.service = service
         self._parent = f"projects/{self.project}/locations/{self.region}"
