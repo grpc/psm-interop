@@ -199,10 +199,10 @@ ENABLE_DUALSTACK = flags.DEFINE_bool(
     help="Enable support for Dual Stack resources to the framework.",
 )
 
-REGION = flags.DEFINE_string(
-    "region",
+CLOUD_RUN_REGION = flags.DEFINE_string(
+    "cloud_run_region",
     default=None,
-    help="The region for deployment",
+    help="The region for cloud run deployment",
 )
 
 

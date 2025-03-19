@@ -65,7 +65,7 @@ def gcp_api_manager():
 @functools.cache
 def cloud_run_api_manager():
     return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value,
-                                        region=xds_flags.REGION.value)
+                                        region=xds_flags.CLOUD_RUN_REGION.value)
 
 def td_attrs():
     return dict(
@@ -169,7 +169,7 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
         service_name=xds_flags.SERVER_NAME.value,
         image_name=xds_k8s_flags.SERVER_IMAGE.value,
         network=xds_flags.NETWORK.value,
-        region=xds_flags.REGION.value,
+        region=xds_flags.CLOUD_RUN_REGION.value,
     )
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)

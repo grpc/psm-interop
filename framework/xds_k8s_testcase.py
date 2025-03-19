@@ -1423,7 +1423,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
         cls.compute_v1 = ComputeV1(
             cls.gcp_api_manager, cls.project, version=cls.compute_api_version
         )
-        cls.region = xds_flags.REGION.value
+        cls.region = xds_flags.CLOUD_RUN_REGION.value
 
     def initTrafficDirectorManager(self) -> TrafficDirectorManager:
         return TrafficDirectorCloudRunManager(
