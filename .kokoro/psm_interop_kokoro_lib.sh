@@ -359,7 +359,7 @@ psm::cloudrun::setup() {
 # Globals:
 #   TESTS: Populated with tests in PSM CloudRun test suite.
 #######################################
-psm::dualstack::get_tests() {
+psm::cloudrun::get_tests() {
   TESTS=(
     "cloud_run_csm_inbound_test.py"
   )
