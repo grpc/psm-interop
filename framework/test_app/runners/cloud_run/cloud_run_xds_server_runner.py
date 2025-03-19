@@ -43,7 +43,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             service_name,
             image_name,
             network=network,
-            region=region,
+            region="us-central1",
             gcp_ui_url=gcp_api_manager.gcp_ui_url,
         )
         # Mutable state associated with each run.
