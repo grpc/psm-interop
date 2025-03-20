@@ -28,7 +28,7 @@ class CloudRunApiManager(
     gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
 ):
     project: str
-    region: str = "us-central1"
+    region: str
     _parent: str
     service: discovery.Resource
     api_manager: gcp.api.GcpApiManager
