@@ -256,6 +256,13 @@ class XdsKubernetesBaseTestCase(
         # Other
         cls.yaml_highlighter = framework.helpers.highlighter.HighlighterYaml()
 
+        # The Node server was added in version 1.13.x
+        if (
+            cls.lang_spec.client_lang == skips.Lang.NODE
+            and not cls.lang_spec.version_gte("v1.13.x")
+        ):
+            cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
+
     @classmethod
     def _pretty_accumulated_stats(
         cls,

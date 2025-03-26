@@ -160,6 +160,45 @@ psm::security::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- Cloud Run TESTS ------------------
+
+#######################################
+# Cloud Run Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::cloud_run::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_BASIC
+}
+
+#######################################
+# Prepares the list of tests in PSM Cloud Run test suite.
+# Globals:
+#   TESTS: Populated with tests in PSM Cloud Run test suite.
+#######################################
+psm::cloud_run::get_tests() {
+  TESTS=(
+    "cloud_run_csm_inbound_test"
+  )
+}
+
+#######################################
+# Executes Cloud Run test case
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::cloud_run::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- DualStack TESTS ------------------
 
 #######################################
@@ -414,7 +453,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | fallback | lb | security | url_map)
+    csm | dualstack | fallback | lb | security | url_map | cloud_run)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
@@ -488,9 +527,6 @@ psm::run::test() {
   # Some test suites have canonical server image configured in the flagfiles.
   if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
     PSM_TEST_FLAGS+=("--server_image=${SERVER_IMAGE_NAME}:${GIT_COMMIT}")
-  elif [[ "${GRPC_LANGUAGE}" == "node"  ]]; then
-    # TODO(b/261911148): To be replaced with --server_image_use_canonical when implemented.
-    PSM_TEST_FLAGS+=("--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:canonical-v1.66")
   fi
 
   # So far, only LB test uses secondary GKE cluster.
@@ -578,14 +614,9 @@ psm::setup::docker_image_names() {
   SERVER_IMAGE_USE_CANONICAL=""
 
   case "${language}" in
-    java | cpp | python | go)
+    java | cpp | python | go | node)
       CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
       SERVER_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-server"
-      ;;
-    node)
-      CLIENT_IMAGE_NAME="${DOCKER_REGISTRY}/grpc-testing/psm-interop/${GRPC_LANGUAGE}-client"
-      SERVER_IMAGE_NAME=""
-      SERVER_IMAGE_USE_CANONICAL="1"
       ;;
     *)
       psm::tools::log "Unknown Language: ${1}"
@@ -1091,7 +1122,7 @@ test_driver_compile_protos() {
 
 #######################################
 # Installs the test driver and it's requirements.
-# https://github.com/grpc/psm-interop#basic-usage#installation
+# https://github.com/grpc/psm-interop#installation
 # Globals:
 #   TEST_DRIVER_REPO_DIR: Populated with the path to the repo containing
 #                         the test driver
