@@ -13,6 +13,7 @@
 # limitations under the License.
 import abc
 import logging
+from typing import Final
 
 from googleapiclient import discovery
 
@@ -20,9 +21,10 @@ from framework.infrastructure import gcp
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TEST_PORT = 8080
-DEFAULT_TIMEOUT = 600
+# Type aliases
+GcpResource = gcp.compute.ComputeV1.GcpResource
 
+DEFAULT_TEST_PORT: Final[int] = 8080
 
 class CloudRunApiManager(
     gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
@@ -58,14 +60,19 @@ class CloudRunApiManager(
         """Returns the API version for Cloud Run."""
         return "v2"
 
-    def create_cloud_run_resource(
-        self, service: discovery.Resource, service_name: str, body: dict
-    ):
-        service.projects().locations().services().create(
-            parent=self._parent, serviceId=service_name, body=body
-        ).execute()
+    def create_service(
+        self, service: discovery.Resource, service_name: str, body: dict) -> GcpResource:
+        self._create_resource(
+            collection=service.projects().locations().services(),
+            location=self.region,
+            body=body,
+            serviceId=service_name,
+        )
+        # service.projects().locations().services().create(
+        #     parent=self._parent, serviceId=service_name, body=body
+        # ).execute()
 
-    def get_cloud_run_resource(
+    def get_service(
         self, service: discovery.Resource, service_name: str
     ):
         return self._get_resource(
@@ -76,10 +83,10 @@ class CloudRunApiManager(
         )
 
     def get_service_uri(self, service_name: str) -> str:
-        response = self.get_cloud_run_resource(self.service, service_name)
+        response = self.get_service(self.service, service_name)
         return response.get("uri")
 
-    def delete_cloud_run_resource(
+    def _delete_service(
         self, service: discovery.Resource, service_name: str
     ):
         service.projects().locations().services().delete(
@@ -114,7 +121,7 @@ class CloudRunApiManager(
             }
 
             logger.info("Deploying Cloud Run service '%s'", service_name)
-            self.create_cloud_run_resource(
+            self.create_service(
                 self.service, service_name, service_body
             )
             return self.get_service_uri(service_name)
@@ -125,7 +132,7 @@ class CloudRunApiManager(
 
     def delete_service(self, service_name: str):
         try:
-            self.delete_cloud_run_resource(self.service, service_name)
+            self._delete_service(self.service, service_name)
         except Exception as e:
             logger.exception("Error deleting service: %s", e)
             raise
