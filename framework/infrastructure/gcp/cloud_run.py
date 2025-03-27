@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import abc
-import logging
 import dataclasses
-from typing import Final, Dict, Any
+import logging
+from typing import Any, Dict, Final
 
 from googleapiclient import discovery
 
@@ -27,6 +27,7 @@ GcpResource = gcp.compute.ComputeV1.GcpResource
 
 DEFAULT_TEST_PORT: Final[int] = 8080
 
+
 @dataclasses.dataclass(frozen=True)
 class CloudRun:
     service_name: str
@@ -38,6 +39,7 @@ class CloudRun:
             service_name=name,
             url=d["urls"],
         )
+
 
 class CloudRunApiManager(
     gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
@@ -74,7 +76,8 @@ class CloudRunApiManager(
         return "v2"
 
     def create_service(
-        self, service: discovery.Resource, service_name: str, body: dict) -> GcpResource:
+        self, service: discovery.Resource, service_name: str, body: dict
+    ) -> GcpResource:
         service.projects().locations().services().create(
             parent=self._parent, serviceId=service_name, body=body
         ).execute()
@@ -82,24 +85,22 @@ class CloudRunApiManager(
     def get_service(
         self, service: discovery.Resource, service_name: str
     ) -> CloudRun:
-        result=self._get_resource(
+        result = self._get_resource(
             collection=service.projects().locations().services(),
             full_name=self.resource_full_name(
                 service_name, "services", self.region
             ),
         )
-        return CloudRun.from_response(self.resource_full_name(
-                service_name, "services", self.region
-            ), result)
+        return CloudRun.from_response(
+            self.resource_full_name(service_name, "services", self.region),
+            result,
+        )
 
     def get_service_uri(self, service_name: str) -> str:
         response = self.get_service(self.service, service_name)
         return response.url
-        
 
-    def _delete_service(
-        self, service: discovery.Resource, service_name: str
-    ):
+    def _delete_service(self, service: discovery.Resource, service_name: str):
         service.projects().locations().services().delete(
             name=self.resource_full_name(service_name, "services", self.region)
         ).execute()
@@ -132,9 +133,7 @@ class CloudRunApiManager(
             }
 
             logger.info("Deploying Cloud Run service '%s'", service_name)
-            self.create_service(
-                self.service, service_name, service_body
-            )
+            self.create_service(self.service, service_name, service_body)
             return self.get_service_uri(service_name)
 
         except Exception as e:  # noqa pylint: disable=broad-except
