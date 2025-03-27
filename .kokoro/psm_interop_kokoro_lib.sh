@@ -382,49 +382,6 @@ psm::csm::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
-# --- CloudRun TESTS ------------------
-
-#######################################
-# CloudRun Test Suite setup.
-# Outputs:
-#   Prints activated cluster names.
-#######################################
-psm::cloudrun::setup() {
-  activate_gke_cluster GKE_CLUSTER_CLOUD_RUN
-}
-
-#######################################
-# Prepares the list of tests in CloudRun test suite.
-# Globals:
-#   TESTS: Populated with tests in PSM CloudRun test suite.
-#######################################
-psm::cloudrun::get_tests() {
-  TESTS=(
-    "cloud_run_csm_inbound_test.py"
-  )
-}
-
-#######################################
-# Executes CloudRun test case
-# Globals:
-#   PSM_TEST_FLAGS: The array with flags for the test
-#   GRPC_LANGUAGE: The name of gRPC languages under test
-# Arguments:
-#   Test case name
-# Outputs:
-#   Writes the output of test execution to stdout, stderr
-#######################################
-psm::cloudrun::run_test() {
-  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
-
-  PSM_TEST_FLAGS+=(
-    "--flagfile=config/common-cloudrun.cfg"
-  )
-
-  psm::run::finalize_test_flags "${test_name}"
-  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
-}
-
 # --- Common test run logic -----------
 
 #######################################

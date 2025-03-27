@@ -13,7 +13,8 @@
 # limitations under the License.
 import abc
 import logging
-from typing import Final
+import dataclasses
+from typing import Final, Dict, Any
 
 from googleapiclient import discovery
 
@@ -25,6 +26,18 @@ logger = logging.getLogger(__name__)
 GcpResource = gcp.compute.ComputeV1.GcpResource
 
 DEFAULT_TEST_PORT: Final[int] = 8080
+
+@dataclasses.dataclass(frozen=True)
+class CloudRun:
+    service_name: str
+    url: str
+
+    @classmethod
+    def from_response(cls, name: str, d: Dict[str, Any]) -> "CloudRun":
+        return cls(
+            service_name=name,
+            url=d["urls"],
+        )
 
 class CloudRunApiManager(
     gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
@@ -62,29 +75,27 @@ class CloudRunApiManager(
 
     def create_service(
         self, service: discovery.Resource, service_name: str, body: dict) -> GcpResource:
-        self._create_resource(
-            collection=service.projects().locations().services(),
-            location=self.region,
-            body=body,
-            serviceId=service_name,
-        )
-        # service.projects().locations().services().create(
-        #     parent=self._parent, serviceId=service_name, body=body
-        # ).execute()
+        service.projects().locations().services().create(
+            parent=self._parent, serviceId=service_name, body=body
+        ).execute()
 
     def get_service(
         self, service: discovery.Resource, service_name: str
-    ):
-        return self._get_resource(
+    ) -> CloudRun:
+        result=self._get_resource(
             collection=service.projects().locations().services(),
             full_name=self.resource_full_name(
                 service_name, "services", self.region
             ),
         )
+        return CloudRun.from_response(self.resource_full_name(
+                service_name, "services", self.region
+            ), result)
 
     def get_service_uri(self, service_name: str) -> str:
         response = self.get_service(self.service, service_name)
-        return response.get("uri")
+        return response.url
+        
 
     def _delete_service(
         self, service: discovery.Resource, service_name: str

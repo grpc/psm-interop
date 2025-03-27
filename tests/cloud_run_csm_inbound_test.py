@@ -23,7 +23,7 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
-    def test_gke_to_cloud_run_setup(self):
+    def test_gke_to_cloud_run(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
 
@@ -36,7 +36,6 @@ class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(
                 protocol=self.compute_v1.BackendServiceProtocol.HTTP2,
-                is_cloud_run=True,
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):

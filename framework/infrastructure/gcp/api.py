@@ -194,10 +194,7 @@ class GcpApiManager:
     def cloudrun(self, version):
         api_name = "run"
         if version == "v2":
-            return self._build_from_discovery_v2(
-                api_name,
-                version,
-            )
+            return self._build_from_discovery_v2(api_name,version)
         raise NotImplementedError(f"Cloud run {version} not supported")
 
     @functools.lru_cache(None)
@@ -531,7 +528,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         return f"projects/{self.project}/locations/{location}"
 
     def resource_full_name(
-        self, name, collection_name, location: Optional[str] = None
+        self, name, collection_name, location: str = GLOBAL_LOCATION
     ):
         return f"{self.parent(location)}/{collection_name}/{name}"
 

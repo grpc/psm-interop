@@ -145,14 +145,13 @@ class ComputeV1(
     def create_backend_service_traffic_director(
         self,
         name: str,
-        health_check: "GcpResource",
+        health_check: Optional["GcpResource"] = None,
         affinity_header: Optional[str] = None,
         protocol: Optional[BackendServiceProtocol] = None,
         subset_size: Optional[int] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         enable_dualstack: bool = False,
-        is_cloud_run: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
@@ -163,7 +162,7 @@ class ComputeV1(
         }
         # If it is not for cloud run, add heath check since cloud run does not
         # support health check.
-        if not is_cloud_run:
+        if not health_check is None:
             body["healthChecks"] = [health_check.url]
 
         # If add dualstack support is specified True, config the backend service
@@ -580,24 +579,21 @@ class ComputeV1(
         Returns:
             The NEG selfLink URL
         """
+
+        # Note: Cloud Run is not the only service that uses serverless NEGs.
+        # See: https://cloud.google.com/load-balancing/docs/negs/serverless-neg-concepts
         neg_body = {
             "name": name,
             "networkEndpointType": "SERVERLESS",
             "cloudRun": {"service": service_name},
         }
-
-        try:
-            logger.info("Creating serverless NEG %s in %s", name, region)
-            self.api.regionNetworkEndpointGroups().insert(
-                project=self.project, region=region, body=neg_body
-            ).execute()
-            neg = self.get_serverless_network_endpoint_group(name, region)
-            logger.info("Created serverless neg %s ", neg)
-            return neg
-
-        except Exception as e:
-            logger.exception("Error creating serverless NEG: %s", e)
-            raise
+        logger.info("Creating serverless NEG %s in %s", name, region)
+        self.api.regionNetworkEndpointGroups().insert(
+            project=self.project, region=region, body=neg_body
+        ).execute()
+        neg = self.get_serverless_network_endpoint_group(name, region)
+        logger.info("Created serverless neg %s ", neg)
+        return neg
 
     def delete_serverless_neg(self, name: str, region: str):
         """Deletes a serverless NEG.
