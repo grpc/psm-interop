@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 GcpResource = gcp.compute.ComputeV1.GcpResource
 
 DEFAULT_TEST_PORT: Final[int] = 8080
-
+DEFAULT_CLIENT_TEST_PORT: Final[int] = 50052
 
 @dataclasses.dataclass(frozen=True)
 class CloudRun:
@@ -111,6 +111,9 @@ class CloudRunApiManager(
         image_name: str,
         *,
         test_port: int = DEFAULT_TEST_PORT,
+        is_client: bool = False,
+        server_target: str = "",
+        mesh_name: str = ""
     ):
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
@@ -132,8 +135,77 @@ class CloudRunApiManager(
                 },
             }
 
+            if is_client:
+                service_body={
+                    "launch_stage":"alpha",
+                    "template":
+                        {
+                            "containers": [
+                               {
+                                  "image": image_name,
+                                  "ports": [{"containerPort": DEFAULT_CLIENT_TEST_PORT, "name": "h2c"}],  
+                                  "args": [f"--server={server_target}", "--secure_mode=true",],
+                                  "env":[
+                                    {
+                                        "name":"GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE",
+                                        "value":"true"
+                                    },
+                                    {
+                                        "name":"GRPC_TRACE",
+                                        "value":"xds_client"
+                                    },
+                                    {
+                                        "name":"GRPC_VERBOSITY",
+                                        "value":"DEBUG"
+                                    },
+                                    {
+                                        "name":"GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS",
+                                        "value":"true"
+                                    },
+                                    {
+                                        "name":"GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER",
+                                        "value":"true"
+                                    },
+                                    {
+                                        "name":"is-trusted-xds-server-experimental",
+                                        "value":"true"
+                                    },
+                                    {
+                                        "name":"GRPC_XDS_BOOTSTRAP_CONFIG",
+                                        "value":"/tmp/grpc-xds/td-grpc-bootstrap.json"
+                                    }
+                                  ]
+                                }
+                             ],
+                            "service_mesh":{
+                                "mesh":mesh_name,
+                                "dataplaneMode":"PROXYLESS_GRPC"
+                                },
+                            "vpc_access":{
+                                "network_interfaces":{
+                                    "network":"default",
+                                    "subnetwork":"default",
+                                }
+                            }
+                        },
+                    }
+
             logger.info("Deploying Cloud Run service '%s'", service_name)
             self.create_service(self.service, service_name, service_body)
+            # Allow unauthenticated requests for `LoadBalancerStatsServiceClient`
+            # and `CsdsClient` to retrieve client statistics.
+            if is_client:
+                policy_body={
+                    "policy": {
+                        "bindings": [
+                            {
+                                "role": "roles/run.invoker",
+                                "members": ["allUsers"]
+                            }
+                        ],
+                    },
+                }
+                self.service.projects().locations().services().setIamPolicy(resource=self.resource_full_name(service_name, "services", self.region), body=policy_body).execute() # pylint: disable=no-member
             return self.get_service_uri(service_name)
 
         except Exception as e:  # noqa pylint: disable=broad-except

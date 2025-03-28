@@ -95,10 +95,13 @@ class GrpcApp:
         # Cache gRPC channels per port
         self.channels = dict()
 
-    def _make_channel(self, port) -> grpc.Channel:
+    def _make_channel(self, port,secure_mode=False) -> grpc.Channel:
         if port not in self.channels:
             target = f"{self.rpc_host}:{port}"
-            self.channels[port] = grpc.insecure_channel(target)
+            if secure_mode:
+                self.channels[port] = grpc.secure_channel(target, grpc.ssl_channel_credentials())
+            else:
+                self.channels[port] = grpc.insecure_channel(target)
         return self.channels[port]
 
     def close(self):

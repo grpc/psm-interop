@@ -68,6 +68,10 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         region: str,
         gcp_ui_url: str,
         network: Optional[str] = None,
+        *,
+        mesh_name: Optional[str] = None,
+        server_target: Optional[str] = None,
+        is_client: Optional[bool] = False,
     ) -> None:
         super().__init__()
 
@@ -78,6 +82,9 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.region = region
         self.current_revision = None
         self.gcp_ui_url = gcp_ui_url
+        self.mesh_name = mesh_name
+        self.server_target = server_target
+        self.is_client = is_client
 
         # Persistent across many runs.
         self.run_history = collections.deque()
@@ -113,6 +120,9 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.current_revision = self.cloud_run_api_manager.deploy_service(
             self.service_name,
             self.image_name,
+            mesh_name=self.mesh_name,
+            server_target=self.server_target,
+            is_client=self.is_client,
         )
 
     def _start_completed(self):
