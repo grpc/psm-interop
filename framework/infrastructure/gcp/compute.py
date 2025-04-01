@@ -162,7 +162,7 @@ class ComputeV1(
         }
         # If it is not for cloud run, add heath check since cloud run does not
         # support health check.
-        if not health_check is None:
+        if health_check:
             body["healthChecks"] = [health_check.url]
 
         # If add dualstack support is specified True, config the backend service

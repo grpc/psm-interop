@@ -528,7 +528,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         return f"projects/{self.project}/locations/{location}"
 
     def resource_full_name(
-        self, name, collection_name, location: str = GLOBAL_LOCATION
+        self, name: str, collection_name: str, location: str = GLOBAL_LOCATION
     ):
         return f"{self.parent(location)}/{collection_name}/{name}"
 

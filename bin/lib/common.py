@@ -27,8 +27,8 @@ from framework.infrastructure import k8s
 from framework.infrastructure.gcp import cloud_run
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
+from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
@@ -49,7 +49,7 @@ KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
-CloudRunClientRunner = cloud_run_xds_server_runner.CloudRunClientRunner
+CloudRunClientRunner = cloud_run_xds_client_runner.CloudRunClientRunner
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -179,18 +179,16 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
 def make_cloud_run_client_runner(
         mesh_name: str,
         server_target: str,
-        is_client:bool = True,
 ) -> CloudRunClientRunner:
     # CloudRunClientRunner arguments.
     runner_kwargs = dict(
         project=xds_flags.PROJECT.value,
-        service_name=xds_flags.SERVER_NAME.value,
-        image_name=xds_k8s_flags.SERVER_IMAGE.value,
+        service_name=xds_flags.CLIENT_NAME.value,
+        image_name=xds_k8s_flags.CLIENT_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
         mesh=mesh_name,
         server_target=server_target,
-        is_client=is_client,
     )
     client_runner = CloudRunClientRunner
     return client_runner(**runner_kwargs)

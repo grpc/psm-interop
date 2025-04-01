@@ -44,7 +44,9 @@ def main(argv):
     xds_flags.set_socket_default_timeout_from_flag()
 
     run_kwargs = dict()
-    td = traffic_director_cloud_run.TrafficDirectorCloudRunManager(**common.td_attrs())
+    td = traffic_director_cloud_run.TrafficDirectorCloudRunManager(
+        **common.td_attrs()
+    )
     run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
     # Default server target pattern.
     server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
@@ -52,7 +54,9 @@ def main(argv):
         server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
 
     run_kwargs["server_target"] = server_target
-    client_runner = common.make_cloud_run_client_runner(run_kwargs["config_mesh"], server_target,is_client=True)
+    client_runner = common.make_cloud_run_client_runner(
+        run_kwargs["config_mesh"], server_target
+    )
     client_runner.run(**run_kwargs)
 
 

@@ -16,15 +16,18 @@ Run xDS Test Client on Cloud Run.
 """
 import dataclasses
 import logging
-from typing import Optional,Final
+from typing import Final, Optional
+
 from typing_extensions import override
+
 from framework.infrastructure import gcp
-from framework.test_app.runners.cloud_run import cloud_run_base_runner
 from framework.test_app.client_app import XdsTestClient
+from framework.test_app.runners.cloud_run import cloud_run_base_runner
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT: Final[int] = 443
+
 
 @dataclasses.dataclass(frozen=True)
 class CloudRunDeploymentArgs:
@@ -47,7 +50,7 @@ class CloudRunDeploymentArgs:
             "service_account_email": self.service_account_email,
             "timeout_seconds": self.timeout_seconds,
             "mesh_name": self.mesh_name,
-            "server_target": self.server_target
+            "server_target": self.server_target,
         }
 
 
@@ -61,10 +64,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         image_name: str,
         network: str,
         region: str,
-        gcp_api_manager:gcp.api.GcpApiManager,
-        mesh_name:str,
-        server_target:str,
-        is_client:bool=True,
+        gcp_api_manager: gcp.api.GcpApiManager,
+        mesh_name: str,
+        server_target: str,
+        is_client: bool = True,
     ):
         super().__init__(
             project,
@@ -79,7 +82,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
         # Mutable state associated with each run.
         self._reset_state()
-
 
     @override
     def _reset_state(self):
@@ -97,10 +99,15 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
         super().run(**kwargs)
-        client_url=self.current_revision[8:] # Remove the https:// part from the URL
+        client_url = self.current_revision.removeprefix("https://")
         client = XdsTestClient(
-                ip=client_url, rpc_port=DEFAULT_PORT,rpc_host=client_url, server_target=self.server_target,hostname=self.current_revision,maintenance_port=DEFAULT_PORT
-            )
+            ip=client_url,
+            rpc_port=DEFAULT_PORT,
+            rpc_host=client_url,
+            server_target=self.server_target,
+            hostname=self.current_revision,
+            maintenance_port=DEFAULT_PORT,
+        )
         self._start_completed()
         return client
 

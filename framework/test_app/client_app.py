@@ -84,12 +84,12 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             self._make_channel(self.rpc_port),
             log_target=f"{self.hostname}:{self.rpc_port}",
         )
-    
+
     @property
     @functools.lru_cache(None)
     def secure_load_balancer_stats(self) -> _LoadBalancerStatsServiceClient:
         return _LoadBalancerStatsServiceClient(
-            self._make_channel(self.rpc_port,secure_mode=True),
+            self._make_channel(self.rpc_port, secure_mode=True),
             log_target=f"{self.hostname}:{self.rpc_port}",
         )
 
@@ -116,13 +116,15 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             self._make_channel(self.maintenance_port),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
+
     @property
     @functools.lru_cache(None)
     def secure_csds(self) -> _CsdsClient:
         return _CsdsClient(
-            self._make_channel(self.maintenance_port,secure_mode=True),
+            self._make_channel(self.maintenance_port, secure_mode=True),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
+
     def get_csds_parsed(self, **kwargs) -> Optional[grpc_csds.DumpedXdsConfig]:
         return self.csds.fetch_client_status_parsed(**kwargs)
 
@@ -132,12 +134,11 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         num_rpcs: int,
         metadata_keys: Optional[tuple[str, ...]] = None,
         timeout_sec: Optional[int] = None,
-        secure_mode=False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """
         Shortcut to LoadBalancerStatsServiceClient.get_client_stats()
         """
-        return self.load_balancer_stats().get_client_stats(
+        return self.load_balancer_stats.get_client_stats(
             num_rpcs=num_rpcs,
             timeout_sec=timeout_sec,
             metadata_keys=metadata_keys,

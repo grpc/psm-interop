@@ -24,9 +24,7 @@ _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
-class CloudRunClientServerBaselineTest(
-    xds_k8s_testcase.CloudRunXdsTestCase
-):
+class CloudRunClientServerBaselineTest(xds_k8s_testcase.CloudRunXdsTestCase):
     def test_cloudrun_client_cloudrun_service(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
@@ -38,7 +36,9 @@ class CloudRunClientServerBaselineTest(
             neg = self.backendServiceAddServerlessNegBackends()
 
         with self.subTest("3_create_backend_service"):
-            self.td.create_backend_service(protocol=self.compute_v1.BackendServiceProtocol.HTTP2)
+            self.td.create_backend_service(
+                protocol=self.compute_v1.BackendServiceProtocol.HTTP2
+            )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
             neg_resource = self.compute_v1.GcpResource(
@@ -58,7 +58,6 @@ class CloudRunClientServerBaselineTest(
                 config_mesh=self.td.mesh.name,
                 is_trusted_xds_server_experimental=True,
             )
-
 
         with self.subTest("8_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)

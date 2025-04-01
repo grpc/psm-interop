@@ -179,6 +179,7 @@ psm::cloud_run::setup() {
 psm::cloud_run::get_tests() {
   TESTS=(
     "cloud_run_csm_inbound_test"
+    "cloud_run_csm_outbound_test"
   )
 }
 
@@ -195,6 +196,9 @@ psm::cloud_run::get_tests() {
 #######################################
 psm::cloud_run::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-cloudrun.cfg"
+  )
   psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }

@@ -47,8 +47,8 @@ from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
+from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_cases import base_testcase
@@ -713,7 +713,7 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode=False
+        secure_mode=False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
@@ -1562,6 +1562,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
                 ),
             )
 
+
 class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
     server_runner: CloudRunServerRunner
     client_runner: CloudRunClientRunner
@@ -1623,17 +1624,19 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
             )
         return test_servers
 
-    def startCloudRunTestClient(self, test_server: XdsTestServer, **kwargs)->XdsTestClient:
+    def startCloudRunTestClient(
+        self, test_server: XdsTestServer, **kwargs
+    ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
-                project=self.project,
-                service_name=self.client_namespace,
-                image_name=self.client_image,
-                network=self.network,
-                region=self.region,
-                gcp_api_manager=self.gcp_api_manager,
-                server_target=test_server.xds_uri,
-                mesh_name= self.td.mesh.url,
-            )
+            project=self.project,
+            service_name=self.client_namespace,
+            image_name=self.client_image,
+            network=self.network,
+            region=self.region,
+            gcp_api_manager=self.gcp_api_manager,
+            server_target=test_server.xds_uri,
+            mesh_name=self.td.mesh.url,
+        )
         test_client = self.client_runner.run()
         return test_client
 
@@ -1655,26 +1658,28 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
         retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
         retry_wait: dt.timedelta = dt.timedelta(seconds=5),
     ) -> None:
-            # TODO(sergiitk): force num_rpcs to be a kwarg
-            retryer = retryers.constant_retryer(
-                wait_fixed=retry_wait,
-                timeout=retry_timeout,
-                log_level=logging.INFO,
-                error_note=(
-                    f"Could not find correct bootstrap config"
-                    f" before timeout {retry_timeout} (h:mm:ss)"
-                ),
-            )
-            retryer(
-                self._assertXdsConfigExists,
-                test_client,
-            )
+        # TODO(sergiitk): force num_rpcs to be a kwarg
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Could not find correct bootstrap config"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self._assertXdsConfigExists,
+            test_client,
+        )
 
     def _assertXdsConfigExists(
         self,
         test_client: XdsTestClient,
     ):
-        config = test_client.secure_csds.fetch_client_status(log_level=logging.INFO)
+        config = test_client.secure_csds.fetch_client_status(
+            log_level=logging.INFO
+        )
         self.assertIsNotNone(config)
         seen = set()
         want = frozenset(
@@ -1702,9 +1707,12 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
         )
         self.assertSameElements(want, seen)
 
-    def assertSuccessfulRpcs(self, test_client: XdsTestClient, num_rpcs: int = 100):
+    def assertSuccessfulRpcs(
+        self, test_client: XdsTestClient, num_rpcs: int = 100
+    ):
         lb_stats = test_client.secure_load_balancer_stats.get_client_stats(
-            num_rpcs=num_rpcs)
+            num_rpcs=num_rpcs
+        )
         logger.info(
             "[%s] << Received LoadBalancerStatsResponse:\n%s",
             test_client.hostname,
@@ -1718,14 +1726,12 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
             msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
         )
         return lb_stats
-    
+
     def cleanup(self):
         self.server_runner.cleanup(force=self.force_cleanup)
         self.td.cleanup(force=self.force_cleanup)
         self.compute_v1.delete_serverless_neg(self.neg["name"], self.region)
-        self.client_runner.cleanup(
-            force=self.force_cleanup
-        )
+        self.client_runner.cleanup(force=self.force_cleanup)
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)
