@@ -713,12 +713,10 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode=False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
             metadata_keys=metadata_keys,
-            secure_mode=secure_mode,
         )
         logger.info(
             "[%s] << Received LoadBalancerStatsResponse:\n%s",
