@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 GcpResource = gcp.compute.ComputeV1.GcpResource
 
 DEFAULT_TEST_PORT: Final[int] = 8080
+DISCOVERY_URI: Final[str] = "https://run.googleapis.com/$discovery/rest?"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -55,9 +56,7 @@ class CloudRunApiManager(
             raise ValueError("Project ID cannot be empty or None.")
         if not region:
             raise ValueError("Region cannot be empty or None.")
-        self.api_manager = gcp.api.GcpApiManager(
-            v2_discovery_uri="https://run.googleapis.com/$discovery/rest?"
-        )
+        self.api_manager = gcp.api.GcpApiManager(v2_discovery_uri=DISCOVERY_URI)
         self.project = project
         self.region = region
         service: discovery.Resource = self.api_manager.cloudrun("v2")
