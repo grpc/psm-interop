@@ -99,7 +99,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
         super().run(**kwargs)
-        client_url = self.current_revision.removeprefix("https://")
+        client_url = self.current_revision[0].removeprefix("https://")
         client = XdsTestClient(
             ip=client_url,
             rpc_port=DEFAULT_PORT,

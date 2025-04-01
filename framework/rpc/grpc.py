@@ -103,7 +103,10 @@ class GrpcApp:
                     target, grpc.ssl_channel_credentials()
                 )
             else:
-                self.channels[port] = grpc.insecure_channel(target)
+                if secure_mode:
+                    self.channels[port] = grpc.secure_channel(target, grpc.ssl_channel_credentials())
+                else:
+                    self.channels[port] = grpc.insecure_channel(target)
         return self.channels[port]
 
     def close(self):
