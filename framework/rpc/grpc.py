@@ -99,14 +99,12 @@ class GrpcApp:
         if port not in self.channels:
             target = f"{self.rpc_host}:{port}"
             if secure_mode:
+                logger.info("eshita : secure mode detected")
                 self.channels[port] = grpc.secure_channel(
                     target, grpc.ssl_channel_credentials()
                 )
             else:
-                if secure_mode:
-                    self.channels[port] = grpc.secure_channel(target, grpc.ssl_channel_credentials())
-                else:
-                    self.channels[port] = grpc.insecure_channel(target)
+                self.channels[port] = grpc.insecure_channel(target)
         return self.channels[port]
 
     def close(self):

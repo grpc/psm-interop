@@ -117,7 +117,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     @override
     def cleanup(self, *, force=False):
         try:
-            if self.service:
-                self.stop()
+            self.stop()
         finally:
             self._stop()
