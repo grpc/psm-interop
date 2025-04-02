@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 # Type aliases
 GcpResource = gcp.compute.ComputeV1.GcpResource
 
-DEFAULT_TEST_PORT: Final[int] = 8080
-DEFAULT_CLIENT_TEST_PORT: Final[int] = 50052
+DEFAULT_TEST_SERVER_PORT: Final[int] = 8080
+DEFAULT_TEST_CLIENT_PORT: Final[int] = 50052
 DISCOVERY_URI: Final[str] = "https://run.googleapis.com/$discovery/rest?"
 
 
@@ -36,10 +36,10 @@ class CloudRun:
     url: str
 
     @classmethod
-    def from_response(cls, name: str, d: Dict[str, Any]) -> "CloudRun":
+    def from_response(cls, name: str, response: Dict[str, Any]) -> "CloudRun":
         return cls(
             service_name=name,
-            url=d["urls"],
+            url=response["urls"],
         )
 
 
@@ -110,7 +110,7 @@ class CloudRunApiManager(
         service_name: str,
         image_name: str,
         *,
-        test_port: int = DEFAULT_TEST_PORT,
+        test_server_port: int = DEFAULT_TEST_SERVER_PORT,
         is_client: bool = False,
         server_target: str = "",
         mesh_name: str = "",
@@ -121,20 +121,6 @@ class CloudRunApiManager(
             raise ValueError("image_name cannot be empty or None")
 
         try:
-            service_body = {
-                "launch_stage": "alpha",
-                "template": {
-                    "containers": [
-                        {
-                            "image": image_name,
-                            "ports": [
-                                {"containerPort": test_port, "name": "h2c"}
-                            ],
-                        }
-                    ],
-                },
-            }
-
             if is_client:
                 service_body = {
                     "launch_stage": "alpha",
@@ -144,7 +130,7 @@ class CloudRunApiManager(
                                 "image": image_name,
                                 "ports": [
                                     {
-                                        "containerPort": DEFAULT_CLIENT_TEST_PORT,
+                                        "containerPort": DEFAULT_TEST_CLIENT_PORT,
                                         "name": "h2c",
                                     }
                                 ],
@@ -163,7 +149,7 @@ class CloudRunApiManager(
                                     },
                                     {
                                         "name": "GRPC_VERBOSITY",
-                                        "value": "DEBUG",
+                                        "value": "info",
                                     },
                                     {
                                         "name": "GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS",
@@ -177,10 +163,6 @@ class CloudRunApiManager(
                                         "name": "is-trusted-xds-server-experimental",
                                         "value": "true",
                                     },
-                                    {
-                                        "name": "GRPC_XDS_BOOTSTRAP_CONFIG",
-                                        "value": "/tmp/grpc-xds/td-grpc-bootstrap.json",
-                                    },
                                 ],
                             }
                         ],
@@ -188,14 +170,22 @@ class CloudRunApiManager(
                             "mesh": mesh_name,
                             "dataplaneMode": "PROXYLESS_GRPC",
                         },
-                        # "vpc_access": {
-                        #     "network_interfaces": {
-                        #         "network": "default",
-                        #         "subnetwork": "default",
-                        #     }
-                        # },
                     },
                 }
+            else:
+                service_body = {
+                "launch_stage": "alpha",
+                "template": {
+                    "containers": [
+                        {
+                            "image": image_name,
+                            "ports": [
+                                {"containerPort": test_server_port, "name": "h2c"}
+                            ],
+                        }
+                    ],
+                },
+            }
 
             logger.info("Deploying Cloud Run service '%s'", service_name)
             self.create_service(self.service, service_name, service_body)
@@ -212,12 +202,13 @@ class CloudRunApiManager(
                         ],
                     },
                 }
+                # pylint: disable=no-member
                 self.service.projects().locations().services().setIamPolicy(
                     resource=self.resource_full_name(
                         service_name, "services", self.region
                     ),
                     body=policy_body,
-                ).execute()  # pylint: disable=no-member
+                ).execute()
             return self.get_service_uri(service_name)
 
         except Exception as e:  # noqa pylint: disable=broad-except
