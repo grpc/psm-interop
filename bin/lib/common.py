@@ -187,7 +187,7 @@ def make_cloud_run_client_runner(
         image_name=xds_k8s_flags.CLIENT_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
-        mesh=mesh_name,
+        mesh_name=mesh_name,
         server_target=server_target,
     )
     client_runner = CloudRunClientRunner

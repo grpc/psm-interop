@@ -1623,7 +1623,7 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
         return test_servers
 
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer, **kwargs
+        self, test_server: XdsTestServer
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
@@ -1652,18 +1652,15 @@ class CloudRunXdsTestCase(SecurityXdsKubernetesTestCase):
     def assertXdsConfigExists(
         self,
         test_client: XdsTestClient,
-        *,
-        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
-        retry_wait: dt.timedelta = dt.timedelta(seconds=5),
     ) -> None:
         # TODO(sergiitk): force num_rpcs to be a kwarg
         retryer = retryers.constant_retryer(
-            wait_fixed=retry_wait,
-            timeout=retry_timeout,
+            wait_fixed=dt.timedelta(seconds=5),
+            timeout=TD_CONFIG_MAX_WAIT,
             log_level=logging.INFO,
             error_note=(
                 f"Could not find correct bootstrap config"
-                f" before timeout {retry_timeout} (h:mm:ss)"
+                f" before timeout {TD_CONFIG_MAX_WAIT} (h:mm:ss)"
             ),
         )
         retryer(
