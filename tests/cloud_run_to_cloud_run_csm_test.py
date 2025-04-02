@@ -54,9 +54,7 @@ class CloudRunClientServerBaselineTest(xds_k8s_testcase.CloudRunXdsTestCase):
 
         with self.subTest("7_start_test_client"):
             test_client: _XdsTestClient = self.startCloudRunTestClient(
-                test_server,
-                config_mesh=self.td.mesh.name,
-                is_trusted_xds_server_experimental=True,
+                test_server
             )
 
         with self.subTest("8_test_client_xds_config_exists"):
