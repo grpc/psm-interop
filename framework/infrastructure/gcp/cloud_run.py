@@ -188,12 +188,12 @@ class CloudRunApiManager(
                             "mesh": mesh_name,
                             "dataplaneMode": "PROXYLESS_GRPC",
                         },
-                        "vpc_access": {
-                            "network_interfaces": {
-                                "network": "default",
-                                "subnetwork": "default",
-                            }
-                        },
+                        # "vpc_access": {
+                        #     "network_interfaces": {
+                        #         "network": "default",
+                        #         "subnetwork": "default",
+                        #     }
+                        # },
                     },
                 }
 
