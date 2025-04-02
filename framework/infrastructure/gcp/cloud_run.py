@@ -174,18 +174,21 @@ class CloudRunApiManager(
                 }
             else:
                 service_body = {
-                "launch_stage": "alpha",
-                "template": {
-                    "containers": [
-                        {
-                            "image": image_name,
-                            "ports": [
-                                {"containerPort": test_server_port, "name": "h2c"}
-                            ],
-                        }
-                    ],
-                },
-            }
+                    "launch_stage": "alpha",
+                    "template": {
+                        "containers": [
+                            {
+                                "image": image_name,
+                                "ports": [
+                                    {
+                                        "containerPort": test_server_port,
+                                        "name": "h2c",
+                                    }
+                                ],
+                            }
+                        ],
+                    },
+                }
 
             logger.info("Deploying Cloud Run service '%s'", service_name)
             self.create_service(self.service, service_name, service_body)
