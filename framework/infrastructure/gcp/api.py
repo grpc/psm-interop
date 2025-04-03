@@ -537,6 +537,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         collection: discovery.Resource,
         body: dict,
         location: Optional[str] = None,
+        is_cloudrun: bool = False,
         **kwargs,
     ):
         logger.info(
@@ -547,7 +548,8 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         create_req = collection.create(
             parent=self.parent(location), body=body, **kwargs
         )
-        self._execute(create_req)
+
+        self._execute(create_req, is_cloudrun=is_cloudrun)
 
     @property
     @abc.abstractmethod
@@ -567,11 +569,16 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         return resource
 
     def _delete_resource(
-        self, collection: discovery.Resource, full_name: str
+        self,
+        collection: discovery.Resource,
+        full_name: str,
+        is_cloudrun: bool = False,
     ) -> bool:
         logger.debug("Deleting %s", full_name)
         try:
-            self._execute(collection.delete(name=full_name))
+            self._execute(
+                collection.delete(name=full_name), is_cloudrun=is_cloudrun
+            )
             return True
         except _HttpError as error:
             if error.resp and error.resp.status == 404:
@@ -585,15 +592,17 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         self,
         request: HttpRequest,
         timeout_sec: int = GcpProjectApiResource._WAIT_FOR_OPERATION_SEC,
+        is_cloudrun: bool = False,
     ):
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
-        logger.debug("Operation %s", operation)
-        self._wait(operation["name"], timeout_sec)
+        logger.info("Operation %s", operation)
+        self._wait(operation["name"], timeout_sec, is_cloudrun)
 
     def _wait(
         self,
         operation_id: str,
         timeout_sec: int = GcpProjectApiResource._WAIT_FOR_OPERATION_SEC,
+        is_cloudrun: bool = False,
     ):
         logger.info(
             "Waiting %s sec for %s operation id: %s",
@@ -605,11 +614,21 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         op_request = (
             self.api.projects().locations().operations().get(name=operation_id)
         )
-        operation = self.wait_for_operation(
-            operation_request=op_request,
-            test_success_fn=lambda result: result["done"],
-            timeout_sec=timeout_sec,
-        )
+        if is_cloudrun:
+            operation = self.wait_for_operation(
+                operation_request=op_request,
+                test_success_fn=lambda result: result["metadata"][
+                    "terminalCondition"
+                ]["state"]
+                == "CONDITION_SUCCEEDED",
+                timeout_sec=timeout_sec,
+            )
+        else:
+            operation = self.wait_for_operation(
+                operation_request=op_request,
+                test_success_fn=lambda result: result["done"],
+                timeout_sec=timeout_sec,
+            )
 
         logger.debug("Completed operation: %s", operation)
         if "error" in operation:

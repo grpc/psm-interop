@@ -77,9 +77,13 @@ class CloudRunApiManager(
     def create_service(
         self, service: discovery.Resource, service_name: str, body: dict
     ) -> GcpResource:
-        service.projects().locations().services().create(
-            parent=self._parent, serviceId=service_name, body=body
-        ).execute()
+        return self._create_resource(
+            collection=service.projects().locations().services(),
+            location=self.region,
+            serviceId=service_name,
+            body=body,
+            is_cloudrun=True,
+        )
 
     def get_service(
         self, service: discovery.Resource, service_name: str
@@ -99,10 +103,15 @@ class CloudRunApiManager(
         response = self.get_service(self.service, service_name)
         return response.url
 
-    def _delete_service(self, service: discovery.Resource, service_name: str):
-        service.projects().locations().services().delete(
-            name=self.resource_full_name(service_name, "services", self.region)
-        ).execute()
+    def delete_service(self, service_name: str):
+        # pylint: disable=no-member
+        self._delete_resource(
+            self.service.projects().locations().services(),
+            full_name=self.resource_full_name(
+                service_name, "services", self.region
+            ),
+            is_cloudrun=True,
+        )
 
     def deploy_service(
         self,
@@ -137,11 +146,4 @@ class CloudRunApiManager(
 
         except Exception as e:  # noqa pylint: disable=broad-except
             logger.exception("Error deploying Cloud Run service: %s", e)
-            raise
-
-    def delete_service(self, service_name: str):
-        try:
-            self._delete_service(self.service, service_name)
-        except Exception as e:
-            logger.exception("Error deleting service: %s", e)
             raise

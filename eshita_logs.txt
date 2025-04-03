@@ -1,0 +1,387 @@
+Saving framework log to /Users/emchandwani/psm-interop/out/run/20250403-145431-cloud_run_csm_inbound_test.log
++ [14:54:31 IST]	 exec python tests/cloud_run_csm_inbound_test.py --flagfile=/Users/emchandwani/psm-interop/config/local-dev.cfg
+Running tests under Python 3.10.16: /Users/emchandwani/psm-interop/venv/bin/python
+I0403 14:54:32.686208 8252002176 xds_k8s_testcase.py:177] ----- Testing CloudRunCsmInboundTest -----
+I0403 14:54:32.686257 8252002176 xds_k8s_testcase.py:178] Logs timezone: IST
+I0403 14:54:32.686340 8252002176 xds_k8s_testcase.py:106] Detected language and version: TestConfig(client_lang='cpp', server_lang='cpp', version=None)
+I0403 14:54:34.163246 8252002176 k8s.py:264] Using kubernetes context "gke_emchandwani-default_us-central1-a_xds-k8s-interop-tests-cluster5", active host: https://34.55.128.246
+[ RUN      ] CloudRunCsmInboundTest.test_gke_to_cloud_run
+I0403 14:54:35.881356 8252002176 xds_k8s_testcase.py:865] Test run resource prefix: emchandwani-psm, suffix: 20250403-0924-5i0rd
+I0403 14:54:41.003833 8252002176 xds_k8s_testcase.py:860] Found unused xds port: 11198
+I0403 14:54:41.005290 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.0_create_mesh ---
+I0403 14:54:41.005562 8252002176 traffic_director.py:947] Creating Mesh emchandwani-psm-grpc-mesh-20250403-0924-5i0rd
+I0403 14:54:41.009238 8252002176 api.py:543] Creating networkservices resource:
+[38;5;221m---[39m[38;5;15m [39m[38;5;117m{[39m[38;5;117m}[39m
+[38;5;221m...[39m
+
+I0403 14:54:42.954442 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672282522-631dc57012215-2760f929-becd3af7', 'metadata': {'@type': 'type.googleapis.com/google.cloud.networkservices.v1.OperationMetadata', 'createTime': '2025-04-03T09:24:42.694884164Z', 'target': 'projects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd', 'verb': 'create', 'requestedCancellation': False, 'apiVersion': 'v1'}, 'done': False}
+I0403 14:54:42.954872 8252002176 api.py:602] Waiting 600 sec for networkservices operation id: projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672282522-631dc57012215-2760f929-becd3af7
+I0403 14:54:42.958230 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106b586a0>
+I0403 14:54:49.019292 8252002176 api.py:566] Loaded projects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd:
+[38;5;221m---[39m
+[38;5;203mcreateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:42.674442384Z[39m[38;5;150m'[39m
+[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd[39m
+[38;5;203mselfLink[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mhttps://networkservices.googleapis.com/v1alpha1/projects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd[39m
+[38;5;203mupdateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:45.928312100Z[39m[38;5;150m'[39m
+[38;5;221m...[39m
+
+I0403 14:54:49.019686 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.0_create_mesh ---
+I0403 14:54:49.019819 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.1_start_cloud_run_test_server ---
+I0403 14:54:49.746824 8252002176 cloud_run_xds_server_runner.py:62] Starting cloud run server with service emchandwani-psm-server-20250403-0924-5i0rd and image us-docker.pkg.dev/grpc-testing/psm-interop/cpp-server:v1.71.x
+I0403 14:54:49.746951 8252002176 cloud_run.py:134] Deploying Cloud Run service 'emchandwani-psm-server-20250403-0924-5i0rd'
+I0403 14:54:49.748914 8252002176 api.py:543] Creating run resource:
+[38;5;221m---[39m
+[38;5;203mlaunch_stage[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150malpha[39m
+[38;5;203mtemplate[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;203mcontainers[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mimage[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mus-docker.pkg.dev/grpc-testing/psm-interop/cpp-server:v1.71.x[39m
+[38;5;15m    [39m[38;5;203mports[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mcontainerPort[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m8080[39m
+[38;5;15m      [39m[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mh2c[39m
+[38;5;221m...[39m
+
+I0403 14:54:52.626143 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/operations/5dd1d9a3-001c-4924-a43a-d6d0abfe82ed', 'metadata': {'@type': 'type.googleapis.com/google.cloud.run.v2.Service', 'name': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd', 'uid': 'b0977056-29b5-45b8-b626-8c526e436119', 'generation': '1', 'createTime': '2025-04-03T09:24:52.130328Z', 'updateTime': '2025-04-03T09:24:52.130328Z', 'creator': 'emchandwani@google.com', 'lastModifier': 'emchandwani@google.com', 'launchStage': 'GA', 'template': {'scaling': {'maxInstanceCount': 100}, 'timeout': '300s', 'serviceAccount': '921384807982-compute@developer.gserviceaccount.com', 'containers': [{'image': 'us-docker.pkg.dev/grpc-testing/psm-interop/cpp-server:v1.71.x', 'resources': {'limits': {'memory': '512Mi', 'cpu': '1000m'}, 'cpuIdle': True}, 'ports': [{'name': 'h2c', 'containerPort': 8080}], 'startupProbe': {'timeoutSeconds': 240, 'periodSeconds': 240, 'failureThreshold': 1, 'tcpSocket': {'port': 8080}}}], 'maxInstanceRequestConcurrency': 80}, 'traffic': [{'type': 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST', 'percent': 100}], 'urls': ['https://emchandwani-psm-server-20250403-0924-5i0rd-921384807982.us-east1.run.app'], 'terminalCondition': {'state': 'CONDITION_PENDING'}, 'reconciling': True, 'etag': '"COSnub8GEMDLkj4/cHJvamVjdHMvYmN0LWdjZXN0YWdpbmctZ3VpdGFyLWdycGMvbG9jYXRpb25zL3VzLWVhc3QxL3NlcnZpY2VzL2VtY2hhbmR3YW5pLXBzbS1zZXJ2ZXItMjAyNTA0MDMtMDkyNC01aTByZA"'}}
+I0403 14:54:52.626596 8252002176 api.py:602] Waiting 600 sec for run operation id: projects/bct-gcestaging-guitar-grpc/locations/us-east1/operations/5dd1d9a3-001c-4924-a43a-d6d0abfe82ed
+I0403 14:54:52.628556 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106b5b670>
+I0403 14:55:02.208549 8252002176 api.py:566] Loaded projects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd:
+[38;5;221m---[39m
+[38;5;203mconditions[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203mlastTransitionTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:58.430396Z[39m[38;5;150m'[39m
+[38;5;15m  [39m[38;5;203mstate[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mCONDITION_SUCCEEDED[39m
+[38;5;15m  [39m[38;5;203mtype[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mRoutesReady[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203mlastTransitionTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:57.419395Z[39m[38;5;150m'[39m
+[38;5;15m  [39m[38;5;203mstate[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mCONDITION_SUCCEEDED[39m
+[38;5;15m  [39m[38;5;203mtype[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mConfigurationsReady[39m
+[38;5;203mcreateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:52.130328Z[39m[38;5;150m'[39m
+[38;5;203mcreator[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150memchandwani@google.com[39m
+[38;5;203metag[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m"COSnub8GEMDLkj4/cHJvamVjdHMvYmN0LWdjZXN0YWdpbmctZ3VpdGFyLWdycGMvbG9jYXRpb25zL3VzLWVhc3QxL3NlcnZpY2VzL2VtY2hhbmR3YW5pLXBzbS1zZXJ2ZXItMjAyNTA0MDMtMDkyNC01aTByZA"[39m[38;5;150m'[39m
+[38;5;203mgeneration[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m1[39m[38;5;150m'[39m
+[38;5;203mingress[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mINGRESS_TRAFFIC_ALL[39m
+[38;5;203mlastModifier[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150memchandwani@google.com[39m
+[38;5;203mlatestCreatedRevision[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd/revisions/emchandwani-psm-server-20250403-0924-5i0rd-00001-p6l[39m
+[38;5;203mlatestReadyRevision[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd/revisions/emchandwani-psm-server-20250403-0924-5i0rd-00001-p6l[39m
+[38;5;203mlaunchStage[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mGA[39m
+[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd[39m
+[38;5;203mobservedGeneration[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m1[39m[38;5;150m'[39m
+[38;5;203mtemplate[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;203mcontainers[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mimage[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mus-docker.pkg.dev/grpc-testing/psm-interop/cpp-server:v1.71.x[39m
+[38;5;15m    [39m[38;5;203mports[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mcontainerPort[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m8080[39m
+[38;5;15m      [39m[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mh2c[39m
+[38;5;15m    [39m[38;5;203mresources[39m[38;5;117m:[39m
+[38;5;15m      [39m[38;5;203mcpuIdle[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mtrue[39m
+[38;5;15m      [39m[38;5;203mlimits[39m[38;5;117m:[39m
+[38;5;15m        [39m[38;5;203mcpu[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m1000m[39m
+[38;5;15m        [39m[38;5;203mmemory[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m512Mi[39m
+[38;5;15m    [39m[38;5;203mstartupProbe[39m[38;5;117m:[39m
+[38;5;15m      [39m[38;5;203mfailureThreshold[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m1[39m
+[38;5;15m      [39m[38;5;203mperiodSeconds[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m240[39m
+[38;5;15m      [39m[38;5;203mtcpSocket[39m[38;5;117m:[39m
+[38;5;15m        [39m[38;5;203mport[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m8080[39m
+[38;5;15m      [39m[38;5;203mtimeoutSeconds[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m240[39m
+[38;5;15m  [39m[38;5;203mmaxInstanceRequestConcurrency[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m80[39m
+[38;5;15m  [39m[38;5;203mscaling[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;203mmaxInstanceCount[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m100[39m
+[38;5;15m  [39m[38;5;203mserviceAccount[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m921384807982-compute@developer.gserviceaccount.com[39m
+[38;5;15m  [39m[38;5;203mtimeout[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m300s[39m
+[38;5;203mterminalCondition[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;203mlastTransitionTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:58.473882Z[39m[38;5;150m'[39m
+[38;5;15m  [39m[38;5;203mstate[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mCONDITION_SUCCEEDED[39m
+[38;5;15m  [39m[38;5;203mtype[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mReady[39m
+[38;5;203mtraffic[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203mpercent[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m100[39m
+[38;5;15m  [39m[38;5;203mtype[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mTRAFFIC_TARGET_ALLOCATION_TYPE_LATEST[39m
+[38;5;203mtrafficStatuses[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203mpercent[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m100[39m
+[38;5;15m  [39m[38;5;203mtype[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mTRAFFIC_TARGET_ALLOCATION_TYPE_LATEST[39m
+[38;5;203muid[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mb0977056-29b5-45b8-b626-8c526e436119[39m
+[38;5;203mupdateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:24:52.130328Z[39m[38;5;150m'[39m
+[38;5;203muri[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mhttps://emchandwani-psm-server-20250403-0924-5i0rd-ouuwihx2qq-ue.a.run.app[39m
+[38;5;203murls[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;150mhttps://emchandwani-psm-server-20250403-0924-5i0rd-921384807982.us-east1.run.app[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;150mhttps://emchandwani-psm-server-20250403-0924-5i0rd-ouuwihx2qq-ue.a.run.app[39m
+[38;5;221m...[39m
+
+I0403 14:55:02.209048 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.1_start_cloud_run_test_server ---
+I0403 14:55:02.209176 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.2_create_serverless_neg ---
+I0403 14:55:02.209264 8252002176 xds_k8s_testcase.py:1504] Creating serverless NEG
+I0403 14:55:02.209345 8252002176 compute.py:590] Creating serverless NEG emchandwani-psm-neg-20250403-0924-5i0rd in us-east1
+I0403 14:55:05.450768 8252002176 compute.py:595] Created serverless neg {'kind': 'compute#networkEndpointGroup', 'id': '2166457725700271360', 'creationTimestamp': '2025-04-03T02:25:03.766-07:00', 'selfLink': 'https://www.googleapis.com/compute/v1/projects/bct-gcestaging-guitar-grpc/regions/us-east1/networkEndpointGroups/emchandwani-psm-neg-20250403-0924-5i0rd', 'name': 'emchandwani-psm-neg-20250403-0924-5i0rd', 'networkEndpointType': 'SERVERLESS', 'size': 0, 'region': 'https://www.googleapis.com/compute/v1/projects/bct-gcestaging-guitar-grpc/regions/us-east1', 'cloudRun': {'service': 'emchandwani-psm-server-20250403-0924-5i0rd'}} 
+I0403 14:55:05.451114 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.2_create_serverless_neg ---
+I0403 14:55:05.451211 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.3_create_backend_service ---
+I0403 14:55:05.451360 8252002176 traffic_director.py:253] Creating HTTP2 Backend Service "emchandwani-psm-backend-service-20250403-0924-5i0rd"
+I0403 14:55:05.465883 8252002176 compute.py:662] Creating compute resource:
+[38;5;221m---[39m
+[38;5;203mloadBalancingScheme[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mINTERNAL_SELF_MANAGED[39m
+[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150memchandwani-psm-backend-service-20250403-0924-5i0rd[39m
+[38;5;203mprotocol[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mHTTP2[39m
+[38;5;221m...[39m
+
+I0403 14:55:06.219388 8252002176 compute.py:739] Waiting 600 sec for compute operation id: operation-1743672305646-631dc5861fd32-6386d9d6-95223583
+I0403 14:55:25.550782 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.3_create_backend_service ---
+I0403 14:55:25.550887 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.4_add_server_backends_to_backend_service ---
+I0403 14:55:25.550961 8252002176 traffic_director_cloud_run.py:77] Adding backends to Backend Service emchandwani-psm-backend-service-20250403-0924-5i0rd: [{'group': ComputeV1.GcpResource(name='emchandwani-psm-neg-20250403-0924-5i0rd', url='https://www.googleapis.com/compute/v1/projects/bct-gcestaging-guitar-grpc/regions/us-east1/networkEndpointGroups/emchandwani-psm-neg-20250403-0924-5i0rd'), 'balancingMode': 'us-east1', 'maxRatePerEndpoint': None, 'capacityScaler': 1.0}]
+I0403 14:55:25.554704 8252002176 compute.py:669] Patching compute resource:
+[38;5;221m---[39m
+[38;5;203mbackends[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203mgroup[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mhttps://www.googleapis.com/compute/v1/projects/bct-gcestaging-guitar-grpc/regions/us-east1/networkEndpointGroups/emchandwani-psm-neg-20250403-0924-5i0rd[39m
+[38;5;221m...[39m
+
+I0403 14:55:27.369940 8252002176 compute.py:739] Waiting 600 sec for compute operation id: operation-1743672325737-631dc59948d81-608bf3ee-0cf3eed7
+I0403 14:56:29.219877 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.4_add_server_backends_to_backend_service ---
+I0403 14:56:29.220246 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.5_create_grpc_route ---
+I0403 14:56:29.220464 8252002176 traffic_director.py:978] Creating GrpcRoute emchandwani-psm-grpc-route-20250403-0924-5i0rd
+I0403 14:56:29.225157 8252002176 api.py:543] Creating networkservices resource:
+[38;5;221m---[39m
+[38;5;203mhostnames[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mpsm-grpc-server:11198[39m
+[38;5;203mmeshes[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd[39m
+[38;5;203mrules[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203maction[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;203mdestinations[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mserviceName[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/backendServices/emchandwani-psm-backend-service-20250403-0924-5i0rd[39m
+[38;5;221m...[39m
+
+I0403 14:56:30.814513 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672390512-631dc5d70f075-8b81644c-f50f08b6', 'metadata': {'@type': 'type.googleapis.com/google.cloud.networkservices.v1.OperationMetadata', 'createTime': '2025-04-03T09:26:30.686892159Z', 'target': 'projects/bct-gcestaging-guitar-grpc/locations/global/grpcRoutes/emchandwani-psm-grpc-route-20250403-0924-5i0rd', 'verb': 'create', 'requestedCancellation': False, 'apiVersion': 'v1'}, 'done': False}
+I0403 14:56:30.814918 8252002176 api.py:602] Waiting 600 sec for networkservices operation id: projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672390512-631dc5d70f075-8b81644c-f50f08b6
+I0403 14:56:30.817574 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106c3cd60>
+I0403 14:56:39.134803 8252002176 api.py:566] Loaded projects/bct-gcestaging-guitar-grpc/locations/global/grpcRoutes/emchandwani-psm-grpc-route-20250403-0924-5i0rd:
+[38;5;221m---[39m
+[38;5;203mcreateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:26:30.665875084Z[39m[38;5;150m'[39m
+[38;5;203mhostnames[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;150mpsm-grpc-server:11198[39m
+[38;5;203mmeshes[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd[39m
+[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/grpcRoutes/emchandwani-psm-grpc-route-20250403-0924-5i0rd[39m
+[38;5;203mrules[39m[38;5;117m:[39m
+[38;5;117m-[39m[38;5;15m [39m[38;5;203maction[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;203mdestinations[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;117m-[39m[38;5;15m [39m[38;5;203mserviceName[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mprojects/bct-gcestaging-guitar-grpc/locations/global/backendServices/emchandwani-psm-backend-service-20250403-0924-5i0rd[39m
+[38;5;203mselfLink[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mhttps://networkservices.googleapis.com/v1alpha1/projects/bct-gcestaging-guitar-grpc/locations/global/grpcRoutes/emchandwani-psm-grpc-route-20250403-0924-5i0rd[39m
+[38;5;203mupdateTime[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150m'[39m[38;5;150m2025-04-03T09:26:36.441076738Z[39m[38;5;150m'[39m
+[38;5;221m...[39m
+
+I0403 14:56:39.135174 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.5_create_grpc_route ---
+I0403 14:56:39.135293 8252002176 xds_k8s_testcase.py:340] --- Starting subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.6_start_test_client ---
+I0403 14:56:39.135482 8252002176 k8s_xds_client_runner.py:136] Deploying xDS test client "psm-grpc-client" to k8s namespace emchandwani-psm-client-20250403-0924-5i0rd: server_target=xds:///psm-grpc-server:11198 rpc=UnaryCall qps=25 metadata='' secure_mode=True print_response=False is_trusted_xds_server_experimental=True
+I0403 14:56:39.135941 8252002176 k8s_base_runner.py:1171] GCP Logs Explorer link to psm-grpc-client:
+https://console.cloud.google.com/logs/query;query=resource.type%3D%22k8s_container%22%0Aresource.labels.project_id%3D%22bct-gcestaging-guitar-grpc%22%0Aresource.labels.container_name%3D%22psm-grpc-client%22%0Aresource.labels.namespace_name%3D%22emchandwani-psm-client-20250403-0924-5i0rd%22;timeRange=2025-04-03T09:26:39.135656Z%2F2025-04-03T09:56:39.135656Z?project=bct-gcestaging-guitar-grpc 
+I0403 14:56:39.144119 8252002176 k8s_base_runner.py:351] Rendered template kubernetes-manifests/namespace.yaml:
+[38;5;221m---[39m
+[38;5;203mapiVersion[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mv1[39m
+[38;5;203mkind[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mNamespace[39m
+[38;5;203mmetadata[39m[38;5;117m:[39m
+[38;5;15m  [39m[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150memchandwani-psm-client-20250403-0924-5i0rd[39m
+[38;5;15m  [39m[38;5;203mlabels[39m[38;5;117m:[39m
+[38;5;15m    [39m[38;5;203mname[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150memchandwani-psm-client-20250403-0924-5i0rd[39m
+[38;5;15m    [39m[38;5;203mowner[39m[38;5;117m:[39m[38;5;15m [39m[38;5;150mxds-k8s-interop-test[39m
+[38;5;221m...[39m
+
+W0403 14:57:54.148485 8252002176 connectionpool.py:823] Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106c3d750>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)')': /api/v1/namespaces
+W0403 14:59:09.151218 8252002176 connectionpool.py:823] Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106c3ff70>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)')': /api/v1/namespaces
+W0403 15:00:24.153978 8252002176 connectionpool.py:823] Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106c3ffd0>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)')': /api/v1/namespaces
+I0403 15:01:39.157646 8252002176 xds_k8s_testcase.py:345] --- Finished subTest CloudRunCsmInboundTest.test_gke_to_cloud_run.6_start_test_client ---
+I0403 15:01:39.157891 8252002176 xds_k8s_testcase.py:1526] ----- TestMethod CloudRunCsmInboundTest.test_gke_to_cloud_run teardown -----
+I0403 15:01:39.158314 8252002176 cloud_run_base_runner.py:196] Deleting Cloud Run service: emchandwani-psm-server-20250403-0924-5i0rd
+I0403 15:01:41.273350 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/operations/810c3f49-c231-499e-8713-40e0de5e68db', 'metadata': {'@type': 'type.googleapis.com/google.cloud.run.v2.Service', 'name': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd', 'uid': 'b0977056-29b5-45b8-b626-8c526e436119', 'generation': '2', 'createTime': '2025-04-03T09:24:52.130328Z', 'updateTime': '2025-04-03T09:31:41.167940Z', 'deleteTime': '2025-04-03T09:31:41.167940Z', 'expireTime': '2025-05-03T09:31:41.167940Z', 'creator': 'emchandwani@google.com', 'lastModifier': 'emchandwani@google.com', 'ingress': 'INGRESS_TRAFFIC_ALL', 'launchStage': 'GA', 'template': {'scaling': {'maxInstanceCount': 100}, 'timeout': '300s', 'serviceAccount': '921384807982-compute@developer.gserviceaccount.com', 'containers': [{'image': 'us-docker.pkg.dev/grpc-testing/psm-interop/cpp-server:v1.71.x', 'resources': {'limits': {'memory': '512Mi', 'cpu': '1000m'}, 'cpuIdle': True}, 'ports': [{'name': 'h2c', 'containerPort': 8080}], 'startupProbe': {'timeoutSeconds': 240, 'periodSeconds': 240, 'failureThreshold': 1, 'tcpSocket': {'port': 8080}}}], 'maxInstanceRequestConcurrency': 80}, 'traffic': [{'type': 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST', 'percent': 100}], 'urls': ['https://emchandwani-psm-server-20250403-0924-5i0rd-921384807982.us-east1.run.app', 'https://emchandwani-psm-server-20250403-0924-5i0rd-ouuwihx2qq-ue.a.run.app'], 'observedGeneration': '1', 'terminalCondition': {'type': 'Ready', 'state': 'CONDITION_PENDING', 'lastTransitionTime': '2025-04-03T09:24:58.473882Z'}, 'conditions': [{'type': 'RoutesReady', 'state': 'CONDITION_SUCCEEDED', 'lastTransitionTime': '2025-04-03T09:24:58.430396Z'}, {'type': 'ConfigurationsReady', 'state': 'CONDITION_SUCCEEDED', 'lastTransitionTime': '2025-04-03T09:24:57.419395Z'}], 'latestReadyRevision': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd/revisions/emchandwani-psm-server-20250403-0924-5i0rd-00001-p6l', 'latestCreatedRevision': 'projects/bct-gcestaging-guitar-grpc/locations/us-east1/services/emchandwani-psm-server-20250403-0924-5i0rd/revisions/emchandwani-psm-server-20250403-0924-5i0rd-00001-p6l', 'trafficStatuses': [{'type': 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST', 'percent': 100}], 'uri': 'https://emchandwani-psm-server-20250403-0924-5i0rd-ouuwihx2qq-ue.a.run.app', 'reconciling': True, 'etag': '"CP2qub8GEKCfilA/cHJvamVjdHMvYmN0LWdjZXN0YWdpbmctZ3VpdGFyLWdycGMvbG9jYXRpb25zL3VzLWVhc3QxL3NlcnZpY2VzL2VtY2hhbmR3YW5pLXBzbS1zZXJ2ZXItMjAyNTA0MDMtMDkyNC01aTByZA"'}}
+I0403 15:01:41.273536 8252002176 api.py:602] Waiting 600 sec for run operation id: projects/bct-gcestaging-guitar-grpc/locations/us-east1/operations/810c3f49-c231-499e-8713-40e0de5e68db
+I0403 15:01:41.274407 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106c84070>
+I0403 15:01:42.965970 8252002176 cloud_run_base_runner.py:199] Deleted cloud run service: emchandwani-psm-server-20250403-0924-5i0rd
+I0403 15:01:42.966464 8252002176 traffic_director.py:1007] Deleting GrpcRoute emchandwani-psm-grpc-route-20250403-0924-5i0rd
+I0403 15:01:44.544538 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672704339-631dc70258d59-c4ac7305-8032a00b', 'metadata': {'@type': 'type.googleapis.com/google.cloud.networkservices.v1.OperationMetadata', 'createTime': '2025-04-03T09:31:44.409306336Z', 'target': 'projects/bct-gcestaging-guitar-grpc/locations/global/grpcRoutes/emchandwani-psm-grpc-route-20250403-0924-5i0rd', 'verb': 'delete', 'requestedCancellation': False, 'apiVersion': 'v1'}, 'done': False}
+I0403 15:01:44.544960 8252002176 api.py:602] Waiting 600 sec for networkservices operation id: projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672704339-631dc70258d59-c4ac7305-8032a00b
+I0403 15:01:44.547852 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106b5bf10>
+I0403 15:01:52.432933 8252002176 traffic_director.py:961] Deleting Mesh emchandwani-psm-grpc-mesh-20250403-0924-5i0rd
+I0403 15:01:53.856508 8252002176 api.py:593] Operation {'name': 'projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672713631-631dc70b35847-0776a9a5-e1e5f33d', 'metadata': {'@type': 'type.googleapis.com/google.cloud.networkservices.v1.OperationMetadata', 'createTime': '2025-04-03T09:31:53.684546316Z', 'target': 'projects/bct-gcestaging-guitar-grpc/locations/global/meshes/emchandwani-psm-grpc-mesh-20250403-0924-5i0rd', 'verb': 'delete', 'requestedCancellation': False, 'apiVersion': 'v1'}, 'done': False}
+I0403 15:01:53.856900 8252002176 api.py:602] Waiting 600 sec for networkservices operation id: projects/bct-gcestaging-guitar-grpc/locations/global/operations/operation-1743672713631-631dc70b35847-0776a9a5-e1e5f33d
+I0403 15:01:53.858998 8252002176 api.py:612] eshita Waiting for operation: <googleapiclient.http.HttpRequest object at 0x106c859c0>
+I0403 15:01:58.510071 8252002176 traffic_director.py:279] Deleting Backend Service "emchandwani-psm-backend-service-20250403-0924-5i0rd"
+I0403 15:01:59.445646 8252002176 compute.py:739] Waiting 600 sec for compute operation id: operation-1743672718908-631dc7103daeb-52d70a92-fb70e80c
+I0403 15:02:14.751783 8252002176 compute.py:606] Deleting serverless NEG emchandwani-psm-neg-20250403-0924-5i0rd in us-east1
+I0403 15:02:16.436823 8252002176 compute.py:612] Deleted serverless neg : emchandwani-psm-neg-20250403-0924-5i0rd
+I0403 15:02:16.437970 8252002176 xds_k8s_testcase.py:1546] ----- Test client/server logs -----
+I0403 15:02:16.438210 8252002176 k8s_base_runner.py:1114] No completed deployments of psm-grpc-client
+I0403 15:02:16.438795 8252002176 cloud_run_base_runner.py:172] GCP Logs Explorer link to emchandwani-psm-server-20250403-0924-5i0rd:
+https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.project_id%3D%22bct-gcestaging-guitar-grpc%22%0Aresource.labels.service_name%3D%22emchandwani-psm-server-20250403-0924-5i0rd%22%0Aresource.labels.location%3D%22us-east1%22;timeRange=2025-04-03T09:24:49.746934Z%2F2025-04-03T09:31:42.966335Z;cursorTimestamp=2025-04-03T09:25:02.208940Z?project=bct-gcestaging-guitar-grpc 
+[  FAILED  ] CloudRunCsmInboundTest.test_gke_to_cloud_run
+E0403 15:02:16.467079 8252002176 base_testcase.py:44] ----- PSM Test Case FAILED: CloudRunCsmInboundTest.test_gke_to_cloud_run -----
+E0403 15:02:16.467297 8252002176 base_testcase.py:145] (ERROR) PSM Interop Test Failed: CloudRunCsmInboundTest.test_gke_to_cloud_run
+^^^^^
+# [CloudRunCsmInboundTest.test_gke_to_cloud_run] PSM Failed Test Traceback BEGIN
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/connection.py", line 95, in create_connection
+    raise err
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    sock.connect(sa)
+TimeoutError: [Errno 60] Operation timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 714, in urlopen
+    httplib_response = self._make_request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 403, in _make_request
+    self._validate_conn(conn)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 1053, in _validate_conn
+    conn.connect()
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 363, in connect
+    self.sock = conn = self._new_conn()
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 179, in _new_conn
+    raise ConnectTimeoutError(
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPSConnection object at 0x106c3fee0>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/tests/cloud_run_csm_inbound_test.py", line 55, in test_gke_to_cloud_run
+    test_client: _XdsTestClient = self.startSecureTestClient(
+  File "/Users/emchandwani/psm-interop/framework/xds_k8s_testcase.py", line 1177, in startSecureTestClient
+    return self._start_test_client(
+  File "/Users/emchandwani/psm-interop/framework/xds_k8s_testcase.py", line 951, in _start_test_client
+    test_client = self.client_runner.run(
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_xds_client_runner.py", line 152, in run
+    super().run()
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 196, in run
+    self.namespace = self._create_namespace(
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 420, in _create_namespace
+    namespace = self._create_from_template(template, **kwargs)
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 366, in _create_from_template
+    k8s_object = self.k8s_namespace.create_single_resource(
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 589, in create_single_resource
+    return self._execute(self._apply_manifest_single, manifest)
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 453, in _execute
+    return method(*args, **kwargs)
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 390, in _apply_manifest_single
+    k8s_objects = utils.create_from_dict(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/utils/create_from_yaml.py", line 221, in create_from_dict
+    created = create_from_yaml_single_item(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/utils/create_from_yaml.py", line 263, in create_from_yaml_single_item
+    resp = getattr(k8s_api, "create_{0}".format(kind))(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api/core_v1_api.py", line 6363, in create_namespace
+    return self.create_namespace_with_http_info(body, **kwargs)  # noqa: E501
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api/core_v1_api.py", line 6454, in create_namespace_with_http_info
+    return self.api_client.call_api(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 348, in call_api
+    return self.__call_api(resource_path, method,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 180, in __call_api
+    response_data = self.request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 391, in request
+    return self.rest_client.POST(url,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/rest.py", line 279, in POST
+    return self.request("POST", url,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/rest.py", line 172, in request
+    r = self.pool_manager.request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/request.py", line 78, in request
+    return self.request_encode_body(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/request.py", line 170, in request_encode_body
+    return self.urlopen(method, url, **extra_kw)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/poolmanager.py", line 376, in urlopen
+    response = conn.urlopen(method, u.request_uri, **kw)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 798, in urlopen
+    retries = retries.increment(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/retry.py", line 592, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='34.55.128.246', port=443): Max retries exceeded with url: /api/v1/namespaces (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106c3fee0>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)'))
+# [CloudRunCsmInboundTest.test_gke_to_cloud_run] PSM Failed Test Traceback END
+
+I0403 15:02:16.467360 8252002176 base_testcase.py:49] ----- PSM Test Case CloudRunCsmInboundTest.test_gke_to_cloud_run Error Count: 1 -----
+======================================================================
+ERROR: test_gke_to_cloud_run (__main__.CloudRunCsmInboundTest)
+CloudRunCsmInboundTest.test_gke_to_cloud_run
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/connection.py", line 95, in create_connection
+    raise err
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    sock.connect(sa)
+TimeoutError: [Errno 60] Operation timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 714, in urlopen
+    httplib_response = self._make_request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 403, in _make_request
+    self._validate_conn(conn)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 1053, in _validate_conn
+    conn.connect()
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 363, in connect
+    self.sock = conn = self._new_conn()
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connection.py", line 179, in _new_conn
+    raise ConnectTimeoutError(
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPSConnection object at 0x106c3fee0>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/emchandwani/psm-interop/tests/cloud_run_csm_inbound_test.py", line 55, in test_gke_to_cloud_run
+    test_client: _XdsTestClient = self.startSecureTestClient(
+  File "/Users/emchandwani/psm-interop/framework/xds_k8s_testcase.py", line 1177, in startSecureTestClient
+    return self._start_test_client(
+  File "/Users/emchandwani/psm-interop/framework/xds_k8s_testcase.py", line 951, in _start_test_client
+    test_client = self.client_runner.run(
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_xds_client_runner.py", line 152, in run
+    super().run()
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 196, in run
+    self.namespace = self._create_namespace(
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 420, in _create_namespace
+    namespace = self._create_from_template(template, **kwargs)
+  File "/Users/emchandwani/psm-interop/framework/test_app/runners/k8s/k8s_base_runner.py", line 366, in _create_from_template
+    k8s_object = self.k8s_namespace.create_single_resource(
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 589, in create_single_resource
+    return self._execute(self._apply_manifest_single, manifest)
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 453, in _execute
+    return method(*args, **kwargs)
+  File "/Users/emchandwani/psm-interop/framework/infrastructure/k8s.py", line 390, in _apply_manifest_single
+    k8s_objects = utils.create_from_dict(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/utils/create_from_yaml.py", line 221, in create_from_dict
+    created = create_from_yaml_single_item(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/utils/create_from_yaml.py", line 263, in create_from_yaml_single_item
+    resp = getattr(k8s_api, "create_{0}".format(kind))(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api/core_v1_api.py", line 6363, in create_namespace
+    return self.create_namespace_with_http_info(body, **kwargs)  # noqa: E501
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api/core_v1_api.py", line 6454, in create_namespace_with_http_info
+    return self.api_client.call_api(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 348, in call_api
+    return self.__call_api(resource_path, method,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 180, in __call_api
+    response_data = self.request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/api_client.py", line 391, in request
+    return self.rest_client.POST(url,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/rest.py", line 279, in POST
+    return self.request("POST", url,
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/kubernetes/client/rest.py", line 172, in request
+    r = self.pool_manager.request(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/request.py", line 78, in request
+    return self.request_encode_body(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/request.py", line 170, in request_encode_body
+    return self.urlopen(method, url, **extra_kw)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/poolmanager.py", line 376, in urlopen
+    response = conn.urlopen(method, u.request_uri, **kw)
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 826, in urlopen
+    return self.urlopen(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/connectionpool.py", line 798, in urlopen
+    retries = retries.increment(
+  File "/Users/emchandwani/psm-interop/venv/lib/python3.10/site-packages/urllib3/util/retry.py", line 592, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='34.55.128.246', port=443): Max retries exceeded with url: /api/v1/namespaces (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106c3fee0>, 'Connection to 34.55.128.246 timed out. (connect timeout=None)'))
+
+----------------------------------------------------------------------
+Ran 1 test in 463.787s
+
+FAILED (errors=1)

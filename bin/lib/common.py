@@ -170,6 +170,7 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
         image_name=xds_k8s_flags.SERVER_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
+        gcp_api_manager=gcp.api.GcpApiManager(),
     )
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)
