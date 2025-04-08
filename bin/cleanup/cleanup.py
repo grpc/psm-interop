@@ -74,6 +74,7 @@ GAMMA_PREFIX = "psm-csm"  # Prefix for csm gke resources to delete.
 URL_MAP_TEST_PREFIX = (
     "interop-psm-url-map"  # Prefix for url-map test resources to delete.
 )
+DUALSTACK_PREFIX = "psm-ds"  # Prefix for dualstack test resources to delete.
 
 KEEP_PERIOD_HOURS = flags.DEFINE_integer(
     "keep_hours",
@@ -90,7 +91,7 @@ DRY_RUN = flags.DEFINE_bool(
 )
 TD_RESOURCE_PREFIXES = flags.DEFINE_list(
     "td_resource_prefixes",
-    default=[PSM_INTEROP_PREFIX],
+    default=[PSM_INTEROP_PREFIX, DUALSTACK_PREFIX],
     help=(
         "a comma-separated list of prefixes for which the leaked TD resources"
         " will be deleted"
@@ -98,7 +99,7 @@ TD_RESOURCE_PREFIXES = flags.DEFINE_list(
 )
 SERVER_PREFIXES = flags.DEFINE_list(
     "server_prefixes",
-    default=[PSM_INTEROP_PREFIX, GAMMA_PREFIX],
+    default=[PSM_INTEROP_PREFIX, GAMMA_PREFIX, DUALSTACK_PREFIX],
     help=(
         "a comma-separated list of prefixes for which the leaked servers will"
         " be deleted"
@@ -106,7 +107,12 @@ SERVER_PREFIXES = flags.DEFINE_list(
 )
 CLIENT_PREFIXES = flags.DEFINE_list(
     "client_prefixes",
-    default=[PSM_INTEROP_PREFIX, URL_MAP_TEST_PREFIX, GAMMA_PREFIX],
+    default=[
+        PSM_INTEROP_PREFIX,
+        URL_MAP_TEST_PREFIX,
+        GAMMA_PREFIX,
+        DUALSTACK_PREFIX,
+    ],
     help=(
         "a comma-separated list of prefixes for which the leaked clients will"
         " be deleted"
