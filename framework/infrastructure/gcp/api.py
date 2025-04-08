@@ -603,5 +603,5 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             raise OperationError(self.api_name, operation)
 
     @staticmethod
-    def _operation_status_done(result: dict[str, Any]) -> bool:
-        return result.get("done")
+    def _operation_status_done(operation: dict[str, Any]) -> bool:
+        return operation.get("done")
