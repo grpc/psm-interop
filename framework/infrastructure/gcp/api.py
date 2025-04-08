@@ -594,10 +594,14 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         )
         operation = self.wait_for_operation(
             operation_request=op_request,
-            test_success_fn=lambda result: result["done"],
+            test_success_fn=self._operation_status_done,
             timeout_sec=timeout_sec,
         )
 
         logger.debug("Completed operation: %s", operation)
         if "error" in operation:
             raise OperationError(self.api_name, operation)
+
+    @staticmethod
+    def _operation_status_done(result) -> bool:
+        return "done" in result and result["done"]
