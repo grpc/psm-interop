@@ -588,9 +588,12 @@ class ComputeV1(
             "cloudRun": {"service": service_name},
         }
         logger.info("Creating serverless NEG %s in %s", name, region)
-        self.api.regionNetworkEndpointGroups().insert(
-            project=self.project, region=region, body=neg_body
-        ).execute()
+        self._insert_resource(
+            self.api.regionNetworkEndpointGroups() ,
+            neg_body,
+            region=region,
+        )
+
         neg = self.get_serverless_network_endpoint_group(name, region)
         logger.info("Created serverless neg %s ", neg)
         return neg
@@ -604,6 +607,7 @@ class ComputeV1(
         """
         try:
             logger.info("Deleting serverless NEG %s in %s", name, region)
+            self._delete_resource(self.api.regionNetworkEndpointGroups(),resource_type="networkEndpointGroup",resource_name=name,region=region)
             self.api.regionNetworkEndpointGroups().delete(
                 project=self.project,
                 region=region,
@@ -625,15 +629,8 @@ class ComputeV1(
             raise
 
     def get_serverless_network_endpoint_group(self, name, region):
-        neg = (
-            self.api.regionNetworkEndpointGroups()
-            .get(
-                project=self.project,
-                networkEndpointGroup=name,
-                region=region,
-            )
-            .execute()
-        )
+        neg=self._get_resource(self.api.regionNetworkEndpointGroups(),networkEndpointGroup=name,
+                region=region)
         return neg
 
     def _get_resource(
@@ -657,12 +654,15 @@ class ComputeV1(
         return "items" in resp and resp["items"]
 
     def _insert_resource(
-        self, collection: discovery.Resource, body: Dict[str, Any]
+        self, collection: discovery.Resource, body: Dict[str, Any],region:str = None
     ) -> "GcpResource":
         logger.info(
             "Creating compute resource:\n%s", self.resource_pretty_format(body)
         )
-        resp = self._execute(collection.insert(project=self.project, body=body))
+        if region:
+            resp=self._execute(collection.insert(project=self.project, region=region,body=body),region=region)
+        else:
+            resp = self._execute(collection.insert(project=self.project, body=body))
         return self.GcpResource(body["name"], resp["targetLink"])
 
     def _patch_resource(self, collection, body, **kwargs):
@@ -683,9 +683,12 @@ class ComputeV1(
         collection: discovery.Resource,
         resource_type: str,
         resource_name: str,
+        region: str = None,
     ) -> bool:
         try:
             params = {"project": self.project, resource_type: resource_name}
+            if region:
+                params["region"] = region
             self._execute(collection.delete(**params))
             return True
         except googleapiclient.errors.HttpError as error:
@@ -721,7 +724,7 @@ class ComputeV1(
             )
 
     def _execute(  # pylint: disable=arguments-differ
-        self, request, *, timeout_sec=_WAIT_FOR_OPERATION_SEC
+        self, request, *, timeout_sec=_WAIT_FOR_OPERATION_SEC,region:str=None
     ):
         if self.gfe_debug_header:
             logger.debug(
@@ -730,11 +733,11 @@ class ComputeV1(
             request.headers[DEBUG_HEADER_KEY] = self.gfe_debug_header
             request.add_response_callback(self._log_debug_header)
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
-        logger.debug("Operation %s", operation)
-        return self._wait(operation["name"], timeout_sec)
+        logger.info("Operation %s", operation)
+        return self._wait(operation["name"], timeout_sec,region)
 
     def _wait(
-        self, operation_id: str, timeout_sec: int = _WAIT_FOR_OPERATION_SEC
+        self, operation_id: str, timeout_sec: int = _WAIT_FOR_OPERATION_SEC,region:str=None
     ) -> dict:
         logger.info(
             "Waiting %s sec for compute operation id: %s",
@@ -744,7 +747,12 @@ class ComputeV1(
 
         # TODO(sergiitk) try using wait() here
         # https://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.globalOperations.html#wait
-        op_request = self.api.globalOperations().get(
+        if region:
+            op_request = self.api.regionOperations().get(
+            project=self.project, operation=operation_id,region=region
+        )
+        else:
+            op_request = self.api.globalOperations().get(
             project=self.project, operation=operation_id
         )
         operation = self.wait_for_operation(

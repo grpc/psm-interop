@@ -40,11 +40,7 @@ class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
-            neg_resource = self.compute_v1.GcpResource(
-                name=neg["name"],
-                url=neg["selfLink"],
-            )
-            self.td.backend_service_add_backends([neg_resource], self.region)
+            self.td.backend_service_add_backends([neg], self.region)
 
         with self.subTest("5_create_grpc_route"):
             self.td.create_grpc_route(
