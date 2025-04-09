@@ -52,6 +52,8 @@ Json = Any
 _KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 _GammaServerRunner = gamma_server_runner.GammaServerRunner
+_ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
+_ServerDeploymentArgs = k8s_xds_server_runner.ServerDeploymentArgs
 
 GCLOUD = os.environ.get("GCLOUD", "gcloud")
 GCLOUD_CMD_TIMEOUT_S = datetime.timedelta(seconds=5).total_seconds()
@@ -345,7 +347,9 @@ def cleanup_legacy_driver_resources(*, project: str, suffix: str, **kwargs):
 # Note that the varients are all based on the basic TrafficDirectorManager, so
 # their `cleanup()` might do duplicate work. But deleting an non-exist resource
 # returns 404, and is OK.
-def cleanup_td_for_gke(*, project, prefix, suffix, network):
+def cleanup_td_for_gke(
+    *, project, prefix, suffix, network, enable_dualstack: bool = False
+):
     gcp_api_manager = gcp.api.GcpApiManager()
     plain_td = traffic_director.TrafficDirectorManager(
         gcp_api_manager,
@@ -353,6 +357,7 @@ def cleanup_td_for_gke(*, project, prefix, suffix, network):
         network=network,
         resource_prefix=prefix,
         resource_suffix=suffix,
+        enable_dualstack=enable_dualstack,
     )
     security_td = traffic_director.TrafficDirectorSecureManager(
         gcp_api_manager,
@@ -360,6 +365,7 @@ def cleanup_td_for_gke(*, project, prefix, suffix, network):
         network=network,
         resource_prefix=prefix,
         resource_suffix=suffix,
+        enable_dualstack=enable_dualstack,
     )
     # TODO: cleanup appnet resources.
     # appnet_td = traffic_director.TrafficDirectorAppNetManager(
@@ -389,6 +395,7 @@ def cleanup_client(
     gcp_service_account,
     *,
     suffix: Optional[str] = "",
+    enable_dualstack: bool = False,
 ):
     deployment_name = xds_flags.CLIENT_NAME.value
     if suffix:
@@ -407,6 +414,9 @@ def cleanup_client(
         gcp_api_manager=gcp_api_manager,
         image_name="",
         td_bootstrap_image="",
+        deployment_args=_ClientDeploymentArgs(
+            enable_dualstack=enable_dualstack
+        ),
     )
 
     logger.info("Cleanup client")
@@ -479,6 +489,7 @@ def cleanup_server(
     gcp_service_account,
     *,
     suffix: Optional[str] = "",
+    enable_dualstack: bool = False,
 ):
     deployment_name = xds_flags.SERVER_NAME.value
     if suffix:
@@ -488,6 +499,11 @@ def cleanup_server(
     # Shorten the timeout to avoid waiting for the stuck namespaces.
     # Normal ns deletion during the cleanup takes less two minutes.
     ns.wait_for_namespace_deleted_timeout_sec = 5 * 60
+    runner_args = dict(
+        deployment_args=_ServerDeploymentArgs(
+            enable_dualstack=enable_dualstack
+        ),
+    )
     server_runner = _KubernetesServerRunner(
         k8s_namespace=ns,
         deployment_name=deployment_name,
@@ -497,6 +513,7 @@ def cleanup_server(
         gcp_api_manager=gcp_api_manager,
         image_name="",
         td_bootstrap_image="",
+        **runner_args,
     )
 
     logger.info("Cleanup server")
@@ -513,7 +530,7 @@ def cleanup_server(
 
 
 def delete_leaked_td_resources(
-    dry_run, td_resource_rules, project, network, resources
+    dry_run, td_resource_rules, project, network, resources, enable_dualstack
 ):
     for resource in resources:
         logger.info("-----")
@@ -535,6 +552,7 @@ def delete_leaked_td_resources(
                     prefix=resource_prefix,
                     suffix=result.group(1),
                     network=network,
+                    enable_dualstack=enable_dualstack,
                 )
                 break
         if not matched:
@@ -551,6 +569,7 @@ def delete_k8s_resources(
     k8s_api_manager,
     gcp_service_account,
     namespaces,
+    enable_dualstack,
 ):
     gcp_api_manager = gcp.api.GcpApiManager()
     for ns in namespaces:
@@ -593,6 +612,7 @@ def delete_k8s_resources(
                 gcp_api_manager,
                 gcp_service_account,
                 suffix=("alt" if SECONDARY.value else None),
+                enable_dualstack=enable_dualstack,
             )
         except k8s.NotFound:
             logging.warning("----- Skipped [not found]: %s", namespace_name)
@@ -628,7 +648,12 @@ def _rule_match_k8s_namespace(
 
 
 def find_and_remove_leaked_k8s_resources(
-    dry_run, project, network, gcp_service_account, k8s_context
+    dry_run,
+    project,
+    network,
+    gcp_service_account,
+    k8s_context,
+    enable_dualstack,
 ):
     k8s_resource_rules: List[K8sResourceRule] = []
     for prefix in CLIENT_PREFIXES.value:
@@ -657,10 +682,13 @@ def find_and_remove_leaked_k8s_resources(
         k8s_api_manager,
         gcp_service_account,
         nss.items,
+        enable_dualstack,
     )
 
 
-def find_and_remove_leaked_td_resources(dry_run, project, network):
+def find_and_remove_leaked_td_resources(
+    dry_run, project, network, enable_dualstack
+):
     cleanup_legacy: bool = MODE.value != "td_no_legacy"
     td_resource_rules = [
         # itmes in each tuple, in order
@@ -715,7 +743,12 @@ def find_and_remove_leaked_td_resources(dry_run, project, network):
             leaked_health_checks.append(item)
 
     delete_leaked_td_resources(
-        dry_run, td_resource_rules, project, network, leaked_health_checks
+        dry_run,
+        td_resource_rules,
+        project,
+        network,
+        leaked_health_checks,
+        enable_dualstack,
     )
 
     # Delete leaked instance templates, those usually mean there are leaked VMs
@@ -748,15 +781,23 @@ def main(argv):
     gcp_service_account: str = xds_k8s_flags.GCP_SERVICE_ACCOUNT.value
     dry_run: bool = DRY_RUN.value
     k8s_context: str = xds_k8s_flags.KUBE_CONTEXT.value
+    enable_dualstack: bool = xds_flags.ENABLE_DUALSTACK.value
 
     if MODE.value == "td" or MODE.value == "td_no_legacy":
-        find_and_remove_leaked_td_resources(dry_run, project, network)
+        find_and_remove_leaked_td_resources(
+            dry_run, project, network, enable_dualstack
+        )
     elif MODE.value == "k8s":
         # 'unset' value is used in td-only mode to bypass the validation
         # for the required  flag.
         assert k8s_context != "unset"
         find_and_remove_leaked_k8s_resources(
-            dry_run, project, network, gcp_service_account, k8s_context
+            dry_run,
+            project,
+            network,
+            gcp_service_account,
+            k8s_context,
+            enable_dualstack,
         )
 
     logger.info("##################### Done cleaning up #####################")
