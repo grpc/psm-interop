@@ -56,10 +56,6 @@ spec:
           env:
             - name: GRPC_XDS_BOOTSTRAP
               value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
-            - name: GRPC_XDS_EXPERIMENTAL_V3_SUPPORT
-              value: "true"
-            - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
-              value: "true"
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}
