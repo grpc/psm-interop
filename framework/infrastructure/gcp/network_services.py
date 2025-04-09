@@ -169,9 +169,7 @@ class GrpcRoute:
     meshes: Optional[Tuple[str]]
 
     @classmethod
-    def from_response(
-        cls, name: str, d: Dict[str, Any]
-    ) -> "GrpcRoute.RouteRule":
+    def from_response(cls, name: str, d: dict[str, Any]) -> "GrpcRoute":
         return cls(
             name=name,
             url=d["name"],
@@ -454,7 +452,7 @@ class NetworkServicesV1(_NetworkServicesBase):
         )
         return GrpcRoute.from_response(name, result)
 
-    def get_http_route(self, name: str) -> GrpcRoute:
+    def get_http_route(self, name: str) -> HttpRoute:
         full_name = self.resource_full_name(name, self.HTTP_ROUTES)
         result = self._get_resource(
             collection=self._api_locations.httpRoutes(), full_name=full_name
