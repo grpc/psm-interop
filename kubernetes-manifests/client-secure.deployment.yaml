@@ -53,6 +53,14 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
+              value: "true"
+            - name: GRPC_TRACE
+              value: "xds_client"
           volumeMounts:
             - mountPath: /tmp/grpc-xds/
               name: grpc-td-conf
@@ -75,7 +83,10 @@ spec:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
             % if config_mesh:
-            - "--config-mesh-experimental=${config_mesh}"
+            - "--config_mesh=${config_mesh}"
+            % endif
+            % if is_trusted_xds_server_experimental:
+            - "--is-trusted-xds-server-experimental=true"
             % endif
           resources:
             limits:

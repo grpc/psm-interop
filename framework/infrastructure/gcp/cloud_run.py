@@ -82,7 +82,6 @@ class CloudRunApiManager(
             location=self.region,
             serviceId=service_name,
             body=body,
-            is_cloudrun=True,
         )
 
     def get_service(
@@ -110,7 +109,6 @@ class CloudRunApiManager(
             full_name=self.resource_full_name(
                 service_name, "services", self.region
             ),
-            is_cloudrun=True,
         )
 
     def deploy_service(

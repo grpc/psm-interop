@@ -1458,7 +1458,7 @@ class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
-            deployment_template="client.deployment.yaml",
+            deployment_template="client-secure.deployment.yaml",
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             **kwargs,
