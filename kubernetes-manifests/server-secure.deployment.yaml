@@ -77,6 +77,9 @@ spec:
             % if xds_server_uri:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
+            % if config_mesh:
+            - "--config-mesh-experimental=${config_mesh}"
+            % endif
             - "--node-metadata=app=${namespace_name}-${deployment_name}"
           resources:
             limits:

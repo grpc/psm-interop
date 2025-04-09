@@ -13,16 +13,61 @@
 # limitations under the License.
 """Base test case used for xds test suites."""
 import inspect
+import signal
+import time
 import traceback
-from typing import Optional, Union
+from types import FrameType
+from typing import Any, Callable, Optional, TypeAlias, Union
 import unittest
 
 from absl import logging
 from absl.testing import absltest
+from typing_extensions import override
+
+# pylint complains about signal.Signals for some reason.
+_SignalNum: TypeAlias = Union[int, signal.Signals]  # pylint: disable=no-member
+_SignalHandler: TypeAlias = Callable[[_SignalNum, Optional[FrameType]], Any]
 
 
 class BaseTestCase(absltest.TestCase):
-    # @override
+    _prev_sigint_handler: Optional[_SignalHandler] = None
+    _handling_sigint: bool = False
+
+    @override
+    def setUp(self):
+        super().setUp()
+        self._prev_sigint_handler = signal.signal(
+            signal.SIGINT, self._handle_sigint
+        )
+
+    def _handle_sigint(
+        self, signalnum: _SignalNum, frame: Optional[FrameType]
+    ) -> None:
+        if self._handling_sigint:
+            logging.info("Ctrl+C pressed twice, aborting the cleanup.")
+        else:
+            cleanup_delay_sec = 2
+            logging.info(
+                "Caught Ctrl+C. Cleanup will start in %d seconds."
+                " Press Ctrl+C again to abort.",
+                cleanup_delay_sec,
+            )
+            self._handling_sigint = True
+            # Sleep for a few seconds to allow second Ctrl-C before the cleanup.
+            time.sleep(cleanup_delay_sec)
+            # Force resource cleanup by their name. Addresses the case where
+            # ctrl-c is pressed while waiting for the resource creation.
+            self.force_cleanup = True
+            self.tearDown()
+            self.tearDownClass()
+
+        # Remove the sigint handler.
+        self._handling_sigint = False
+        if self._prev_sigint_handler is not None:
+            signal.signal(signal.SIGINT, self._prev_sigint_handler)
+        raise KeyboardInterrupt
+
+    @override
     def run(self, result: Optional[unittest.TestResult] = None) -> None:
         super().run(result)
         # TODO(sergiitk): should this method be returning result? See
