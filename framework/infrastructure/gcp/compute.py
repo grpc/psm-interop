@@ -595,7 +595,7 @@ class ComputeV1(
         )
 
         neg = self.get_serverless_network_endpoint_group(name, region)
-        logger.info("Created serverless neg %s ", neg)
+        logger.info("Created serverless NEG %s ", neg)
         return neg
 
     def delete_serverless_neg(self, name: str, region: str):
@@ -735,7 +735,7 @@ class ComputeV1(
             request.headers[DEBUG_HEADER_KEY] = self.gfe_debug_header
             request.add_response_callback(self._log_debug_header)
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
-        logger.info("Operation %s", operation)
+        logger.debug("Operation %s", operation)
         return self._wait(operation["name"], timeout_sec, region)
 
     def _wait(

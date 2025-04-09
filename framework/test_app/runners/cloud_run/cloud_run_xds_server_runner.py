@@ -44,7 +44,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             image_name,
             network=network,
             region=region,
-            gcp_ui_url=gcp_api_manager.gcp_ui_url,
+            gcp_api_manager=gcp_api_manager,
         )
         # Mutable state associated with each run.
         self._reset_state()
@@ -76,7 +76,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         return servers
 
     def get_service_url(self):
-        return self.cloud_run_api_manager.get_service_uri(self.service_name)
+        return self.cloud_run_api_manager.get_service(self.service_name).url
 
     @override
     def cleanup(self, *, force=False):

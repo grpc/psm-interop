@@ -590,7 +590,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         timeout_sec: int = GcpProjectApiResource._WAIT_FOR_OPERATION_SEC,
     ):
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
-        logger.info("Operation %s", operation)
+        logger.debug("Operation %s", operation)
         self._wait(operation["name"], timeout_sec)
 
     def _wait(

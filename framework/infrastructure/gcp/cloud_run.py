@@ -14,9 +14,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Any, Dict, Final
-
-from googleapiclient import discovery
+from typing import Any, Final
 
 from framework.infrastructure import gcp
 
@@ -30,84 +28,75 @@ DISCOVERY_URI: Final[str] = "https://run.googleapis.com/$discovery/rest?"
 
 
 @dataclasses.dataclass(frozen=True)
-class CloudRun:
+class CloudRunService:
     service_name: str
     url: str
 
     @classmethod
-    def from_response(cls, name: str, d: Dict[str, Any]) -> "CloudRun":
+    def from_response(
+        cls, name: str, response: dict[str, Any]
+    ) -> "CloudRunService":
         return cls(
             service_name=name,
-            url=d["urls"],
+            url=response["urls"],
         )
 
 
 class CloudRunApiManager(
     gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
 ):
-    project: str
     region: str
-    _parent: str
-    service: discovery.Resource
-    api_manager: gcp.api.GcpApiManager
 
-    def __init__(self, project: str, region: str):
+    def __init__(
+        self, project: str, region: str, api_manager: gcp.api.GcpApiManager
+    ):
         if not project:
             raise ValueError("Project ID cannot be empty or None.")
         if not region:
             raise ValueError("Region cannot be empty or None.")
-        self.api_manager = gcp.api.GcpApiManager(v2_discovery_uri=DISCOVERY_URI)
-        self.project = project
+        # api_manager = gcp.api.GcpApiManager(v2_discovery_uri=DISCOVERY_URI)
         self.region = region
-        service: discovery.Resource = self.api_manager.cloudrun("v2")
-        self.service = service
-        self._parent = f"projects/{self.project}/locations/{self.region}"
-        super().__init__(self.service, project)
+        super().__init__(api_manager.cloudrun(self.api_version), project)
+        self._services_collection = self.api.projects().locations().services()
+
+    SERVICES = "services"
 
     @property
     def api_name(self) -> str:
         """Returns the API name for Cloud Run."""
-        return "run"
+        return "Cloud Run"
 
     @property
     def api_version(self) -> str:
         """Returns the API version for Cloud Run."""
         return "v2"
 
-    def create_service(
-        self, service: discovery.Resource, service_name: str, body: dict
-    ) -> GcpResource:
+    def create_service(self, service_name: str, body: dict) -> GcpResource:
         return self._create_resource(
-            collection=service.projects().locations().services(),
+            collection=self._services_collection,
             location=self.region,
             serviceId=service_name,
             body=body,
         )
 
-    def get_service(
-        self, service: discovery.Resource, service_name: str
-    ) -> CloudRun:
+    def get_service(self, service_name: str) -> CloudRunService:
         result = self._get_resource(
-            collection=service.projects().locations().services(),
+            collection=self._services_collection,
             full_name=self.resource_full_name(
-                service_name, "services", self.region
+                service_name, self.SERVICES, self.region
             ),
         )
-        return CloudRun.from_response(
-            self.resource_full_name(service_name, "services", self.region),
+        return CloudRunService.from_response(
+            self.resource_full_name(service_name, self.SERVICES, self.region),
             result,
         )
-
-    def get_service_uri(self, service_name: str) -> str:
-        response = self.get_service(self.service, service_name)
-        return response.url
 
     def delete_service(self, service_name: str):
         # pylint: disable=no-member
         self._delete_resource(
-            self.service.projects().locations().services(),
+            self._services_collection,
             full_name=self.resource_full_name(
-                service_name, "services", self.region
+                service_name, self.SERVICES, self.region
             ),
         )
 
@@ -123,25 +112,18 @@ class CloudRunApiManager(
         if not image_name:
             raise ValueError("image_name cannot be empty or None")
 
-        try:
-            service_body = {
-                "launch_stage": "alpha",
-                "template": {
-                    "containers": [
-                        {
-                            "image": image_name,
-                            "ports": [
-                                {"containerPort": test_port, "name": "h2c"}
-                            ],
-                        }
-                    ],
-                },
-            }
+        service_body = {
+            "launch_stage": "alpha",
+            "template": {
+                "containers": [
+                    {
+                        "image": image_name,
+                        "ports": [{"containerPort": test_port, "name": "h2c"}],
+                    }
+                ],
+            },
+        }
 
-            logger.info("Deploying Cloud Run service '%s'", service_name)
-            self.create_service(self.service, service_name, service_body)
-            return self.get_service_uri(service_name)
-
-        except Exception as e:  # noqa pylint: disable=broad-except
-            logger.exception("Error deploying Cloud Run service: %s", e)
-            raise
+        logger.info("Deploying Cloud Run service '%s'", service_name)
+        self.create_service(service_name, service_body)
+        return self.get_service(service_name)
