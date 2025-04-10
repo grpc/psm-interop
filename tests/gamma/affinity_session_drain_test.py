@@ -13,11 +13,11 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Final, Optional
+from typing import Final, Optional, TypeAlias
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
