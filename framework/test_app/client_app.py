@@ -49,6 +49,7 @@ REQ_LB_STATS_METADATA_ALL = ("*",)
 DEFAULT_TD_XDS_URI = "trafficdirector.googleapis.com:443"
 
 
+# pylint: disable=too-many-public-methods
 class XdsTestClient(framework.rpc.grpc.GrpcApp):
     """
     Represents RPC services implemented in Client component of the xds test app.
@@ -87,6 +88,14 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
 
     @property
     @functools.lru_cache(None)
+    def secure_load_balancer_stats(self) -> _LoadBalancerStatsServiceClient:
+        return _LoadBalancerStatsServiceClient(
+            self._make_channel(self.rpc_port, secure_mode=True),
+            log_target=f"{self.hostname}:{self.rpc_port}",
+        )
+
+    @property
+    @functools.lru_cache(None)
     def update_config(self):
         return _XdsUpdateClientConfigureServiceClient(
             self._make_channel(self.rpc_port),
@@ -106,6 +115,14 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def csds(self) -> _CsdsClient:
         return _CsdsClient(
             self._make_channel(self.maintenance_port),
+            log_target=f"{self.hostname}:{self.maintenance_port}",
+        )
+
+    @property
+    @functools.lru_cache(None)
+    def secure_csds(self) -> _CsdsClient:
+        return _CsdsClient(
+            self._make_channel(self.maintenance_port, secure_mode=True),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
