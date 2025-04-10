@@ -31,7 +31,7 @@ import os
 import re
 import subprocess
 import sys
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 from absl import app
 from absl import flags
@@ -382,7 +382,7 @@ def cleanup_client(
     gcp_api_manager,
     gcp_service_account,
     *,
-    suffix: Optional[str] = "",
+    suffix: str | None = "",
 ):
     deployment_name = xds_flags.CLIENT_NAME.value
     if suffix:
@@ -472,7 +472,7 @@ def cleanup_server(
     gcp_api_manager,
     gcp_service_account,
     *,
-    suffix: Optional[str] = "",
+    suffix: str | None = "",
 ):
     deployment_name = xds_flags.SERVER_NAME.value
     if suffix:
@@ -613,7 +613,7 @@ def delete_k8s_resources(
 
 def _rule_match_k8s_namespace(
     namespace_name: str, k8s_resource_rules: List[K8sResourceRule]
-) -> Optional[K8sResourceRule]:
+) -> K8sResourceRule | None:
     for rule in k8s_resource_rules:
         result = re.search(rule.expression, namespace_name)
         if result is not None:
