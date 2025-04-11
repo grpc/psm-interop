@@ -24,9 +24,6 @@ from framework.infrastructure import gcp
 
 logger = logging.getLogger(__name__)
 
-# Type aliases
-GcpResource = gcp.compute.ComputeV1.GcpResource
-
 
 @dataclasses.dataclass(frozen=True)
 class ServerTlsPolicy:
@@ -147,8 +144,8 @@ class NetworkSecurityV1Beta1(_NetworkSecurityBase):
     def api_version(self) -> str:
         return "v1beta1"
 
-    def create_server_tls_policy(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_server_tls_policy(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.serverTlsPolicies(),
             body=body,
             serverTlsPolicyId=name,
@@ -167,8 +164,8 @@ class NetworkSecurityV1Beta1(_NetworkSecurityBase):
             full_name=self.resource_full_name(name, self.SERVER_TLS_POLICIES),
         )
 
-    def create_client_tls_policy(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_client_tls_policy(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.clientTlsPolicies(),
             body=body,
             clientTlsPolicyId=name,
@@ -187,8 +184,8 @@ class NetworkSecurityV1Beta1(_NetworkSecurityBase):
             full_name=self.resource_full_name(name, self.CLIENT_TLS_POLICIES),
         )
 
-    def create_authz_policy(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_authz_policy(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.authorizationPolicies(),
             body=body,
             authorizationPolicyId=name,

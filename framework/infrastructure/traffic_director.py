@@ -942,14 +942,14 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         self.http_route: Optional[HttpRoute] = None
         self.mesh: Optional[Mesh] = None
 
-    def create_mesh(self) -> GcpResource:
+    def create_mesh(self) -> Mesh:
         name = self.make_resource_name(self.MESH_NAME)
         logger.info("Creating Mesh %s", name)
         body = {}
-        resource = self.netsvc.create_mesh(name, body)
+        self.netsvc.create_mesh(name, body)
         self.mesh = self.netsvc.get_mesh(name)
         logger.debug("Loaded Mesh: %s", self.mesh)
-        return resource
+        return self.mesh
 
     def delete_mesh(self, force=False):
         if force:
@@ -962,7 +962,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         self.netsvc.delete_mesh(name)
         self.mesh = None
 
-    def create_grpc_route(self, src_host: str, src_port: int) -> GcpResource:
+    def create_grpc_route(self, src_host: str, src_port: int) -> GrpcRoute:
         host = f"{src_host}:{src_port}"
         service_name = self.netsvc.resource_full_name(
             self.backend_service.name, "backendServices"
@@ -976,26 +976,26 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         }
         name = self.make_resource_name(self.GRPC_ROUTE_NAME)
         logger.info("Creating GrpcRoute %s", name)
-        resource = self.netsvc.create_grpc_route(name, body)
+        self.netsvc.create_grpc_route(name, body)
         self.grpc_route = self.netsvc.get_grpc_route(name)
         logger.debug("Loaded GrpcRoute: %s", self.grpc_route)
-        return resource
+        return self.grpc_route
 
-    def create_grpc_route_with_content(self, body: Any) -> GcpResource:
+    def create_grpc_route_with_content(self, body: Any) -> GrpcRoute:
         name = self.make_resource_name(self.GRPC_ROUTE_NAME)
         logger.info("Creating GrpcRoute %s", name)
-        resource = self.netsvc.create_grpc_route(name, body)
+        self.netsvc.create_grpc_route(name, body)
         self.grpc_route = self.netsvc.get_grpc_route(name)
         logger.debug("Loaded GrpcRoute: %s", self.grpc_route)
-        return resource
+        return self.grpc_route
 
-    def create_http_route_with_content(self, body: Any) -> GcpResource:
+    def create_http_route_with_content(self, body: Any) -> HttpRoute:
         name = self.make_resource_name(self.HTTP_ROUTE_NAME)
         logger.info("Creating HttpRoute %s", name)
-        resource = self.netsvc.create_http_route(name, body)
+        self.netsvc.create_http_route(name, body)
         self.http_route = self.netsvc.get_http_route(name)
         logger.debug("Loaded HttpRoute: %s", self.http_route)
-        return resource
+        return self.http_route
 
     def delete_grpc_route(self, force=False):
         if force:
