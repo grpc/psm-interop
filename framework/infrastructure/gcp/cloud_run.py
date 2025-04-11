@@ -20,11 +20,8 @@ from framework.infrastructure import gcp
 
 logger = logging.getLogger(__name__)
 
-# Type aliases
-GcpResource = gcp.compute.ComputeV1.GcpResource
 
 DEFAULT_TEST_PORT: Final[int] = 8080
-DISCOVERY_URI: Final[str] = "https://run.googleapis.com/$discovery/rest?"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -42,9 +39,11 @@ class CloudRunService:
         )
 
 
-class CloudRunApiManager(
-    gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta
-):
+class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
+    """Cloud Run API v2."""
+
+    SERVICES: Final[str] = "services"
+
     region: str
 
     def __init__(
@@ -54,12 +53,9 @@ class CloudRunApiManager(
             raise ValueError("Project ID cannot be empty or None.")
         if not region:
             raise ValueError("Region cannot be empty or None.")
-        # api_manager = gcp.api.GcpApiManager(v2_discovery_uri=DISCOVERY_URI)
         self.region = region
         super().__init__(api_manager.cloudrun(self.api_version), project)
         self._services_collection = self.api.projects().locations().services()
-
-    SERVICES = "services"
 
     @property
     def api_name(self) -> str:
@@ -71,7 +67,7 @@ class CloudRunApiManager(
         """Returns the API version for Cloud Run."""
         return "v2"
 
-    def create_service(self, service_name: str, body: dict) -> GcpResource:
+    def create_service(self, service_name: str, body: dict) -> None:
         return self._create_resource(
             collection=self._services_collection,
             location=self.region,
@@ -92,7 +88,6 @@ class CloudRunApiManager(
         )
 
     def delete_service(self, service_name: str):
-        # pylint: disable=no-member
         self._delete_resource(
             self._services_collection,
             full_name=self.resource_full_name(

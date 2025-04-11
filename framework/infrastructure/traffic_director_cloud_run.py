@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Optional, Sequence
+from typing import Final, Optional, Sequence
 
 from framework.infrastructure import gcp
-from framework.infrastructure.traffic_director import (
-    TrafficDirectorAppNetManager,
-)
+import framework.infrastructure.traffic_director as td_base
 
+# Type aliases
+_ComputeV1 = gcp.compute.ComputeV1
+GcpResource = _ComputeV1.GcpResource
 GrpcRoute = gcp.network_services.GrpcRoute
 Mesh = gcp.network_services.Mesh
 
+logger = logging.getLogger(__name__)
 
-class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
-    MESH_NAME = "grpc-mesh"
+
+class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
+    MESH_NAME: Final[str] = "grpc-mesh"
+    NEG_NAME: Final[str] = "grpc-neg"
 
     def __init__(
         self,
@@ -50,6 +54,7 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
         # Managed resources
         self.grpc_route: Optional[GrpcRoute] = None
         self.mesh: Optional[Mesh] = None
+        self.neg: Optional[GcpResource] = None
 
     def backend_service_add_backends(
         self,
@@ -85,3 +90,28 @@ class TrafficDirectorCloudRunManager(TrafficDirectorAppNetManager):
             backends,
             is_cloud_run=True,
         )
+
+    def create_serverless_neg(self, region: str, service_name: str):
+        name = self.make_resource_name(self.NEG_NAME)
+        logger.info("Creating serverless NEG %s", name)
+        neg = self.compute.create_serverless_neg(name, region, service_name)
+        logger.info("Loading NEG %s", neg)
+        self.neg = self.compute.get_serverless_network_endpoint_group(
+            name, region
+        )
+        return neg
+
+    def delete_serverless_neg(self, region: str, force=False):
+        if force:
+            name = self.make_resource_name(self.NEG_NAME)
+        elif self.mesh:
+            name = self.neg.name
+        else:
+            return
+        logger.info("Deleting serverless NEG %s", name)
+        self.compute.delete_serverless_neg(name, region)
+        self.neg = None
+
+    def cleanup(self, *, region, force=False):
+        self.delete_serverless_neg(region=region, force=force)
+        super().cleanup(force=force)

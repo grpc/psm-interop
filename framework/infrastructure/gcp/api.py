@@ -195,7 +195,7 @@ class GcpApiManager:
         api_name = "run"
         if version == "v2":
             return self._build_from_discovery_v2(api_name, version)
-        raise NotImplementedError(f"Cloud run {version} not supported")
+        raise NotImplementedError(f"Cloud Run {version} not supported")
 
     @functools.lru_cache(None)
     def networkservices(self, version):
@@ -568,9 +568,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         return resource
 
     def _delete_resource(
-        self,
-        collection: discovery.Resource,
-        full_name: str,
+        self, collection: discovery.Resource, full_name: str
     ) -> bool:
         logger.debug("Deleting %s", full_name)
         try:

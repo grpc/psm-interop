@@ -64,7 +64,7 @@ def gcp_api_manager():
 
 @functools.cache
 def cloud_run_api_manager():
-    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value,
+    return cloud_run.CloudRunV2(project=xds_flags.PROJECT.value,
                                         region=xds_flags.CLOUD_RUN_REGION.value,
                                         api_manager=gcp_api_manager())
 

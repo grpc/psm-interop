@@ -16,6 +16,7 @@ import logging
 from absl.testing import absltest
 
 from framework import xds_k8s_testcase
+from framework.test_cases import cloud_run_testcase
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
-class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
+class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
     def test_gke_to_cloud_run(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
@@ -32,7 +33,7 @@ class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
             test_server: _XdsTestServer = self.startTestServers()[0]
 
         with self.subTest("2_create_serverless_neg"):
-            neg = self.backendServiceAddServerlessNegBackends()
+            self.td.create_serverless_neg(self.region, self.server_namespace)
 
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(
@@ -40,7 +41,7 @@ class CloudRunCsmInboundTest(xds_k8s_testcase.CloudRunXdsKubernetesTestCase):
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
-            self.td.backend_service_add_backends([neg], self.region)
+            self.td.backend_service_add_backends([self.td.neg], self.region)
 
         with self.subTest("5_create_grpc_route"):
             self.td.create_grpc_route(

@@ -53,7 +53,6 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     region: str = "us-central1"
     gcp_api_manager: gcp.api.GcpApiManager
     current_revision: Optional[str] = None
-    cloud_run_resource: Optional[cloud_run.GcpResource] = None
 
     run_history: collections.deque[RunHistory]
 
@@ -93,8 +92,8 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self._initalize_cloud_run_api_manager()
 
     def _initalize_cloud_run_api_manager(self):
-        """Initializes the CloudRunApiManager."""
-        self.cloud_run_api_manager = cloud_run.CloudRunApiManager(
+        """Initializes the CloudRunV2."""
+        self.cloud_run_api_manager = cloud_run.CloudRunV2(
             project=self.project,
             region=self.region,
             api_manager=self.gcp_api_manager,
@@ -114,11 +113,10 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
         self._reset_state()
         self.time_start_requested = _datetime.now()
-        self.cloud_run_resource = self.cloud_run_api_manager.deploy_service(
+        self.current_revision = self.cloud_run_api_manager.deploy_service(
             self.service_name,
             self.image_name,
-        )
-        self.current_revision = self.cloud_run_resource.url
+        ).url
 
     def _start_completed(self):
         self.time_start_completed = _datetime.now()

@@ -160,8 +160,7 @@ class ComputeV1(
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
             "protocol": protocol.name,
         }
-        # If it is not for cloud run, add heath check since cloud run does not
-        # support health check.
+
         if health_check:
             body["healthChecks"] = [health_check.url]
 

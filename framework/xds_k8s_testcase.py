@@ -40,14 +40,11 @@ import framework.helpers.highlighter
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
-from framework.infrastructure.gcp.compute import ComputeV1
-import framework.infrastructure.traffic_director_cloud_run as td_cloud_run
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_csds
 from framework.rpc import grpc_testing
 from framework.test_app import client_app
 from framework.test_app import server_app
-from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_cases import base_testcase
@@ -67,8 +64,6 @@ flags.adopt_module_key_flags(xds_k8s_flags)
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 TrafficDirectorAppNetManager = traffic_director.TrafficDirectorAppNetManager
 TrafficDirectorSecureManager = traffic_director.TrafficDirectorSecureManager
-CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
-TrafficDirectorCloudRunManager = td_cloud_run.TrafficDirectorCloudRunManager
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 ClientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
@@ -567,14 +562,19 @@ class XdsKubernetesBaseTestCase(
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
-    @staticmethod
-    def assertEDSConfigExists(config: ClientConfig, seen: set, want: frozenset):
-        want = want.union(["endpoint_config"])
+    def assertEDSConfigExists(self, config: ClientConfig):
+        seen = set()
+        want = frozenset(["endpoint_config"])
         for generic_xds_config in config.generic_xds_configs:
             if re.search(
                 r"\.ClusterLoadAssignment$", generic_xds_config.type_url
             ):
                 seen.add("endpoint_config")
+        logger.debug(
+            "Received xDS config dump: %s",
+            json_format.MessageToJson(config, indent=2),
+        )
+        self.assertSameElements(want, seen)
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
@@ -599,8 +599,7 @@ class XdsKubernetesBaseTestCase(
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
 
-        self.assertEDSConfigExists(config, seen, want)
-
+        self.assertEDSConfigExists(config)
         logger.debug(
             "Received xDS config dump: %s",
             json_format.MessageToJson(config, indent=2),
@@ -1416,144 +1415,3 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             return "missing"
         sha1 = hashlib.sha1(cert)
         return f"sha1={sha1.hexdigest()}, len={len(cert)}"
-
-
-class CloudRunXdsKubernetesTestCase(SecurityXdsKubernetesTestCase):
-    server_runner: CloudRunServerRunner
-    td: TrafficDirectorCloudRunManager
-    neg: Any
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.compute = cls.gcp_api_manager.compute(cls.compute_api_version)
-        cls.compute_v1 = ComputeV1(
-            cls.gcp_api_manager, cls.project, version=cls.compute_api_version
-        )
-        cls.region = xds_flags.CLOUD_RUN_REGION.value
-
-    def initTrafficDirectorManager(self) -> TrafficDirectorManager:
-        return TrafficDirectorCloudRunManager(
-            self.gcp_api_manager,
-            project=self.project,
-            resource_prefix=self.resource_prefix,
-            resource_suffix=self.resource_suffix,
-            network=self.network,
-            compute_api_version=self.compute_api_version,
-            enable_dualstack=self.enable_dualstack,
-        )
-
-    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return KubernetesClientRunner(
-            k8s.KubernetesNamespace(
-                self.k8s_api_manager, self.client_namespace
-            ),
-            deployment_name=self.client_name,
-            image_name=self.client_image,
-            td_bootstrap_image=self.td_bootstrap_image,
-            gcp_project=self.project,
-            gcp_api_manager=self.gcp_api_manager,
-            gcp_service_account=self.gcp_service_account,
-            xds_server_uri=self.xds_server_uri,
-            network=self.network,
-            debug_use_port_forwarding=self.debug_use_port_forwarding,
-            enable_workload_identity=self.enable_workload_identity,
-            deployment_template="client.deployment.yaml",
-            stats_port=self.client_port,
-            reuse_namespace=self.server_namespace == self.client_namespace,
-            **kwargs,
-        )
-
-    def setupServerBackends(
-        self,
-        *,
-        wait_for_healthy_status=True,
-        server_runner=None,
-        max_rate_per_endpoint: Optional[int] = None,
-    ):
-        if server_runner is None:
-            server_runner = self.server_runner
-        service_url = server_runner.get_service_url()
-        self.td.backend_service_add_backends(
-            [service_url], max_rate_per_endpoint=max_rate_per_endpoint
-        )
-        if wait_for_healthy_status:
-            self.td.wait_for_backends_healthy_status(
-                replica_count=server_runner.replica_count
-            )
-
-    def startTestServers(self, server_runner=None) -> List[XdsTestServer]:
-        if server_runner is None:
-            self.server_runner = CloudRunServerRunner(
-                project=self.project,
-                service_name=self.server_namespace,
-                image_name=self.server_image,
-                network=self.network,
-                region=self.region,
-                gcp_api_manager=self.gcp_api_manager,
-            )
-        test_servers = self.server_runner.run()
-        for test_server in test_servers:
-            test_server.set_xds_address(
-                self.server_xds_host, self.server_xds_port
-            )
-        return test_servers
-
-    def backendServiceAddServerlessNegBackends(self):
-        name = self.td.make_resource_name("neg")
-        logger.info("Creating serverless NEG")
-        neg = self.compute_v1.create_serverless_neg(
-            name,
-            self.region,
-            self.server_namespace,
-        )
-        self.neg = neg
-        return neg
-
-    def assertEDSConfigExists(self, config, seen, want):
-        """No-op for Cloud Run as EDS is not required."""
-        _ = (seen, config, want)
-
-    def cleanup(self):
-        self.server_runner.cleanup(force=self.force_cleanup)
-        self.td.cleanup(force=self.force_cleanup)
-        self.compute_v1.delete_serverless_neg(self.neg["name"], self.region)
-        self.client_runner.cleanup(
-            force=self.force_cleanup, force_namespace=self.force_cleanup
-        )
-
-    def tearDown(self):
-        logger.info("----- TestMethod %s teardown -----", self.test_name)
-        logger.debug("Getting pods restart times")
-        client_restarts: int = 0
-        try:
-            client_restarts = self.client_runner.get_pod_restarts(
-                self.client_runner.deployment
-            )
-        except (retryers.RetryError, k8s.NotFound) as e:
-            logger.exception(e)
-
-        retryer = retryers.constant_retryer(
-            wait_fixed=_timedelta(seconds=10),
-            attempts=3,
-            log_level=logging.INFO,
-        )
-        try:
-            retryer(self.cleanup)
-        except retryers.RetryError:
-            logger.exception("Got error during teardown")
-        finally:
-            logger.info("----- Test client/server logs -----")
-            self.client_runner.logs_explorer_run_history_links()
-            self.server_runner.logs_explorer_run_history_links()
-
-            # Fail if any of the pods restarted.
-            self.assertEqual(
-                client_restarts,
-                0,
-                msg=(
-                    "Client container unexpectedly restarted"
-                    f" {client_restarts} times during test. In most cases, this"
-                    " is caused by the test client app crash."
-                ),
-            )
