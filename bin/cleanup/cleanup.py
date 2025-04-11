@@ -346,7 +346,13 @@ def cleanup_legacy_driver_resources(*, project: str, suffix: str, **kwargs):
 # their `cleanup()` might do duplicate work. But deleting an non-exist resource
 # returns 404, and is OK.
 def cleanup_td_for_gke(
-    *, project, prefix, suffix, network, enable_dualstack: bool = False
+    *,
+    project,
+    prefix,
+    suffix,
+    network,
+    enable_dualstack: bool = False,
+    compute_api_version: str = "v1",
 ):
     gcp_api_manager = gcp.api.GcpApiManager()
     plain_td = traffic_director.TrafficDirectorManager(
@@ -356,6 +362,7 @@ def cleanup_td_for_gke(
         resource_prefix=prefix,
         resource_suffix=suffix,
         enable_dualstack=enable_dualstack,
+        compute_api_version=compute_api_version,
     )
     security_td = traffic_director.TrafficDirectorSecureManager(
         gcp_api_manager,
@@ -364,6 +371,7 @@ def cleanup_td_for_gke(
         resource_prefix=prefix,
         resource_suffix=suffix,
         enable_dualstack=enable_dualstack,
+        compute_api_version=compute_api_version,
     )
     # TODO: cleanup appnet resources.
     # appnet_td = traffic_director.TrafficDirectorAppNetManager(
@@ -413,7 +421,7 @@ def cleanup_client(
         image_name="",
         td_bootstrap_image="",
         deployment_args=_ClientDeploymentArgs(
-            enable_dualstack=enable_dualstack
+            enable_dualstack=enable_dualstack,
         ),
     )
 
@@ -528,7 +536,13 @@ def cleanup_server(
 
 
 def delete_leaked_td_resources(
-    dry_run, td_resource_rules, project, network, resources, enable_dualstack
+    dry_run,
+    td_resource_rules,
+    project,
+    network,
+    resources,
+    enable_dualstack: bool = False,
+    compute_api_version: str = "v1",
 ):
     for resource in resources:
         logger.info("-----")
@@ -551,6 +565,7 @@ def delete_leaked_td_resources(
                     suffix=result.group(1),
                     network=network,
                     enable_dualstack=enable_dualstack,
+                    compute_api_version=compute_api_version,
                 )
                 break
         if not matched:
@@ -567,7 +582,7 @@ def delete_k8s_resources(
     k8s_api_manager,
     gcp_service_account,
     namespaces,
-    enable_dualstack,
+    enable_dualstack: bool = False,
 ):
     gcp_api_manager = gcp.api.GcpApiManager()
     for ns in namespaces:
@@ -651,7 +666,7 @@ def find_and_remove_leaked_k8s_resources(
     network,
     gcp_service_account,
     k8s_context,
-    enable_dualstack,
+    enable_dualstack: bool = False,
 ):
     k8s_resource_rules: List[K8sResourceRule] = []
     for prefix in CLIENT_PREFIXES.value:
@@ -685,7 +700,11 @@ def find_and_remove_leaked_k8s_resources(
 
 
 def find_and_remove_leaked_td_resources(
-    dry_run, project, network, enable_dualstack
+    dry_run,
+    project,
+    network,
+    enable_dualstack: bool = False,
+    compute_api_version: str = "v1",
 ):
     cleanup_legacy: bool = MODE.value != "td_no_legacy"
     td_resource_rules = [
@@ -747,6 +766,7 @@ def find_and_remove_leaked_td_resources(
         network,
         leaked_health_checks,
         enable_dualstack,
+        compute_api_version,
     )
 
     # Delete leaked instance templates, those usually mean there are leaked VMs
@@ -780,10 +800,11 @@ def main(argv):
     dry_run: bool = DRY_RUN.value
     k8s_context: str = xds_k8s_flags.KUBE_CONTEXT.value
     enable_dualstack: bool = xds_flags.ENABLE_DUALSTACK.value
+    compute_api_version: str = xds_flags.COMPUTE_API_VERSION.value
 
     if MODE.value == "td" or MODE.value == "td_no_legacy":
         find_and_remove_leaked_td_resources(
-            dry_run, project, network, enable_dualstack
+            dry_run, project, network, enable_dualstack, compute_api_version
         )
     elif MODE.value == "k8s":
         # 'unset' value is used in td-only mode to bypass the validation
