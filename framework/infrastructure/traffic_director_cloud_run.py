@@ -112,6 +112,8 @@ class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
         self.compute.delete_serverless_neg(name, region)
         self.neg = None
 
-    def cleanup(self, *, region, force=False):
+    def cleanup(
+        self, *, region, force=False
+    ):  # pylint: disable=arguments-differ
         self.delete_serverless_neg(region=region, force=force)
         super().cleanup(force=force)
