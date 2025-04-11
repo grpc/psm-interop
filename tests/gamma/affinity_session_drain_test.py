@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Final, Optional
+from typing import Final
 
 from absl import flags
 from absl.testing import absltest
@@ -85,7 +85,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         test_client: client_app.XdsTestClient,
         num_rpcs: int,
         *,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         if not metadata_keys:

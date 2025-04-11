@@ -14,7 +14,6 @@
 
 import datetime
 import time
-from typing import Optional
 
 from absl import flags
 from absl.testing import absltest
@@ -61,7 +60,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
     def setUp(self):
         super().setUp()
-        self.next_rpc_type: Optional[int] = None
+        self.next_rpc_type: int | None = None
 
     def authz_rules(self):
         return [
@@ -193,7 +192,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
     def configure_and_assert(
         self,
         test_client: _XdsTestClient,
-        test_metadata_val: Optional[str],
+        test_metadata_val: str | None,
         status_code: grpc.StatusCode,
     ) -> None:
         # Swap method type every sub-test to avoid mixing results

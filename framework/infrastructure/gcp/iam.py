@@ -15,7 +15,7 @@ import dataclasses
 import datetime
 import functools
 import logging
-from typing import Any, Dict, FrozenSet, Optional
+from typing import Any, Dict, FrozenSet
 
 from framework.helpers import retryers
 from framework.infrastructure import gcp
@@ -131,7 +131,7 @@ class Policy:
 
         role: str
         members: FrozenSet[str]
-        condition: Optional[Expr] = None
+        condition: Expr | None = None
 
         @classmethod
         def from_response(cls, response: Dict[str, Any]) -> "Policy.Binding":
@@ -155,12 +155,12 @@ class Policy:
 
     bindings: FrozenSet[Binding]
     etag: str
-    version: Optional[int] = None
+    version: int | None = None
 
     @functools.lru_cache(maxsize=128)
     def find_binding_for_role(
-        self, role: str, condition: Optional[Expr] = None
-    ) -> Optional["Policy.Binding"]:
+        self, role: str, condition: Expr | None = None
+    ) -> "Policy.Binding" | None:
         results = (
             binding
             for binding in self.bindings
@@ -283,7 +283,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
         https://cloud.google.com/iam/docs/reference/rest/v1/projects.serviceAccounts/setIamPolicy
         """
         policy: Policy = self.get_service_account_iam_policy(account)
-        binding: Optional[Policy.Binding] = policy.find_binding_for_role(role)
+        binding: Policy.Binding | None = policy.find_binding_for_role(role)
         if binding and member in binding.members:
             logger.debug(
                 "Member %s already has role %s for Service Account %s",
@@ -325,7 +325,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
         https://cloud.google.com/iam/docs/reference/rest/v1/projects.serviceAccounts/setIamPolicy
         """
         policy: Policy = self.get_service_account_iam_policy(account)
-        binding: Optional[Policy.Binding] = policy.find_binding_for_role(role)
+        binding: Policy.Binding | None = policy.find_binding_for_role(role)
 
         if binding is None:
             logger.debug(

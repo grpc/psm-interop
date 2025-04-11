@@ -17,7 +17,7 @@ Run xDS Test Client on Kubernetes.
 import dataclasses
 import datetime as dt
 import logging
-from typing import List, Optional
+from typing import List
 
 from typing_extensions import override
 
@@ -73,15 +73,15 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     deployment_args: ServerDeploymentArgs
 
     # Optional fields.
-    service_account_name: Optional[str] = None
-    service_account_template: Optional[str] = None
-    gcp_iam: Optional[gcp.iam.IamV1] = None
+    service_account_name: str | None = None
+    service_account_template: str | None = None
+    gcp_iam: gcp.iam.IamV1 | None = None
 
     # Below is mutable state associated with the current run.
-    service: Optional[k8s.V1Service] = None
+    service: k8s.V1Service | None = None
     replica_count: int = 0
-    pod_monitoring: Optional[k8s.PodMonitoring] = None
-    pod_monitoring_name: Optional[str] = None
+    pod_monitoring: k8s.PodMonitoring | None = None
+    pod_monitoring_name: str | None = None
 
     # A map from pod names to the server app.
     pods_to_servers: dict[str, XdsTestServer]
@@ -95,22 +95,22 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         td_bootstrap_image: str,
         app_label: str = "",
         network: str = "default",
-        xds_server_uri: Optional[str] = None,
+        xds_server_uri: str | None = None,
         gcp_api_manager: gcp.api.GcpApiManager,
         gcp_project: str,
         gcp_service_account: str,
-        service_account_name: Optional[str] = None,
-        service_name: Optional[str] = None,
-        neg_name: Optional[str] = None,
+        service_account_name: str | None = None,
+        service_name: str | None = None,
+        neg_name: str | None = None,
         deployment_template: str = "server.deployment.yaml",
         service_account_template: str = "service-account.yaml",
         service_template: str = "server.service.yaml",
         reuse_service: bool = False,
         reuse_namespace: bool = False,
-        namespace_template: Optional[str] = None,
+        namespace_template: str | None = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        deployment_args: Optional[ServerDeploymentArgs] = None,
+        deployment_args: ServerDeploymentArgs | None = None,
     ):
         super().__init__(
             k8s_namespace,
@@ -170,12 +170,12 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self,
         *,
         test_port: int = DEFAULT_TEST_PORT,
-        maintenance_port: Optional[int] = None,
+        maintenance_port: int | None = None,
         secure_mode: bool = False,
         address_type: str = "",
         replica_count: int = 1,
         log_to_stdout: bool = False,
-        bootstrap_version: Optional[str] = None,
+        bootstrap_version: str | None = None,
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -338,9 +338,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         pod: k8s.V1Pod,
         *,
         test_port: int = DEFAULT_TEST_PORT,
-        maintenance_port: Optional[int] = None,
+        maintenance_port: int | None = None,
         secure_mode: bool = False,
-        monitoring_port: Optional[int] = None,
+        monitoring_port: int | None = None,
     ) -> XdsTestServer:
         if maintenance_port is None:
             maintenance_port = self._get_default_maintenance_port(secure_mode)

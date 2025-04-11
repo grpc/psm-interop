@@ -22,7 +22,7 @@ import datetime as dt
 import functools
 import logging
 import pathlib
-from typing import List, Optional, cast
+from typing import List, cast
 
 import absl.logging
 import mako.lookup
@@ -54,7 +54,7 @@ _timedelta = dt.timedelta
 class RunHistory:
     deployment_id: str
     time_start_requested: _datetime
-    time_start_completed: Optional[_datetime]
+    time_start_completed: _datetime | None
     time_stopped: _datetime
 
 
@@ -100,10 +100,10 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     run_history: collections.deque[RunHistory]
 
     # Below is mutable state associated with the current run.
-    namespace: Optional[k8s.V1Namespace] = None
-    deployment: Optional[k8s.V1Deployment] = None
-    deployment_id: Optional[str] = None
-    service_account: Optional[k8s.V1ServiceAccount] = None
+    namespace: k8s.V1Namespace | None = None
+    deployment: k8s.V1Deployment | None = None
+    deployment_id: str | None = None
+    service_account: k8s.V1ServiceAccount | None = None
 
     # A map of pod names to pod objects as they were at the moment
     # of deployment creation.
@@ -129,9 +129,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     pod_log_collectors: list[k8s.PodLogCollector]
 
     # Current run metadata.
-    time_start_requested: Optional[_datetime] = None
-    time_start_completed: Optional[_datetime] = None
-    time_stopped: Optional[_datetime] = None
+    time_start_requested: _datetime | None = None
+    time_start_completed: _datetime | None = None
+    time_stopped: _datetime | None = None
 
     def __init__(
         self,
@@ -143,7 +143,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         gcp_service_account: str,
         gcp_ui_url: str,
         app_label: str = "",
-        namespace_template: Optional[str] = "namespace.yaml",
+        namespace_template: str | None = "namespace.yaml",
         reuse_namespace: bool = False,
     ):
         super().__init__()
@@ -520,7 +520,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self,
         name: str,
         *,
-        grace_period: Optional[dt.timedelta] = None,
+        grace_period: dt.timedelta | None = None,
         ignore_errors: bool = True,
         wait_for_deletion: bool = True,
     ) -> bool:
@@ -1133,10 +1133,10 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         namespace_name: str,
         gcp_project: str,
         gcp_ui_url: str,
-        deployment_id: Optional[str] = None,
-        start_time: Optional[_datetime] = None,
-        end_time: Optional[_datetime] = None,
-        cursor_time: Optional[_datetime] = None,
+        deployment_id: str | None = None,
+        start_time: _datetime | None = None,
+        end_time: _datetime | None = None,
+        cursor_time: _datetime | None = None,
     ):
         """Output the link to test server/client logs in GCP Logs Explorer."""
         if not start_time:

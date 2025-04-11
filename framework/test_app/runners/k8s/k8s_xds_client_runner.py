@@ -16,7 +16,6 @@ Run xDS Test Client on Kubernetes.
 """
 import dataclasses
 import logging
-from typing import Optional
 
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
@@ -51,11 +50,11 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
     deployment_args: ClientDeploymentArgs
 
     # Optional fields.
-    service_account_name: Optional[str] = None
-    service_account_template: Optional[str] = None
-    gcp_iam: Optional[gcp.iam.IamV1] = None
-    pod_monitoring: Optional[k8s.PodMonitoring] = None
-    pod_monitoring_name: Optional[str] = None
+    service_account_name: str | None = None
+    service_account_template: str | None = None
+    gcp_iam: gcp.iam.IamV1 | None = None
+    pod_monitoring: k8s.PodMonitoring | None = None
+    pod_monitoring_name: str | None = None
 
     def __init__(  # pylint: disable=too-many-locals
         self,
@@ -66,19 +65,19 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         td_bootstrap_image: str,
         app_label: str = "",
         network="default",
-        xds_server_uri: Optional[str] = None,
+        xds_server_uri: str | None = None,
         gcp_api_manager: gcp.api.GcpApiManager,
         gcp_project: str,
         gcp_service_account: str,
-        service_account_name: Optional[str] = None,
+        service_account_name: str | None = None,
         stats_port: int = 8079,
         deployment_template: str = "client.deployment.yaml",
         service_account_template: str = "service-account.yaml",
         reuse_namespace: bool = False,
-        namespace_template: Optional[str] = None,
+        namespace_template: str | None = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
-        deployment_args: Optional[ClientDeploymentArgs] = None,
+        deployment_args: ClientDeploymentArgs | None = None,
     ):
         super().__init__(
             k8s_namespace,

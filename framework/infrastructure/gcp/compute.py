@@ -15,7 +15,7 @@ import dataclasses
 import datetime
 import enum
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from googleapiclient import discovery
 import googleapiclient.errors
@@ -38,7 +38,7 @@ class ComputeV1(
     _WAIT_FOR_BACKEND_SEC = 60 * 10
     _WAIT_FOR_BACKEND_SLEEP_SEC = 4
     _WAIT_FOR_OPERATION_SEC = 60 * 10
-    gfe_debug_header: Optional[str]
+    gfe_debug_header: str | None
 
     @dataclasses.dataclass(frozen=True)
     class GcpResource:
@@ -60,7 +60,7 @@ class ComputeV1(
         self,
         api_manager: gcp.api.GcpApiManager,
         project: str,
-        gfe_debug_header: Optional[str] = None,
+        gfe_debug_header: str | None = None,
         version: str = "v1",
     ):
         super().__init__(api_manager.compute(version), project)
@@ -80,7 +80,7 @@ class ComputeV1(
         name: str,
         protocol: HealthCheckProtocol,
         *,
-        port: Optional[int] = None,
+        port: int | None = None,
     ) -> "GcpResource":
         if protocol is self.HealthCheckProtocol.TCP:
             health_check_field = "tcpHealthCheck"
@@ -117,7 +117,7 @@ class ComputeV1(
         network_url: str,
         source_ranges: List[str],
         ports: List[str],
-    ) -> Optional["GcpResource"]:
+    ) -> "GcpResource" | None:
         try:
             return self._insert_resource(
                 self.api.firewalls(),
@@ -146,11 +146,11 @@ class ComputeV1(
         self,
         name: str,
         health_check: "GcpResource",
-        affinity_header: Optional[str] = None,
-        protocol: Optional[BackendServiceProtocol] = None,
-        subset_size: Optional[int] = None,
-        locality_lb_policies: Optional[List[dict]] = None,
-        outlier_detection: Optional[dict] = None,
+        affinity_header: str | None = None,
+        protocol: BackendServiceProtocol | None = None,
+        subset_size: int | None = None,
+        locality_lb_policies: List[dict] | None = None,
+        outlier_detection: dict | None = None,
         enable_dualstack: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
@@ -201,9 +201,9 @@ class ComputeV1(
         self,
         backend_service,
         backends,
-        max_rate_per_endpoint: Optional[int] = None,
+        max_rate_per_endpoint: int | None = None,
         *,
-        circuit_breakers: Optional[dict[str, int]] = None,
+        circuit_breakers: dict[str, int] | None = None,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5
@@ -244,7 +244,7 @@ class ComputeV1(
         matcher_name: str,
         src_hosts,
         dst_default_backend_service: "GcpResource",
-        dst_host_rule_match_backend_service: Optional["GcpResource"] = None,
+        dst_host_rule_match_backend_service: "GcpResource" | None = None,
     ) -> "GcpResource":
         if dst_host_rule_match_backend_service is None:
             dst_host_rule_match_backend_service = dst_default_backend_service

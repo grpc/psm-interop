@@ -22,7 +22,7 @@ import re
 import signal
 import time
 from types import FrameType
-from typing import Any, Callable, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Final, List, Tuple, Union
 
 from absl import flags
 from absl.testing import absltest
@@ -85,7 +85,7 @@ RpcMetadata = grpc_testing.LoadBalancerStatsResponse.RpcMetadata
 MetadataByPeer: list[str, RpcMetadata]
 # pylint complains about signal.Signals for some reason.
 _SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
-_SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
+_SignalHandler = Callable[[_SignalNum, FrameType | None], Any]
 
 TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 # TODO(sergiitk): get rid of the seconds constant, use timedelta
@@ -129,9 +129,9 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     firewall_source_range_ipv6: str = ""
     force_cleanup: bool
     gcp_api_manager: gcp.api.GcpApiManager
-    gcp_service_account: Optional[str]
+    gcp_service_account: str | None
     k8s_api_manager: k8s.KubernetesApiManager
-    secondary_k8s_api_manager: Optional[k8s.KubernetesApiManager] = None
+    secondary_k8s_api_manager: k8s.KubernetesApiManager | None = None
     network: str
     project: str
     project_number: str
@@ -140,14 +140,14 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
     # Whether to randomize resources names for each test by appending a
     # unique suffix.
     resource_suffix_randomize: bool = True
-    server_maintenance_port: Optional[int]
+    server_maintenance_port: int | None
     server_namespace: str
     server_runner: KubernetesServerRunner
     server_xds_host: str
-    server_xds_port: Optional[int]
+    server_xds_port: int | None
     td: TrafficDirectorManager
     td_bootstrap_image: str
-    _prev_sigint_handler: Optional[_SignalHandler] = None
+    _prev_sigint_handler: _SignalHandler | None = None
     _handling_sigint: bool = False
     yaml_highlighter: framework.helpers.highlighter.HighlighterYaml = None
     enable_dualstack: bool = False
@@ -297,7 +297,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         )
 
     def handle_sigint(
-        self, signalnum: _SignalNum, frame: Optional[FrameType]
+        self, signalnum: _SignalNum, frame: FrameType | None
     ) -> None:
         # TODO(sergiitk): move to base_testcase.BaseTestCase
         if self._handling_sigint:
@@ -351,7 +351,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         *,
         wait_for_healthy_status=True,
         server_runner=None,
-        max_rate_per_endpoint: Optional[int] = None,
+        max_rate_per_endpoint: int | None = None,
     ):
         if server_runner is None:
             server_runner = self.server_runner
@@ -681,7 +681,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 )
 
     def assertFailedRpcs(
-        self, test_client: XdsTestClient, num_rpcs: Optional[int] = 100
+        self, test_client: XdsTestClient, num_rpcs: int | None = 100
     ):
         lb_stats = self.getClientRpcStats(test_client, num_rpcs)
         failed = int(lb_stats.num_failures)
@@ -696,7 +696,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
-        metadata_keys: Optional[tuple[str, ...]] = None,
+        metadata_keys: tuple[str, ...] | None = None,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
@@ -930,8 +930,8 @@ class IsolatedXdsKubernetesTestCase(
         *,
         wait_for_active_ads: bool = True,
         wait_for_server_channel_ready: bool = True,
-        wait_for_active_ads_timeout: Optional[_timedelta] = None,
-        wait_for_server_channel_ready_timeout: Optional[_timedelta] = None,
+        wait_for_active_ads_timeout: _timedelta | None = None,
+        wait_for_server_channel_ready_timeout: _timedelta | None = None,
         **kwargs,
     ) -> XdsTestClient:
         test_client = self.client_runner.run(
@@ -1323,8 +1323,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         self,
         test_client: XdsTestClient,
         *,
-        times: Optional[int] = None,
-        delay: Optional[_timedelta] = None,
+        times: int | None = None,
+        delay: _timedelta | None = None,
     ):
         """
         Asserts that the client repeatedly cannot reach the server.

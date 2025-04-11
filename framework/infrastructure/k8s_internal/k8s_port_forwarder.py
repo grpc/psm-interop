@@ -15,7 +15,6 @@ import logging
 import re
 import subprocess
 import time
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +32,16 @@ class PortForwarder:
         namespace: str,
         destination: str,
         remote_port: int,
-        local_port: Optional[int] = None,
-        local_address: Optional[str] = None,
+        local_port: int | None = None,
+        local_address: str | None = None,
     ):
         self.context = context
         self.namespace = namespace
         self.destination = destination
         self.remote_port = remote_port
         self.local_address = local_address or self.PORT_FORWARD_LOCAL_ADDRESS
-        self.local_port: Optional[int] = local_port
-        self.subprocess: Optional[subprocess.Popen] = None
+        self.local_port: int | None = local_port
+        self.subprocess: subprocess.Popen | None = None
 
     def connect(self) -> None:
         if self.local_port:

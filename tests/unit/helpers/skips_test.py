@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -192,7 +191,7 @@ class TestConfigVersionGteTest(parameterized.TestCase):
         *INVALID_VERSIONS,
         *VALID_DEV_VERSIONS,
     )
-    def test_right_invalid_version(self, version_right: Optional[str]):
+    def test_right_invalid_version(self, version_right: str | None):
         """
         Verifies that invalid versions on the right raise InvalidVersion.
 
@@ -204,7 +203,7 @@ class TestConfigVersionGteTest(parameterized.TestCase):
             test_config.version_gte(version_right)
 
     @parameterized.parameters(*INVALID_VERSIONS)
-    def test_left_invalid_version(self, version_left: Optional[str]):
+    def test_left_invalid_version(self, version_left: str | None):
         """
         Verifies that invalid versions on the left raise InvalidVersion.
         """
@@ -217,7 +216,7 @@ class TestConfigVersionGteTest(parameterized.TestCase):
         *VALID_DEV_VERSIONS,
         None,
     )
-    def test_left_valid_version(self, version_left: Optional[str]):
+    def test_left_valid_version(self, version_left: str | None):
         """
         Verifies that valid versions on the left don't raise InvalidVersion.
         """
@@ -230,7 +229,7 @@ class TestConfigVersionGteTest(parameterized.TestCase):
             )
 
     @parameterized.parameters(*VALID_VERSIONS)
-    def test_right_valid_version(self, version_right: Optional[str]):
+    def test_right_valid_version(self, version_right: str | None):
         """
         Verifies that valid versions on the right don't raise InvalidVersion.
         """
