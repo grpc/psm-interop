@@ -105,17 +105,17 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )
-        self.server_runner.cleanup(
-            force=self.force_cleanup, force_namespace=False
-        )
+
+        # Don't set force_namespace: all runners share the same namespace.
         if self.v4_server_runner:
-            self.v4_server_runner.cleanup(
-                force=self.force_cleanup, force_namespace=False
-            )
+            self.v4_server_runner.cleanup(force=self.force_cleanup)
         if self.v6_server_runner:
-            self.v6_server_runner.cleanup(
-                force=self.force_cleanup, force_namespace=True
-            )
+            self.v6_server_runner.cleanup(force=self.force_cleanup)
+
+        # Pass force_namespace at the last step.
+        self.server_runner.cleanup(
+            force=self.force_cleanup, force_namespace=self.force_cleanup
+        )
 
     def test_dualstack(self) -> None:
         self.assertTrue(
