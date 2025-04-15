@@ -18,13 +18,12 @@ https://github.com/grpc/grpc/blob/master/src/proto/grpc/testing/test.proto
 from collections.abc import Sequence
 import datetime as dt
 import logging
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional, TypeAlias, cast
 
 from google.protobuf import json_format
 import grpc
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
-from typing_extensions import TypeAlias
 
 import framework.rpc
 from protos.grpc.testing import empty_pb2
