@@ -20,6 +20,10 @@ Note: technically these should represent the structure of base class tests
 from typing import Protocol
 
 
+class CsmObservabilityTestCaseMixin(Protocol):
+    pass
+
+
 class XdsKubernetesBaseTestCaseMixin(Protocol):
     pass
 
