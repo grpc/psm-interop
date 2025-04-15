@@ -199,6 +199,12 @@ ENABLE_DUALSTACK = flags.DEFINE_bool(
     help="Enable support for Dual Stack resources to the framework.",
 )
 
+CLOUD_RUN_REGION = flags.DEFINE_string(
+    "cloud_run_region",
+    default=None,
+    help="The region for cloud run deployment",
+)
+
 
 def set_socket_default_timeout_from_flag() -> None:
     """A helper to configure default socket timeout from a flag.

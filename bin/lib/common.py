@@ -24,8 +24,11 @@ from framework import xds_flags
 from framework import xds_k8s_flags
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
+from framework.infrastructure.gcp import cloud_run
 from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
+from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
@@ -45,6 +48,8 @@ SERVER_REPLICA_COUNT = flags.DEFINE_integer(
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 GammaServerRunner = gamma_server_runner.GammaServerRunner
+CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
+CloudRunClientRunner = cloud_run_xds_client_runner.CloudRunClientRunner
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -58,6 +63,11 @@ def k8s_api_manager():
 def gcp_api_manager():
     return gcp.api.GcpApiManager()
 
+
+@functools.cache
+def cloud_run_api_manager():
+    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value,
+                                        region=xds_flags.CLOUD_RUN_REGION.value)
 
 def td_attrs():
     return dict(
@@ -117,7 +127,6 @@ def make_server_namespace(
     )
     return k8s.KubernetesNamespace(k8s_api_manager(), namespace_name)
 
-
 def make_server_runner(
     namespace: k8s.KubernetesNamespace,
     *,
@@ -155,6 +164,34 @@ def make_server_runner(
 
     return server_runner(namespace, **runner_kwargs)
 
+def make_cloud_run_server_runner() -> CloudRunServerRunner:
+    # CloudRunServerRunner arguments.
+    runner_kwargs = dict(
+        project=xds_flags.PROJECT.value,
+        service_name=xds_flags.SERVER_NAME.value,
+        image_name=xds_k8s_flags.SERVER_IMAGE.value,
+        network=xds_flags.NETWORK.value,
+        region=xds_flags.CLOUD_RUN_REGION.value,
+    )
+    server_runner = CloudRunServerRunner
+    return server_runner(**runner_kwargs)
+
+def make_cloud_run_client_runner(
+        mesh_name: str,
+        server_target: str,
+) -> CloudRunClientRunner:
+    # CloudRunClientRunner arguments.
+    runner_kwargs = dict(
+        project=xds_flags.PROJECT.value,
+        service_name=xds_flags.CLIENT_NAME.value,
+        image_name=xds_k8s_flags.CLIENT_IMAGE.value,
+        network=xds_flags.NETWORK.value,
+        region=xds_flags.CLOUD_RUN_REGION.value,
+        mesh_name=mesh_name,
+        server_target=server_target,
+    )
+    client_runner = CloudRunClientRunner
+    return client_runner(**runner_kwargs)
 
 def _ensure_atexit(signum, frame):
     """Needed to handle signals or atexit handler won't be called."""
