@@ -41,7 +41,9 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
-            self.td.backend_service_add_cloudrun_backends([self.td.neg], self.region)
+            self.td.backend_service_add_cloudrun_backends(
+                [self.td.neg], self.region
+            )
 
         with self.subTest("5_create_grpc_route"):
             self.td.create_grpc_route(

@@ -14,6 +14,7 @@
 import datetime as dt
 import logging
 from typing import Any, List, Optional
+
 from typing_extensions import override
 
 from framework import xds_flags
@@ -91,8 +92,7 @@ class CloudRunXdsKubernetesTestCase(
         *,
         wait_for_healthy_status=True,
         server_runner=None,
-        max_rate_per_endpoint: Optional[int] = None,
-    ):
+    ):  # pylint: disable=arguments-differ
         if server_runner is None:
             server_runner = self.server_runner
         cloud_run_service = server_runner.get_service()
@@ -118,7 +118,7 @@ class CloudRunXdsKubernetesTestCase(
                 self.server_xds_host, self.server_xds_port
             )
         return test_servers
-    
+
     @override
     def assertEDSConfigExists(self, config):
         """No-op for Cloud Run as EDS is not required."""

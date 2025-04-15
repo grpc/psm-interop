@@ -22,10 +22,10 @@ import logging
 from typing import Optional
 
 import framework
-from framework.infrastructure import gcp
-from framework.test_app.runners import base_runner
 import framework.helpers.datetime
 import framework.helpers.highlighter
+from framework.infrastructure import gcp
+from framework.test_app.runners import base_runner
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 end_time=run.time_stopped,
             )
 
-    def cleanup(self,*,force: bool = False):
+    def cleanup(self, *, force: bool = False):
         """Deletes Cloud Run Service"""
         logger.info("Deleting Cloud Run service: %s", self.service_name)
         self.cloud_run_api_manager.delete_service(self.service_name)

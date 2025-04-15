@@ -91,11 +91,11 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
     def create_neg_serverless(self, service_name: str):
         name = self.make_resource_name(self.NEG_NAME)
         logger.info("Creating serverless NEG %s", name)
-        neg = self.compute.create_neg_serverless(name, self.region, service_name)
-        logger.info("Loading NEG %s", neg)
-        self.neg = self.compute.get_neg_serverless(
-            name, self.region
+        neg = self.compute.create_neg_serverless(
+            name, self.region, service_name
         )
+        logger.info("Loading NEG %s", neg)
+        self.neg = self.compute.get_neg_serverless(name, self.region)
         return neg
 
     def delete_serverless_neg(self, force=False):

@@ -1,0 +1,25 @@
+{
+    "folders": [
+      {
+        "path": ".",
+      },
+    ],
+    "settings": {
+      "files.exclude": {
+        "out/": true,
+        "**/__pycache__": true,
+      },
+      // "explorer.excludeGitIgnore": true,
+      "python.analysis.diagnosticSeverityOverrides": {
+        // reports on protobuf
+        "reportInvalidTypeForm": "information",
+      },
+      "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+      },
+      "black-formatter.importStrategy": "fromEnvironment",
+    },
+  
+  }
+  

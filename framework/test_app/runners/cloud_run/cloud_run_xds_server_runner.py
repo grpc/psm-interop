@@ -19,8 +19,8 @@ import logging
 from typing_extensions import override
 
 from framework.infrastructure import gcp
-from framework.test_app.runners.cloud_run import cloud_run_base_runner
 from framework.test_app import server_app
+from framework.test_app.runners.cloud_run import cloud_run_base_runner
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,9 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         # Mutable state associated with each run.
         self._reset_state()
-        self.service : gcp.cloud_run.CloudRunV2
+        self.service: gcp.cloud_run.CloudRunV2
         self.current_revision: str
-        
+
     @override
     def _reset_state(self):
         super()._reset_state()
@@ -91,6 +91,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
-            self.service=None
+            self.service = None
         finally:
             self._stop()
