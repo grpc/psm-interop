@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from typing_extensions import override
 
@@ -102,7 +102,7 @@ class CloudRunXdsKubernetesTestCase(
                 replica_count=server_runner.replica_count
             )
 
-    def startTestServers(self, server_runner=None) -> List[XdsTestServer]:
+    def startTestServers(self, server_runner=None) -> list[XdsTestServer]:
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
                 project=self.project,
