@@ -32,8 +32,8 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
         with self.subTest("1_start_cloud_run_test_server"):
             test_server: _XdsTestServer = self.startTestServers()[0]
 
-        with self.subTest("2_create_serverless_neg"):
-            self.td.create_serverless_neg(self.region, self.server_namespace)
+        with self.subTest("2_create_neg_serverless"):
+            self.td.create_neg_serverless(self.server_namespace)
 
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(
@@ -41,7 +41,7 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
-            self.td.backend_service_add_backends([self.td.neg], self.region)
+            self.td.backend_service_add_cloudrun_backends([self.td.neg], self.region)
 
         with self.subTest("5_create_grpc_route"):
             self.td.create_grpc_route(

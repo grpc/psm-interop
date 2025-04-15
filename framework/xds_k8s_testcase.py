@@ -570,10 +570,6 @@ class XdsKubernetesBaseTestCase(
                 r"\.ClusterLoadAssignment$", generic_xds_config.type_url
             ):
                 seen.add("endpoint_config")
-        logger.debug(
-            "Received xDS config dump: %s",
-            json_format.MessageToJson(config, indent=2),
-        )
         self.assertSameElements(want, seen)
 
     def assertXdsConfigExists(self, test_client: XdsTestClient):

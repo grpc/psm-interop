@@ -137,7 +137,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             (
                 'Deploying xDS test client "%s" to k8s namespace %s: '
                 "server_target=%s rpc=%s qps=%s metadata=%r secure_mode=%s "
-                "print_response=%s is_trusted_xds_server_experimental=%s"
+                "print_response=%s"
             ),
             self.deployment_name,
             self.k8s_namespace.name,
@@ -147,7 +147,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             metadata,
             secure_mode,
             print_response,
-            is_trusted_xds_server_experimental,
         )
         super().run()
 

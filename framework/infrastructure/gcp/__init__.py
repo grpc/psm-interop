@@ -16,3 +16,4 @@ from framework.infrastructure.gcp import compute
 from framework.infrastructure.gcp import iam
 from framework.infrastructure.gcp import network_security
 from framework.infrastructure.gcp import network_services
+from framework.infrastructure.gcp import cloud_run

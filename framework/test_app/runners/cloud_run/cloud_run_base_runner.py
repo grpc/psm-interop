@@ -23,23 +23,23 @@ from typing import Optional
 
 import framework
 from framework.infrastructure import gcp
-from framework.infrastructure.gcp import cloud_run
 from framework.test_app.runners import base_runner
+import framework.helpers.datetime
+import framework.helpers.highlighter
 
 logger = logging.getLogger(__name__)
 
 _HighlighterYaml = framework.helpers.highlighter.HighlighterYaml
 _helper_datetime = framework.helpers.datetime
-_datetime = dt.datetime
 _timedelta = dt.timedelta
 
 
 @dataclasses.dataclass(frozen=True)
 class RunHistory:
     revision_id: str
-    time_start_requested: _datetime
-    time_start_completed: Optional[_datetime]
-    time_stopped: _datetime
+    time_start_requested: dt.datetime
+    time_start_completed: Optional[dt.datetime]
+    time_stopped: dt.datetime
 
 
 class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
@@ -50,7 +50,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     image_name: str
     network: Optional[str] = None
     tag: str = "latest"
-    region: str = "us-central1"
+    region: str
     gcp_api_manager: gcp.api.GcpApiManager
     current_revision: Optional[str] = None
 
@@ -93,7 +93,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
 
     def _initalize_cloud_run_api_manager(self):
         """Initializes the CloudRunV2."""
-        self.cloud_run_api_manager = cloud_run.CloudRunV2(
+        self.cloud_run_api_manager = gcp.cloud_run.CloudRunV2(
             project=self.project,
             region=self.region,
             api_manager=self.gcp_api_manager,
@@ -112,17 +112,13 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             )
 
         self._reset_state()
-        self.time_start_requested = _datetime.now()
-        self.current_revision = self.cloud_run_api_manager.deploy_service(
-            self.service_name,
-            self.image_name,
-        ).url
+        self.time_start_requested = dt.datetime.now()
 
     def _start_completed(self):
-        self.time_start_completed = _datetime.now()
+        self.time_start_completed = dt.datetime.now()
 
     def _stop(self):
-        self.time_stopped = _datetime.now()
+        self.time_stopped = dt.datetime.now()
         if self.time_start_requested:
             run_history = RunHistory(
                 revision_id=self.current_revision,
@@ -140,13 +136,13 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         gcp_project: str,
         gcp_ui_url: str,
         location: str,
-        start_time: Optional[_datetime] = None,
-        end_time: Optional[_datetime] = None,
-        cursor_time: Optional[_datetime] = None,
+        start_time: Optional[dt.datetime] = None,
+        end_time: Optional[dt.datetime] = None,
+        cursor_time: Optional[dt.datetime] = None,
     ):
         """Output the link to test server/client logs in GCP Logs Explorer."""
         if not start_time:
-            start_time = _datetime.now()
+            start_time = dt.datetime.now()
         if not end_time:
             end_time = start_time + _timedelta(minutes=30)
 
@@ -194,7 +190,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 end_time=run.time_stopped,
             )
 
-    def stop(self):
+    def cleanup(self,*,force: bool = False):
         """Deletes Cloud Run Service"""
         logger.info("Deleting Cloud Run service: %s", self.service_name)
         self.cloud_run_api_manager.delete_service(self.service_name)

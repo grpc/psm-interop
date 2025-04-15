@@ -566,7 +566,7 @@ class ComputeV1(
             .execute()
         )
 
-    def create_serverless_neg(self, name: str, region: str, service_name: str):
+    def create_neg_serverless(self, name: str, region: str, service_name: str):
         """Creates a serverless NEG.
 
         Args:
@@ -593,7 +593,7 @@ class ComputeV1(
             region=region,
         )
 
-        neg = self.get_serverless_network_endpoint_group(name, region)
+        neg = self.get_neg_serverless(name, region)
         logger.info("Created serverless NEG %s ", neg)
         return neg
 
@@ -602,7 +602,7 @@ class ComputeV1(
 
         Args:
             name: The name of the NEG to delete.
-            zone: The zone of the NEG.
+            region: The region of the NEG.
         """
         logger.info("Deleting serverless NEG %s in %s", name, region)
         self._delete_resource(
@@ -612,7 +612,7 @@ class ComputeV1(
             region=region,
         )
 
-    def get_serverless_network_endpoint_group(self, name, region):
+    def get_neg_serverless(self, name, region):
         neg = self._get_resource(
             self.api.regionNetworkEndpointGroups(),
             networkEndpointGroup=name,

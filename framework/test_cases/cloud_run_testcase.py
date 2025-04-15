@@ -14,14 +14,15 @@
 import datetime as dt
 import logging
 from typing import Any, List, Optional
+from typing_extensions import override
 
 from framework import xds_flags
 from framework import xds_k8s_testcase
 from framework.helpers import retryers
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
-from framework.infrastructure.gcp.compute import ComputeV1
-import framework.infrastructure.traffic_director_cloud_run as td_cloud_run
+from framework.infrastructure.gcp import compute
+import framework.infrastructure.mesh_resource_manager.cloud_run_mesh_manager as td_cloud_run
 from framework.test_app import server_app
 from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Type aliases
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
-TrafficDirectorCloudRunManager = td_cloud_run.TrafficDirectorCloudRunManager
+CloudRunMeshManager = td_cloud_run.CloudRunMeshManager
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 XdsTestServer = server_app.XdsTestServer
 
@@ -40,22 +41,23 @@ class CloudRunXdsKubernetesTestCase(
     xds_k8s_testcase.SecurityXdsKubernetesTestCase
 ):
     server_runner: CloudRunServerRunner
-    td: TrafficDirectorCloudRunManager
+    td: CloudRunMeshManager
     neg: Any
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.compute = cls.gcp_api_manager.compute(cls.compute_api_version)
-        cls.compute_v1 = ComputeV1(
+        cls.compute_v1 = compute.ComputeV1(
             cls.gcp_api_manager, cls.project, version=cls.compute_api_version
         )
         cls.region = xds_flags.CLOUD_RUN_REGION.value
 
     def initTrafficDirectorManager(self) -> TrafficDirectorManager:
-        return TrafficDirectorCloudRunManager(
+        return CloudRunMeshManager(
             self.gcp_api_manager,
             project=self.project,
+            region=self.region,
             resource_prefix=self.resource_prefix,
             resource_suffix=self.resource_suffix,
             network=self.network,
@@ -93,10 +95,8 @@ class CloudRunXdsKubernetesTestCase(
     ):
         if server_runner is None:
             server_runner = self.server_runner
-        service_url = server_runner.get_service_url()
-        self.td.backend_service_add_backends(
-            [service_url], max_rate_per_endpoint=max_rate_per_endpoint
-        )
+        cloud_run_service = server_runner.get_service()
+        self.td.backend_service_add_cloudrun_backends([cloud_run_service.url])
         if wait_for_healthy_status:
             self.td.wait_for_backends_healthy_status(
                 replica_count=server_runner.replica_count
@@ -118,14 +118,15 @@ class CloudRunXdsKubernetesTestCase(
                 self.server_xds_host, self.server_xds_port
             )
         return test_servers
-
+    
+    @override
     def assertEDSConfigExists(self, config):
         """No-op for Cloud Run as EDS is not required."""
         _ = config
 
     def cleanup(self):
         self.server_runner.cleanup(force=self.force_cleanup)
-        self.td.cleanup(region=self.region, force=self.force_cleanup)
+        self.td.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )

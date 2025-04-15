@@ -57,8 +57,6 @@ spec:
           ports:
             - containerPort: ${stats_port}
           env:
-            - name: GRPC_TRACE
-              value: "xds_client"
             - name: GRPC_XDS_BOOTSTRAP
               value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
             - name: GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE
@@ -125,7 +123,7 @@ spec:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
             % if config_mesh:
-            - "--config-mesh=${config_mesh}"
+            - "--config-mesh-experimental=${config_mesh}"
             % endif
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"

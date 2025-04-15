@@ -26,7 +26,7 @@ Mesh = gcp.network_services.Mesh
 logger = logging.getLogger(__name__)
 
 
-class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
+class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
     MESH_NAME: Final[str] = "grpc-mesh"
     NEG_NAME: Final[str] = "grpc-neg"
 
@@ -34,6 +34,7 @@ class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
         self,
         gcp_api_manager: gcp.api.GcpApiManager,
         project: str,
+        region: str,
         *,
         resource_prefix: str,
         resource_suffix: Optional[str] = None,
@@ -51,31 +52,27 @@ class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
             enable_dualstack=enable_dualstack,
         )
 
+        # Settings
+        self.region = region
+
         # Managed resources
         self.grpc_route: Optional[GrpcRoute] = None
         self.mesh: Optional[Mesh] = None
         self.neg: Optional[GcpResource] = None
 
-    def backend_service_add_backends(
+    def backend_service_add_cloudrun_backends(
         self,
         backends: Sequence[str],
         balancing_mode: str = "CONNECTION",
-        max_rate_per_endpoint: Optional[int] = None,
         capacity_scaler: float = 1.0,
-        *,
-        circuit_breakers: Optional[dict[str, int]] = None,
     ):
         new_backends = []
         for backend in backends:
             new_backend = {
                 "group": backend,
                 "balancingMode": balancing_mode,
-                "maxRatePerEndpoint": max_rate_per_endpoint,
                 "capacityScaler": capacity_scaler,
             }
-
-            if circuit_breakers is not None:
-                new_backend["circuitBreakers"] = circuit_breakers
 
             new_backends.append(new_backend)
 
@@ -91,17 +88,17 @@ class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
             is_cloud_run=True,
         )
 
-    def create_serverless_neg(self, region: str, service_name: str):
+    def create_neg_serverless(self, service_name: str):
         name = self.make_resource_name(self.NEG_NAME)
         logger.info("Creating serverless NEG %s", name)
-        neg = self.compute.create_serverless_neg(name, region, service_name)
+        neg = self.compute.create_neg_serverless(name, self.region, service_name)
         logger.info("Loading NEG %s", neg)
-        self.neg = self.compute.get_serverless_network_endpoint_group(
-            name, region
+        self.neg = self.compute.get_neg_serverless(
+            name, self.region
         )
         return neg
 
-    def delete_serverless_neg(self, region: str, force=False):
+    def delete_serverless_neg(self, force=False):
         if force:
             name = self.make_resource_name(self.NEG_NAME)
         elif self.mesh:
@@ -109,11 +106,9 @@ class TrafficDirectorCloudRunManager(td_base.TrafficDirectorAppNetManager):
         else:
             return
         logger.info("Deleting serverless NEG %s", name)
-        self.compute.delete_serverless_neg(name, region)
+        self.compute.delete_serverless_neg(name, self.region)
         self.neg = None
 
-    def cleanup(
-        self, *, region, force=False
-    ):  # pylint: disable=arguments-differ
-        self.delete_serverless_neg(region=region, force=force)
+    def cleanup(self, *, force=False):
         super().cleanup(force=force)
+        self.delete_serverless_neg(force=force)
