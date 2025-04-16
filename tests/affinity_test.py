@@ -99,7 +99,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             )
             self.assertIsNotNone(parsed)
             logging.info("Client received CSDS response: %s", parsed)
-            self.assertLen(parsed.endpoints, _REPLICA_COUNT)
+            self.assertEDSLen(parsed.endpoints, _REPLICA_COUNT)
             self.assertEqual(
                 parsed.rds["virtualHosts"][0]["routes"][0]["route"][
                     "hashPolicy"
