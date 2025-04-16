@@ -24,9 +24,6 @@ from framework.infrastructure import gcp
 
 logger = logging.getLogger(__name__)
 
-# Type aliases
-GcpResource = gcp.compute.ComputeV1.GcpResource
-
 
 @dataclasses.dataclass(frozen=True)
 class EndpointPolicy:
@@ -172,9 +169,7 @@ class GrpcRoute:
     meshes: Optional[Tuple[str]]
 
     @classmethod
-    def from_response(
-        cls, name: str, d: Dict[str, Any]
-    ) -> "GrpcRoute.RouteRule":
+    def from_response(cls, name: str, d: dict[str, Any]) -> "GrpcRoute":
         return cls(
             name=name,
             url=d["name"],
@@ -365,8 +360,8 @@ class NetworkServicesV1Beta1(_NetworkServicesBase):
     def api_version(self) -> str:
         return "v1beta1"
 
-    def create_endpoint_policy(self, name, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_endpoint_policy(self, name, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.endpointPolicies(),
             body=body,
             endpointPolicyId=name,
@@ -398,8 +393,8 @@ class NetworkServicesV1(_NetworkServicesBase):
     def api_version(self) -> str:
         return "v1"
 
-    def create_endpoint_policy(self, name, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_endpoint_policy(self, name, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.endpointPolicies(),
             body=body,
             endpointPolicyId=name,
@@ -418,8 +413,8 @@ class NetworkServicesV1(_NetworkServicesBase):
             full_name=self.resource_full_name(name, self.ENDPOINT_POLICIES),
         )
 
-    def create_mesh(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_mesh(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.meshes(), body=body, meshId=name
         )
 
@@ -436,15 +431,15 @@ class NetworkServicesV1(_NetworkServicesBase):
             full_name=self.resource_full_name(name, self.MESHES),
         )
 
-    def create_grpc_route(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_grpc_route(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.grpcRoutes(),
             body=body,
             grpcRouteId=name,
         )
 
-    def create_http_route(self, name: str, body: dict) -> GcpResource:
-        return self._create_resource(
+    def create_http_route(self, name: str, body: dict) -> None:
+        self._create_resource(
             collection=self._api_locations.httpRoutes(),
             body=body,
             httpRouteId=name,
@@ -457,7 +452,7 @@ class NetworkServicesV1(_NetworkServicesBase):
         )
         return GrpcRoute.from_response(name, result)
 
-    def get_http_route(self, name: str) -> GrpcRoute:
+    def get_http_route(self, name: str) -> HttpRoute:
         full_name = self.resource_full_name(name, self.HTTP_ROUTES)
         result = self._get_resource(
             collection=self._api_locations.httpRoutes(), full_name=full_name
