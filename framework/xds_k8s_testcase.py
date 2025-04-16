@@ -386,7 +386,7 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
         # Remove backends from the Backend Service
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
-    def assertEDSLen(self, container, expected_len, msg=None) -> None:
+    def assertEDSLen(self, test_client, expected_len, msg=None) -> None:
         retryer = retryers.exponential_retryer_with_timeout(
             wait_min=dt.timedelta(seconds=10),
             wait_max=dt.timedelta(seconds=25),
@@ -397,7 +397,14 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 f" before timeout {TD_CONFIG_MAX_WAIT} (h:mm:ss)"
             ),
         )
-        retryer(self.assertLen, container, expected_len, msg)
+        retryer(self._assertEDSLen, test_client, expected_len, msg)
+
+    def _assertEDSLen(self, test_client, expected_len, msg=None):
+        parsed = test_client.csds.fetch_client_status_parsed(
+            log_level=logging.INFO
+        )
+        self.assertIsNotNone(parsed)
+        self.assertLen(parsed.endpoints, expected_len, msg)
 
     def assertSuccessfulRpcs(
         self, test_client: XdsTestClient, num_rpcs: int = 100
