@@ -13,7 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Any
+from typing import Optional
 
 from typing_extensions import override
 
@@ -22,7 +22,6 @@ from framework import xds_k8s_testcase
 from framework.helpers import retryers
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
-from framework.infrastructure.gcp import compute
 import framework.infrastructure.mesh_resource_manager.cloud_run_mesh_manager as td_cloud_run
 from framework.test_app import server_app
 from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
@@ -37,21 +36,15 @@ CloudRunMeshManager = td_cloud_run.CloudRunMeshManager
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 XdsTestServer = server_app.XdsTestServer
 
-
 class CloudRunXdsKubernetesTestCase(
     xds_k8s_testcase.SecurityXdsKubernetesTestCase
 ):
     server_runner: CloudRunServerRunner
     td: CloudRunMeshManager
-    neg: Any
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.compute = cls.gcp_api_manager.compute(cls.compute_api_version)
-        cls.compute_v1 = compute.ComputeV1(
-            cls.gcp_api_manager, cls.project, version=cls.compute_api_version
-        )
         cls.region = xds_flags.CLOUD_RUN_REGION.value
 
     def initTrafficDirectorManager(self) -> TrafficDirectorManager:
@@ -95,8 +88,7 @@ class CloudRunXdsKubernetesTestCase(
     ):  # pylint: disable=arguments-differ
         if server_runner is None:
             server_runner = self.server_runner
-        cloud_run_service = server_runner.get_service()
-        self.td.backend_service_add_cloudrun_backends([cloud_run_service.url])
+        self.td.backend_service_add_cloudrun_backends()
         if wait_for_healthy_status:
             self.td.wait_for_backends_healthy_status(
                 replica_count=server_runner.replica_count

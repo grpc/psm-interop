@@ -129,7 +129,7 @@ spec:
             - "--generate-mesh-id-experimental"
             % endif
             % if is_trusted_xds_server_experimental:
-            - "--is-trusted-xds-server-experimental=true"
+            - "--is-trusted-xds-server-experimental"
             % endif
           resources:
             limits:

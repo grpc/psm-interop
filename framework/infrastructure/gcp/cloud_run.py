@@ -35,7 +35,7 @@ class CloudRunService:
     ) -> "CloudRunService":
         return cls(
             service_name=name,
-            url=response["urls"],
+            url=response["uri"],
         )
 
 

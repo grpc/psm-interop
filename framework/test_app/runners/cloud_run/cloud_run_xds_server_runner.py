@@ -15,7 +15,7 @@
 Run xDS Test Server on Cloud Run.
 """
 import logging
-
+from typing import Optional
 from typing_extensions import override
 
 from framework.infrastructure import gcp
@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
     """Manages xDS Test Servers running on Cloud Run."""
+
+    service: Optional[gcp.cloud_run.CloudRunV2] = None
+    current_revision: Optional[str] = None
 
     def __init__(
         self,
@@ -50,13 +53,12 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         # Mutable state associated with each run.
         self._reset_state()
-        self.service: gcp.cloud_run.CloudRunV2
-        self.current_revision: str
 
     @override
     def _reset_state(self):
         super()._reset_state()
         self.service = None
+        self.current_revision = None
         self.pods_to_servers = {}
         self.replica_count = 0
 
@@ -92,5 +94,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         try:
             super().cleanup(force=force)
             self.service = None
+            self.current_revision = None
         finally:
             self._stop()

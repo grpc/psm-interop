@@ -597,7 +597,7 @@ class ComputeV1(
         logger.info("Created serverless NEG %s ", neg)
         return neg
 
-    def delete_serverless_neg(self, name: str, region: str):
+    def delete_neg_serverless(self, name: str, region: str):
         """Deletes a serverless NEG.
 
         Args:

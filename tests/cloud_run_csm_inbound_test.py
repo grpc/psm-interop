@@ -16,6 +16,7 @@ import logging
 from absl.testing import absltest
 
 from framework import xds_k8s_testcase
+from framework.infrastructure import gcp
 from framework.test_cases import cloud_run_testcase
 
 logger = logging.getLogger(__name__)
@@ -37,13 +38,11 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
 
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(
-                protocol=self.compute_v1.BackendServiceProtocol.HTTP2,
+                protocol=gcp.compute.ComputeV1.BackendServiceProtocol.HTTP2,
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
-            self.td.backend_service_add_cloudrun_backends(
-                [self.td.neg], self.region
-            )
+            self.td.backend_service_add_cloudrun_backends()
 
         with self.subTest("5_create_grpc_route"):
             self.td.create_grpc_route(

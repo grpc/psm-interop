@@ -18,8 +18,7 @@ from framework.infrastructure import gcp
 import framework.infrastructure.traffic_director as td_base
 
 # Type aliases
-_ComputeV1 = gcp.compute.ComputeV1
-GcpResource = _ComputeV1.GcpResource
+GcpResource = gcp.compute.ComputeV1.GcpResource
 GrpcRoute = gcp.network_services.GrpcRoute
 Mesh = gcp.network_services.Mesh
 
@@ -62,12 +61,12 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
 
     def backend_service_add_cloudrun_backends(
         self,
-        backends: Sequence[str],
+        *,
         balancing_mode: str = "CONNECTION",
         capacity_scaler: float = 1.0,
     ):
         new_backends = []
-        for backend in backends:
+        for backend in self.backends:
             new_backend = {
                 "group": backend,
                 "balancingMode": balancing_mode,
@@ -77,14 +76,14 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
             new_backends.append(new_backend)
 
         logging.info(
-            "Adding backends to Backend Service %s: %r",
+            "Adding Cloud Run backends to Backend Service %s: %r",
             self.backend_service.name,
             new_backends,
         )
 
         self.compute.backend_service_patch_backends(
             self.backend_service,
-            backends,
+            self.backends,
             is_cloud_run=True,
         )
 
@@ -98,7 +97,7 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         self.neg = self.compute.get_neg_serverless(name, self.region)
         return neg
 
-    def delete_serverless_neg(self, force=False):
+    def delete_neg_serverless(self, force=False):
         if force:
             name = self.make_resource_name(self.NEG_NAME)
         elif self.mesh:
@@ -106,9 +105,9 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         else:
             return
         logger.info("Deleting serverless NEG %s", name)
-        self.compute.delete_serverless_neg(name, self.region)
+        self.compute.delete_neg_serverless(name, self.region)
         self.neg = None
 
     def cleanup(self, *, force=False):
         super().cleanup(force=force)
-        self.delete_serverless_neg(force=force)
+        self.delete_neg_serverless(force=force)
