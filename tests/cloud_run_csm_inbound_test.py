@@ -33,7 +33,7 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
         with self.subTest("1_start_cloud_run_test_server"):
             test_server: _XdsTestServer = self.startTestServers()[0]
 
-        with self.subTest("2_create_neg_serverless"):
+        with self.subTest("2_create_serverless_neg"):
             self.td.create_neg_serverless(self.server_namespace)
 
         with self.subTest("3_create_backend_service"):
@@ -53,7 +53,6 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
             test_client: _XdsTestClient = self.startSecureTestClient(
                 test_server,
                 config_mesh=self.td.mesh.name,
-                is_trusted_xds_server_experimental=True,
             )
 
         with self.subTest("7_test_client_xds_config_exists"):
