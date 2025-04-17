@@ -36,6 +36,7 @@ CloudRunMeshManager = td_cloud_run.CloudRunMeshManager
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 XdsTestServer = server_app.XdsTestServer
 
+
 class CloudRunXdsKubernetesTestCase(
     xds_k8s_testcase.SecurityXdsKubernetesTestCase
 ):
@@ -104,10 +105,7 @@ class CloudRunXdsKubernetesTestCase(
                 region=self.region,
                 gcp_api_manager=self.gcp_api_manager,
             )
-        self.server_runner.service=self.td.deploy_service(
-            self.server_namespace,
-            self.server_image,
-            )
+
         test_servers = self.server_runner.run()
         for test_server in test_servers:
             test_server.set_xds_address(

@@ -24,16 +24,10 @@ Mesh = gcp.network_services.Mesh
 
 logger = logging.getLogger(__name__)
 
-_CloudRunV2 = gcp.cloud_run.CloudRunV2
-CloudRunService = gcp.cloud_run.CloudRunService
-
-DEFAULT_TEST_PORT: Final[int] = 8080
 
 class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
     MESH_NAME: Final[str] = "grpc-mesh"
     NEG_NAME: Final[str] = "grpc-neg"
-
-    cloudrun: _CloudRunV2
 
     def __init__(
         self,
@@ -64,9 +58,6 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         self.grpc_route: Optional[GrpcRoute] = None
         self.mesh: Optional[Mesh] = None
         self.neg: Optional[GcpResource] = None
-
-        # API
-        self.cloudrun = _CloudRunV2(gcp_api_manager, project, region)
 
     def backend_service_add_cloudrun_backends(
         self,
@@ -116,35 +107,6 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         logger.info("Deleting serverless NEG %s", name)
         self.compute.delete_neg_serverless(name, self.region)
         self.neg = None
-
-    def deploy_service(
-        self,
-        service_name: str,
-        image_name: str,
-        *,
-        test_port: int = DEFAULT_TEST_PORT,
-    ):
-        if not service_name:
-            raise ValueError("service_name cannot be empty or None")
-        if not image_name:
-            raise ValueError("image_name cannot be empty or None")
-
-        service_body = {
-            "launch_stage": "alpha",
-            "template": {
-                "containers": [
-                    {
-                        "image": image_name,
-                        "ports": [{"containerPort": test_port, "name": "h2c"}],
-                    }
-                ],
-            },
-        }
-
-        logger.info("Deploying Cloud Run service '%s'", service_name)
-        self.cloudrun.create_service(service_name, service_body)
-        return self.cloudrun.get_service(service_name)
-
 
     def cleanup(self, *, force=False):
         super().cleanup(force=force)

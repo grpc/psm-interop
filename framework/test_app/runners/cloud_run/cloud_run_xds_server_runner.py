@@ -15,7 +15,8 @@
 Run xDS Test Server on Cloud Run.
 """
 import logging
-from typing import Optional
+from typing import Final, Optional
+
 from typing_extensions import override
 
 from framework.infrastructure import gcp
@@ -23,6 +24,8 @@ from framework.test_app import server_app
 from framework.test_app.runners.cloud_run import cloud_run_base_runner
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_TEST_PORT: Final[int] = 8080
 
 
 class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
@@ -51,6 +54,8 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         self._initalize_cloud_run_api_manager()
 
+        self._reset_state()
+
     @override
     def _reset_state(self):
         super()._reset_state()
@@ -69,7 +74,10 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
         super().run(**kwargs)
-
+        self.service = self.deploy_service(
+            service_name=self.service_name,
+            image_name=self.image_name,
+        )
         self.current_revision = self.service.url
         servers = [
             server_app.XdsTestServer(
@@ -78,6 +86,34 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         ]
         self._start_completed()
         return servers
+
+    def deploy_service(
+        self,
+        service_name: str,
+        image_name: str,
+        *,
+        test_port: int = DEFAULT_TEST_PORT,
+    ):
+        if not service_name:
+            raise ValueError("service_name cannot be empty or None")
+        if not image_name:
+            raise ValueError("image_name cannot be empty or None")
+
+        service_body = {
+            "launch_stage": "alpha",
+            "template": {
+                "containers": [
+                    {
+                        "image": image_name,
+                        "ports": [{"containerPort": test_port, "name": "h2c"}],
+                    }
+                ],
+            },
+        }
+
+        logger.info("Deploying Cloud Run service '%s'", service_name)
+        self.cloud_run_api_manager.create_service(service_name, service_body)
+        return self.cloud_run_api_manager.get_service(service_name)
 
     def get_service(self):
         return self.cloud_run_api_manager.get_service(self.service_name)

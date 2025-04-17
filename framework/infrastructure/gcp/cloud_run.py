@@ -44,7 +44,7 @@ class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
     region: str
 
     def __init__(
-        self,api_manager: gcp.api.GcpApiManager, project: str, region: str
+        self, api_manager: gcp.api.GcpApiManager, project: str, region: str
     ):
         if not project:
             raise ValueError("Project ID cannot be empty or None.")
