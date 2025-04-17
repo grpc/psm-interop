@@ -51,9 +51,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         self._initalize_cloud_run_api_manager()
 
-        # Mutable state associated with each run.
-        self._reset_state()
-
     @override
     def _reset_state(self):
         super()._reset_state()
@@ -72,10 +69,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
         super().run(**kwargs)
-        self.service = self.cloud_run_api_manager.deploy_service(
-            self.service_name,
-            self.image_name,
-        )
+
         self.current_revision = self.service.url
         servers = [
             server_app.XdsTestServer(

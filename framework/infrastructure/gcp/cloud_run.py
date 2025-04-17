@@ -21,9 +21,6 @@ from framework.infrastructure import gcp
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_TEST_PORT: Final[int] = 8080
-
-
 @dataclasses.dataclass(frozen=True)
 class CloudRunService:
     service_name: str
@@ -47,7 +44,7 @@ class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
     region: str
 
     def __init__(
-        self, project: str, region: str, api_manager: gcp.api.GcpApiManager
+        self,api_manager: gcp.api.GcpApiManager, project: str, region: str
     ):
         if not project:
             raise ValueError("Project ID cannot be empty or None.")
@@ -94,31 +91,3 @@ class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
                 service_name, self.SERVICES, self.region
             ),
         )
-
-    def deploy_service(
-        self,
-        service_name: str,
-        image_name: str,
-        *,
-        test_port: int = DEFAULT_TEST_PORT,
-    ):
-        if not service_name:
-            raise ValueError("service_name cannot be empty or None")
-        if not image_name:
-            raise ValueError("image_name cannot be empty or None")
-
-        service_body = {
-            "launch_stage": "alpha",
-            "template": {
-                "containers": [
-                    {
-                        "image": image_name,
-                        "ports": [{"containerPort": test_port, "name": "h2c"}],
-                    }
-                ],
-            },
-        }
-
-        logger.info("Deploying Cloud Run service '%s'", service_name)
-        self.create_service(service_name, service_body)
-        return self.get_service(service_name)
