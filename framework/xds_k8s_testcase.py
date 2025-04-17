@@ -119,7 +119,9 @@ class TdPropagationRetryableError(Exception):
     """Indicates that TD config hasn't propagated yet, and it's safe to retry"""
 
 
-class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
+class XdsKubernetesBaseTestCase(
+    base_testcase.BaseTestCase
+):  # pylint: disable=too-many-public-methods
     lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
@@ -385,6 +387,28 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
 
         # Remove backends from the Backend Service
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
+
+    def assertEDSLenWithRetry(
+        self, test_client, expected_len, msg=None
+    ) -> None:
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=TD_CONFIG_MAX_WAIT,
+            log_level=logging.INFO,
+            error_note=(
+                f"Did not get correct number of endpoints"
+                f" before timeout {TD_CONFIG_MAX_WAIT} (h:mm:ss)"
+            ),
+        )
+        retryer(self._assertEDSLen, test_client, expected_len, msg)
+
+    def _assertEDSLen(self, test_client, expected_len, msg=None):
+        parsed = test_client.csds.fetch_client_status_parsed(
+            log_level=logging.INFO
+        )
+        self.assertIsNotNone(parsed)
+        self.assertLen(parsed.endpoints, expected_len, msg)
 
     def assertSuccessfulRpcs(
         self, test_client: XdsTestClient, num_rpcs: int = 100
