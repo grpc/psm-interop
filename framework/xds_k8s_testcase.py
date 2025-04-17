@@ -388,7 +388,9 @@ class XdsKubernetesBaseTestCase(
         # Remove backends from the Backend Service
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
-    def assertEDSLenWithRetry(self, test_client, expected_len, msg=None) -> None:
+    def assertEDSLenWithRetry(
+        self, test_client, expected_len, msg=None
+    ) -> None:
         retryer = retryers.exponential_retryer_with_timeout(
             wait_min=dt.timedelta(seconds=10),
             wait_max=dt.timedelta(seconds=25),
