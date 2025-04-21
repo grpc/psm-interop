@@ -13,7 +13,6 @@
 # limitations under the License.
 import datetime as dt
 import logging
-from typing import Optional
 
 from typing_extensions import override
 
