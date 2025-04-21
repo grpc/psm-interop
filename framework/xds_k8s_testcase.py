@@ -388,27 +388,39 @@ class XdsKubernetesBaseTestCase(
         # Remove backends from the Backend Service
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
-    def assertEDSLenWithRetry(
-        self, test_client, expected_len, msg=None
+    def assertHealthyEndpointsCount(
+        self,
+        test_client,
+        expected_len,
+        msg=None,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=3),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
     ) -> None:
-        retryer = retryers.exponential_retryer_with_timeout(
-            wait_min=dt.timedelta(seconds=10),
-            wait_max=dt.timedelta(seconds=25),
-            timeout=TD_CONFIG_MAX_WAIT,
-            log_level=logging.INFO,
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
             error_note=(
-                f"Did not get correct number of endpoints"
-                f" before timeout {TD_CONFIG_MAX_WAIT} (h:mm:ss)"
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_len} endpoint(s)."
             ),
         )
-        retryer(self._assertEDSLen, test_client, expected_len, msg)
-
-    def _assertEDSLen(self, test_client, expected_len, msg=None):
-        parsed = test_client.csds.fetch_client_status_parsed(
-            log_level=logging.INFO
-        )
-        self.assertIsNotNone(parsed)
-        self.assertLen(parsed.endpoints, expected_len, msg)
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.csds.fetch_client_status_parsed(
+                    log_level=log_level
+                )
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                self.assertLen(
+                    client_config.endpoints,
+                    expected_len,
+                    msg,
+                )
 
     def assertSuccessfulRpcs(
         self, test_client: XdsTestClient, num_rpcs: int = 100
