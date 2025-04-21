@@ -19,8 +19,6 @@ import framework.infrastructure.traffic_director as td_base
 
 # Type aliases
 GcpResource = gcp.compute.ComputeV1.GcpResource
-GrpcRoute = gcp.network_services.GrpcRoute
-Mesh = gcp.network_services.Mesh
 
 logger = logging.getLogger(__name__)
 
@@ -55,30 +53,19 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         self.region = region
 
         # Managed resources
-        self.grpc_route: Optional[GrpcRoute] = None
-        self.mesh: Optional[Mesh] = None
         self.neg: Optional[GcpResource] = None
 
-    def backend_service_add_cloudrun_backends(
-        self,
-        *,
-        balancing_mode: str = "CONNECTION",
-        capacity_scaler: float = 1.0,
-    ):
-        new_backends = []
-        for backend in self.backends:
-            new_backend = {
-                "group": backend,
-                "balancingMode": balancing_mode,
-                "capacityScaler": capacity_scaler,
-            }
-
-            new_backends.append(new_backend)
+    def backend_service_add_cloudrun_backends(self):
+        if not self.neg:
+            raise ValueError(
+                f"Needed to create serverless NEG {self.NEG_NAME} first"
+            )
+        self.backends = [self.neg]
 
         logging.info(
             "Adding Cloud Run backends to Backend Service %s: %r",
             self.backend_service.name,
-            new_backends,
+            self.backends,
         )
 
         self.compute.backend_service_patch_backends(
@@ -100,7 +87,7 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
     def delete_neg_serverless(self, force=False):
         if force:
             name = self.make_resource_name(self.NEG_NAME)
-        elif self.mesh:
+        elif self.neg:
             name = self.neg.name
         else:
             return

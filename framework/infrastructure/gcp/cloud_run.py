@@ -13,18 +13,15 @@
 # limitations under the License.
 import abc
 import dataclasses
-import logging
 from typing import Any, Final
 
 from framework.infrastructure import gcp
-
-logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
 class CloudRunService:
     service_name: str
-    url: str
+    uri: str
 
     @classmethod
     def from_response(
@@ -32,7 +29,7 @@ class CloudRunService:
     ) -> "CloudRunService":
         return cls(
             service_name=name,
-            url=response["uri"],
+            uri=response["uri"],
         )
 
 

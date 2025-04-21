@@ -31,7 +31,7 @@ DEFAULT_TEST_PORT: Final[int] = 8080
 class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
     """Manages xDS Test Servers running on Cloud Run."""
 
-    service: Optional[gcp.cloud_run.CloudRunV2] = None
+    service: Optional[gcp.cloud_run.CloudRunService] = None
     current_revision: Optional[str] = None
 
     def __init__(
@@ -78,7 +78,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             service_name=self.service_name,
             image_name=self.image_name,
         )
-        self.current_revision = self.service.url
+        self.current_revision = self.service.uri
         servers = [
             server_app.XdsTestServer(
                 ip="0.0.0.0", rpc_port=0, hostname=self.current_revision
@@ -93,7 +93,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         image_name: str,
         *,
         test_port: int = DEFAULT_TEST_PORT,
-    ):
+    ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
         if not image_name:
@@ -114,9 +114,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         logger.info("Deploying Cloud Run service '%s'", service_name)
         self.cloud_run_api_manager.create_service(service_name, service_body)
         return self.cloud_run_api_manager.get_service(service_name)
-
-    def get_service(self):
-        return self.cloud_run_api_manager.get_service(self.service_name)
 
     @override
     def cleanup(self, *, force=False):

@@ -643,7 +643,7 @@ class ComputeV1(
     def _insert_resource(
         self,
         collection: discovery.Resource,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         region: str = None,
     ) -> "GcpResource":
         logger.info(
