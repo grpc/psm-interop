@@ -388,7 +388,7 @@ class XdsKubernetesBaseTestCase(
         # Remove backends from the Backend Service
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
-    def assertEdsLenWithRetry(
+    def assertHealthyEndpointsCount(
         self,
         test_client,
         expected_len,
