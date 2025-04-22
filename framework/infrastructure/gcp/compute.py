@@ -200,30 +200,13 @@ class ComputeV1(
             **kwargs,
         )
 
-    def backend_service_patch_backends(
+    def backend_service_patch_backends_with_body(
         self,
-        backend_service,
-        backends,
-        max_rate_per_endpoint: Optional[int] = None,
+        backend_service: GcpResource,
+        backend_list: list[dict[str, Any]],
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
-        is_cloud_run: bool = False,
     ):
-        if is_cloud_run:
-            backend_list = [{"group": backend.url} for backend in backends]
-        else:
-            if max_rate_per_endpoint is None:
-                max_rate_per_endpoint = 5
-
-            backend_list = [
-                {
-                    "group": backend.url,
-                    "balancingMode": "RATE",
-                    "maxRatePerEndpoint": max_rate_per_endpoint,
-                }
-                for backend in backends
-            ]
-
         request = {"backends": backend_list}
         if circuit_breakers:
             request["circuitBreakers"] = circuit_breakers
@@ -232,6 +215,30 @@ class ComputeV1(
             collection=self.api.backendServices(),
             body=request,
             backendService=backend_service.name,
+        )
+
+    def backend_service_patch_backends(
+        self,
+        backend_service: GcpResource,
+        backends: set[NegGcpResource],
+        max_rate_per_endpoint: Optional[int] = None,
+        *,
+        circuit_breakers: Optional[dict[str, int]] = None,
+    ):
+        if max_rate_per_endpoint is None:
+            max_rate_per_endpoint = 5
+
+        backend_list = [
+            {
+                "group": backend.url,
+                "balancingMode": "RATE",
+                "maxRatePerEndpoint": max_rate_per_endpoint,
+            }
+            for backend in backends
+        ]
+
+        self.backend_service_patch_backends_with_body(
+            backend_service, backend_list, circuit_breakers=circuit_breakers
         )
 
     def backend_service_remove_all_backends(self, backend_service):

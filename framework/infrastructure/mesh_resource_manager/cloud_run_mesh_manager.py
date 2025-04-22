@@ -55,12 +55,25 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         # Managed resources
         self.neg: Optional[GcpResource] = None
 
-    def backend_service_add_cloudrun_backends(self):
+    def backend_service_add_cloudrun_backends(
+        self,
+        *,
+        capacity_scaler: float = 1.0,
+    ):
         if not self.neg:
             raise ValueError(
                 f"Needed to create serverless NEG {self.NEG_NAME} first"
             )
         self.backends = [self.neg]
+
+        new_backends = []
+        for backend in self.backends:
+            new_backend = {
+                "group": backend.url,
+                "capacityScaler": capacity_scaler,
+            }
+
+            new_backends.append(new_backend)
 
         logging.info(
             "Adding Cloud Run backends to Backend Service %s: %r",
@@ -68,13 +81,12 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
             self.backends,
         )
 
-        self.compute.backend_service_patch_backends(
+        self.compute.backend_service_patch_backends_with_body(
             self.backend_service,
-            self.backends,
-            is_cloud_run=True,
+            new_backends,
         )
 
-    def create_neg_serverless(self, service_name: str):
+    def create_neg_serverless(self, service_name: str) -> GcpResource:
         name = self.make_resource_name(self.NEG_NAME)
         logger.info("Creating serverless NEG %s", name)
         neg = self.compute.create_neg_serverless(

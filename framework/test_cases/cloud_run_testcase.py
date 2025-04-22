@@ -80,20 +80,6 @@ class CloudRunXdsKubernetesTestCase(
             **kwargs,
         )
 
-    def setupServerBackends(
-        self,
-        *,
-        wait_for_healthy_status=True,
-        server_runner=None,
-    ):  # pylint: disable=arguments-differ
-        if server_runner is None:
-            server_runner = self.server_runner
-        self.td.backend_service_add_cloudrun_backends()
-        if wait_for_healthy_status:
-            self.td.wait_for_backends_healthy_status(
-                replica_count=server_runner.replica_count
-            )
-
     def startTestServers(self, server_runner=None) -> list[XdsTestServer]:
         if server_runner is None:
             self.server_runner = CloudRunServerRunner(
