@@ -562,6 +562,16 @@ class XdsKubernetesBaseTestCase(
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
+    def assertEDSConfigExists(self, config: ClientConfig):
+        seen = set()
+        want = frozenset(["endpoint_config"])
+        for generic_xds_config in config.generic_xds_configs:
+            if re.search(
+                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
+            ):
+                seen.add("endpoint_config")
+        self.assertSameElements(want, seen)
+
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
@@ -571,7 +581,6 @@ class XdsKubernetesBaseTestCase(
                 "listener_config",
                 "cluster_config",
                 "route_config",
-                "endpoint_config",
             ]
         )
         for xds_config in config.xds_config:
@@ -585,11 +594,8 @@ class XdsKubernetesBaseTestCase(
                 seen.add("route_config")
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
-            elif re.search(
-                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
-            ):
-                seen.add("endpoint_config")
 
+        self.assertEDSConfigExists(config)
         logger.debug(
             "Received xDS config dump: %s",
             json_format.MessageToJson(config, indent=2),
