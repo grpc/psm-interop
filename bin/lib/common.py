@@ -25,6 +25,7 @@ from framework import xds_k8s_flags
 from framework.infrastructure import gcp
 from framework.infrastructure import k8s
 from framework.infrastructure.gcp import cloud_run
+from framework.infrastructure.gcp import cloud_run
 from framework.test_app import client_app
 from framework.test_app import server_app
 from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
@@ -66,8 +67,9 @@ def gcp_api_manager():
 
 @functools.cache
 def cloud_run_api_manager():
-    return cloud_run.CloudRunApiManager(project=xds_flags.PROJECT.value,
-                                        region=xds_flags.CLOUD_RUN_REGION.value)
+    return cloud_run.CloudRunV2(project=xds_flags.PROJECT.value,
+                                        region=xds_flags.CLOUD_RUN_REGION.value,
+                                        api_manager=gcp_api_manager())
 
 def td_attrs():
     return dict(
@@ -172,21 +174,20 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
         image_name=xds_k8s_flags.SERVER_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
+        gcp_api_manager=gcp.api.GcpApiManager(),
     )
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)
 
-def make_cloud_run_client_runner(
-        mesh_name: str,
-        server_target: str,
-) -> CloudRunClientRunner:
+def make_cloud_run_client_runner(mesh_name: str,server_target: str) -> CloudRunClientRunner:
     # CloudRunClientRunner arguments.
     runner_kwargs = dict(
         project=xds_flags.PROJECT.value,
-        service_name=xds_flags.CLIENT_NAME.value,
-        image_name=xds_k8s_flags.CLIENT_IMAGE.value,
+        service_name=xds_flags.SERVER_NAME.value,
+        image_name=xds_k8s_flags.SERVER_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
+        gcp_api_manager=gcp.api.GcpApiManager(),
         mesh_name=mesh_name,
         server_target=server_target,
     )

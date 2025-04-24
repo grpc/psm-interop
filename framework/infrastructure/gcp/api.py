@@ -195,7 +195,7 @@ class GcpApiManager:
         api_name = "run"
         if version == "v2":
             return self._build_from_discovery_v2(api_name, version)
-        raise NotImplementedError(f"Cloud run {version} not supported")
+        raise NotImplementedError(f"Cloud Run {version} not supported")
 
     @functools.lru_cache(None)
     def networkservices(self, version):
@@ -547,6 +547,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         create_req = collection.create(
             parent=self.parent(location), body=body, **kwargs
         )
+
         self._execute(create_req)
 
     @property
@@ -579,6 +580,30 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             else:
                 logger.warning("Failed to delete %s, %r", full_name, error)
         return False
+    
+    def _set_iam_policy(
+        self,
+        collection: discovery.Resource,
+        body: dict,
+        full_name: str,
+        **kwargs,
+    ):
+        logger.info(
+            "Setting IAM policy  for %s resource:\n%s",
+            self.api_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            collection.setIamPolicy(
+            resource=full_name, body=body, **kwargs
+        ).execute()
+            return True
+        except _HttpError as error:
+            if error.resp and error.resp.status == 404:
+                logger.debug("Cannot set IAM policy for %s since it doesn't exist", full_name)
+            else:
+                logger.warning("Failed to set IAM policy for %s, %r", full_name, error)
+        return False
 
     # TODO(sergiitk): Use ResponseError and TransportError
     def _execute(  # pylint: disable=arguments-differ
@@ -587,7 +612,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         timeout_sec: int = GcpProjectApiResource._WAIT_FOR_OPERATION_SEC,
     ):
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
-        logger.debug("Operation %s", operation)
+        logger.info("Operation %s", operation)
         self._wait(operation["name"], timeout_sec)
 
     def _wait(
@@ -607,10 +632,14 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         )
         operation = self.wait_for_operation(
             operation_request=op_request,
-            test_success_fn=lambda result: result["done"],
+            test_success_fn=self._operation_status_done,
             timeout_sec=timeout_sec,
         )
 
         logger.debug("Completed operation: %s", operation)
         if "error" in operation:
             raise OperationError(self.api_name, operation)
+
+    @staticmethod
+    def _operation_status_done(operation: dict[str, Any]) -> bool:
+        return operation.get("done")

@@ -135,11 +135,19 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         num_rpcs: int,
         metadata_keys: Optional[tuple[str, ...]] = None,
         timeout_sec: Optional[int] = None,
+        secure_mode: bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """
         Shortcut to LoadBalancerStatsServiceClient.get_client_stats()
         """
-        return self.load_balancer_stats.get_client_stats(
+        if secure_mode:
+            return self.secure_load_balancer_stats.get_client_stats(
+                num_rpcs=num_rpcs,
+                timeout_sec=timeout_sec,
+                metadata_keys=metadata_keys,
+            )
+        else:
+            return self.load_balancer_stats.get_client_stats(
             num_rpcs=num_rpcs,
             timeout_sec=timeout_sec,
             metadata_keys=metadata_keys,

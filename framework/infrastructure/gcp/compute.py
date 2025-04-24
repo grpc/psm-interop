@@ -15,7 +15,7 @@ import dataclasses
 import datetime
 import enum
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from googleapiclient import discovery
 import googleapiclient.errors
@@ -160,8 +160,7 @@ class ComputeV1(
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
             "protocol": protocol.name,
         }
-        # If it is not for cloud run, add heath check since cloud run does not
-        # support health check.
+
         if health_check:
             body["healthChecks"] = [health_check.url]
 
@@ -201,30 +200,13 @@ class ComputeV1(
             **kwargs,
         )
 
-    def backend_service_patch_backends(
+    def backend_service_patch_backends_with_body(
         self,
-        backend_service,
-        backends,
-        max_rate_per_endpoint: Optional[int] = None,
+        backend_service: GcpResource,
+        backend_list: list[dict[str, Any]],
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
-        is_cloud_run: bool = False,
     ):
-        if is_cloud_run:
-            backend_list = [{"group": backend.url} for backend in backends]
-        else:
-            if max_rate_per_endpoint is None:
-                max_rate_per_endpoint = 5
-
-            backend_list = [
-                {
-                    "group": backend.url,
-                    "balancingMode": "RATE",
-                    "maxRatePerEndpoint": max_rate_per_endpoint,
-                }
-                for backend in backends
-            ]
-
         request = {"backends": backend_list}
         if circuit_breakers:
             request["circuitBreakers"] = circuit_breakers
@@ -233,6 +215,31 @@ class ComputeV1(
             collection=self.api.backendServices(),
             body=request,
             backendService=backend_service.name,
+        )
+
+    def backend_service_patch_backends(
+        self,
+        backend_service: GcpResource,
+        backends: set[NegGcpResource],
+        max_rate_per_endpoint: Optional[int] = None,
+        *,
+        circuit_breakers: Optional[dict[str, int]] = None,
+        is_cloud_run: bool = False,
+    ):
+        if max_rate_per_endpoint is None:
+            max_rate_per_endpoint = 5
+
+        backend_list = [
+            {
+                "group": backend.url,
+                "balancingMode": "RATE",
+                "maxRatePerEndpoint": max_rate_per_endpoint,
+            }
+            for backend in backends
+        ]
+
+        self.backend_service_patch_backends_with_body(
+            backend_service, backend_list, circuit_breakers=circuit_breakers
         )
 
     def backend_service_remove_all_backends(self, backend_service):
@@ -567,7 +574,7 @@ class ComputeV1(
             .execute()
         )
 
-    def create_serverless_neg(self, name: str, region: str, service_name: str):
+    def create_neg_serverless(self, name: str, region: str, service_name: str):
         """Creates a serverless NEG.
 
         Args:
@@ -580,59 +587,44 @@ class ComputeV1(
             The NEG selfLink URL
         """
 
-        # Note: Cloud Run is not the only service that uses serverless NEGs.
-        # See: https://cloud.google.com/load-balancing/docs/negs/serverless-neg-concepts
         neg_body = {
             "name": name,
             "networkEndpointType": "SERVERLESS",
+            # "Note: Cloud Run is not the only service that uses serverless NEGs
+            # but we are only supporting Cloud Run right now."
             "cloudRun": {"service": service_name},
         }
         logger.info("Creating serverless NEG %s in %s", name, region)
-        self.api.regionNetworkEndpointGroups().insert(
-            project=self.project, region=region, body=neg_body
-        ).execute()
-        neg = self.get_serverless_network_endpoint_group(name, region)
-        logger.info("Created serverless neg %s ", neg)
+        self._insert_resource(
+            self.api.regionNetworkEndpointGroups(),
+            neg_body,
+            region=region,
+        )
+
+        neg = self.get_neg_serverless(name, region)
+        logger.info("Created serverless NEG %s ", neg)
         return neg
 
-    def delete_serverless_neg(self, name: str, region: str):
+    def delete_neg_serverless(self, name: str, region: str):
         """Deletes a serverless NEG.
 
         Args:
             name: The name of the NEG to delete.
-            zone: The zone of the NEG.
+            region: The region of the NEG.
         """
-        try:
-            logger.info("Deleting serverless NEG %s in %s", name, region)
-            self.api.regionNetworkEndpointGroups().delete(
-                project=self.project,
-                region=region,
-                networkEndpointGroup=name,
-            ).execute()
-            logger.info("Deleted serverless neg : %s", name)
-        except googleapiclient.errors.HttpError as error:
-            if error.resp.status == 404:  # NEG not found
-                logger.debug(
-                    "NEG %s not found in zone %s. Skipping deletion.",
-                    name,
-                    region,
-                )
-                return
-            logger.exception("Error deleting serverless NEG: %s", error)
-            raise
-        except Exception as e:
-            logger.exception("Error deleting serverless NEG: %s", e)
-            raise
+        logger.info("Deleting serverless NEG %s in %s", name, region)
+        self._delete_resource(
+            self.api.regionNetworkEndpointGroups(),
+            resource_type="networkEndpointGroup",
+            resource_name=name,
+            region=region,
+        )
 
-    def get_serverless_network_endpoint_group(self, name, region):
-        neg = (
-            self.api.regionNetworkEndpointGroups()
-            .get(
-                project=self.project,
-                networkEndpointGroup=name,
-                region=region,
-            )
-            .execute()
+    def get_neg_serverless(self, name, region):
+        neg = self._get_resource(
+            self.api.regionNetworkEndpointGroups(),
+            networkEndpointGroup=name,
+            region=region,
         )
         return neg
 
@@ -657,12 +649,25 @@ class ComputeV1(
         return "items" in resp and resp["items"]
 
     def _insert_resource(
-        self, collection: discovery.Resource, body: Dict[str, Any]
+        self,
+        collection: discovery.Resource,
+        body: dict[str, Any],
+        region: str = None,
     ) -> "GcpResource":
         logger.info(
             "Creating compute resource:\n%s", self.resource_pretty_format(body)
         )
-        resp = self._execute(collection.insert(project=self.project, body=body))
+        if region:
+            resp = self._execute(
+                collection.insert(
+                    project=self.project, region=region, body=body
+                ),
+                region=region,
+            )
+        else:
+            resp = self._execute(
+                collection.insert(project=self.project, body=body)
+            )
         return self.GcpResource(body["name"], resp["targetLink"])
 
     def _patch_resource(self, collection, body, **kwargs):
@@ -683,9 +688,12 @@ class ComputeV1(
         collection: discovery.Resource,
         resource_type: str,
         resource_name: str,
+        region: str = None,
     ) -> bool:
         try:
             params = {"project": self.project, resource_type: resource_name}
+            if region:
+                params["region"] = region
             self._execute(collection.delete(**params))
             return True
         except googleapiclient.errors.HttpError as error:
@@ -721,7 +729,11 @@ class ComputeV1(
             )
 
     def _execute(  # pylint: disable=arguments-differ
-        self, request, *, timeout_sec=_WAIT_FOR_OPERATION_SEC
+        self,
+        request,
+        *,
+        timeout_sec=_WAIT_FOR_OPERATION_SEC,
+        region: str = None,
     ):
         if self.gfe_debug_header:
             logger.debug(
@@ -731,10 +743,13 @@ class ComputeV1(
             request.add_response_callback(self._log_debug_header)
         operation = request.execute(num_retries=self._GCP_API_RETRIES)
         logger.debug("Operation %s", operation)
-        return self._wait(operation["name"], timeout_sec)
+        return self._wait(operation["name"], timeout_sec, region)
 
     def _wait(
-        self, operation_id: str, timeout_sec: int = _WAIT_FOR_OPERATION_SEC
+        self,
+        operation_id: str,
+        timeout_sec: int = _WAIT_FOR_OPERATION_SEC,
+        region: str = None,
     ) -> dict:
         logger.info(
             "Waiting %s sec for compute operation id: %s",
@@ -744,9 +759,14 @@ class ComputeV1(
 
         # TODO(sergiitk) try using wait() here
         # https://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.globalOperations.html#wait
-        op_request = self.api.globalOperations().get(
-            project=self.project, operation=operation_id
-        )
+        if region:
+            op_request = self.api.regionOperations().get(
+                project=self.project, operation=operation_id, region=region
+            )
+        else:
+            op_request = self.api.globalOperations().get(
+                project=self.project, operation=operation_id
+            )
         operation = self.wait_for_operation(
             operation_request=op_request,
             test_success_fn=self._operation_status_done,

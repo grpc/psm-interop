@@ -32,6 +32,7 @@ class ClientDeploymentArgs:
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
+    is_trusted_xds_server_experimental: bool = False
 
     def as_dict(self):
         return dataclasses.asdict(self)

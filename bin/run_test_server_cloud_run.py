@@ -42,9 +42,8 @@ def main(argv):
 
     xds_flags.set_socket_default_timeout_from_flag()
 
-    run_kwargs = dict()
     server_runner = common.make_cloud_run_server_runner()
-    server_runner.run(**run_kwargs)
+    server_runner.run()
 
 
 if __name__ == "__main__":
