@@ -61,15 +61,15 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
                 self.server_xds_host, self.server_xds_port
             )
 
-        with self.subTest("7_start_test_client"):
+        with self.subTest("6_start_test_client"):
             test_client: _XdsTestClient = self.startCloudRunTestClient(
                 test_server
             )
 
-        with self.subTest("8_test_client_xds_config_exists"):
+        with self.subTest("7_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client, secure_mode=True)
 
-        with self.subTest("9_test_server_received_rpcs_from_test_client"):
+        with self.subTest("8_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client, secure_mode=True)
 
 

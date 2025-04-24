@@ -224,7 +224,6 @@ class ComputeV1(
         max_rate_per_endpoint: Optional[int] = None,
         *,
         circuit_breakers: Optional[dict[str, int]] = None,
-        is_cloud_run: bool = False,
     ):
         if max_rate_per_endpoint is None:
             max_rate_per_endpoint = 5

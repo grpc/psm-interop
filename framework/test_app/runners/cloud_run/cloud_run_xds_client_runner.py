@@ -32,10 +32,11 @@ DEFAULT_PORT: Final[int] = 443
 class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     """Manages xDS Test Clients running on Cloud Run."""
 
-    service: Optional[gcp.cloud_run.CloudRunService] = None
-    current_revision: Optional[str] = None
     mesh_name: str
     server_target: str
+
+    service: Optional[gcp.cloud_run.CloudRunService] = None
+    current_revision: Optional[str] = None
 
     def __init__(
         self,
@@ -69,16 +70,15 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         super()._reset_state()
         self.service = None
         self.current_revision = None
-        self.pods_to_servers = {}
-        self.replica_count = 0
 
     @override
     def run(self, **kwargs) -> client_app.XdsTestClient:
-        """Deploys and manages the xDS Test Server on Cloud Run."""
+        """Deploys and manages the xDS Test Client on Cloud Run."""
         logger.info(
-            "Starting cloud run server with service %s and image %s",
+            "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
             self.image_name,
+            self.server_target,
         )
 
         super().run(**kwargs)

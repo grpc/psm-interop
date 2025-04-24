@@ -13,10 +13,7 @@
 # limitations under the License.
 import datetime as dt
 import logging
-import re
-from typing import Final
 
-from google.protobuf import json_format
 from typing_extensions import override
 
 from framework import xds_flags
@@ -41,8 +38,6 @@ CloudRunMeshManager = td_cloud_run.CloudRunMeshManager
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
-
-TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 
 
 class CloudRunXdsKubernetesTestCase(
