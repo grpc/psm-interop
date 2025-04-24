@@ -668,6 +668,43 @@ class XdsKubernetesBaseTestCase(
             )
             raise retry_error
 
+    def assertHealthyEndpointsCount(
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=3),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint(s) in HEALTHY state."
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed(log_level=log_level)
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                # TODO(nice to have): parse and log all health statuses.
+                # https://github.com/envoyproxy/envoy/blob/b6df9719/api/envoy/config/core/v3/health_check.proto#L35
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.endpoints,
+                    expected_count,
+                )
+
     def assertDrainingEndpointsCount(
         self,
         test_client: XdsTestClient,
