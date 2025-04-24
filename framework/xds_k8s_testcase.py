@@ -393,7 +393,7 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int = 100,
         *,
-        secure_mode: bool = False,
+        secure_mode: Optional[bool] = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = self.getClientRpcStats(
             test_client, num_rpcs, secure_mode=secure_mode
@@ -579,7 +579,7 @@ class XdsKubernetesBaseTestCase(
         self.assertSameElements(want, seen)
 
     def assertXdsConfigExists(
-        self, test_client: XdsTestClient, *, secure_mode: bool = False
+        self, test_client: XdsTestClient, *, secure_mode: Optional[bool] = False
     ):
         if secure_mode:
             config = test_client.secure_csds.fetch_client_status(
@@ -720,8 +720,8 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
+        secure_mode: Optional[bool] = False,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
