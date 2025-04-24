@@ -119,7 +119,9 @@ class TdPropagationRetryableError(Exception):
     """Indicates that TD config hasn't propagated yet, and it's safe to retry"""
 
 
-class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
+class XdsKubernetesBaseTestCase(
+    base_testcase.BaseTestCase
+):  # pylint: disable=too-many-public-methods
     lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
@@ -560,6 +562,16 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
+    def assertEDSConfigExists(self, config: ClientConfig):
+        seen = set()
+        want = frozenset(["endpoint_config"])
+        for generic_xds_config in config.generic_xds_configs:
+            if re.search(
+                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
+            ):
+                seen.add("endpoint_config")
+        self.assertSameElements(want, seen)
+
     def assertXdsConfigExists(self, test_client: XdsTestClient):
         config = test_client.csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
@@ -569,7 +581,6 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 "listener_config",
                 "cluster_config",
                 "route_config",
-                "endpoint_config",
             ]
         )
         for xds_config in config.xds_config:
@@ -583,10 +594,8 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 seen.add("route_config")
             elif re.search(r"\.Cluster$", generic_xds_config.type_url):
                 seen.add("cluster_config")
-            elif re.search(
-                r"\.ClusterLoadAssignment$", generic_xds_config.type_url
-            ):
-                seen.add("endpoint_config")
+
+        self.assertEDSConfigExists(config)
         logger.debug(
             "Received xDS config dump: %s",
             json_format.MessageToJson(config, indent=2),
@@ -643,6 +652,43 @@ class XdsKubernetesBaseTestCase(base_testcase.BaseTestCase):
                 dumped_config,
             )
             raise retry_error
+
+    def assertHealthyEndpointsCount(
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=3),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint(s) in HEALTHY state."
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed(log_level=log_level)
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                # TODO(nice to have): parse and log all health statuses.
+                # https://github.com/envoyproxy/envoy/blob/b6df9719/api/envoy/config/core/v3/health_check.proto#L35
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.endpoints,
+                    expected_count,
+                )
 
     def assertDrainingEndpointsCount(
         self,
