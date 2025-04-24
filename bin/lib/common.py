@@ -179,7 +179,7 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)
 
-def make_cloud_run_client_runner(mesh_name: str,server_target: str) -> CloudRunClientRunner:
+def make_cloud_run_client_runner(mesh_name: str, server_target: str) -> CloudRunClientRunner:
     # CloudRunClientRunner arguments.
     runner_kwargs = dict(
         project=xds_flags.PROJECT.value,
