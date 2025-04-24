@@ -720,8 +720,8 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
-        secure_mode: Optional[bool] = False,
         metadata_keys: Optional[tuple[str, ...]] = None,
+        secure_mode: Optional[bool] = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
