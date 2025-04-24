@@ -599,16 +599,10 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             ).execute()
             return True
         except _HttpError as error:
-            if error.resp and error.resp.status == 404:
-                logger.debug(
-                    "Cannot set IAM policy for %s since it doesn't exist",
-                    full_name,
-                )
-            else:
-                logger.warning(
-                    "Failed to set IAM policy for %s, %r", full_name, error
-                )
-        return False
+            logger.warning(
+                "Failed to set IAM policy for %s, %r", full_name, error
+            )
+            raise
 
     # TODO(sergiitk): Use ResponseError and TransportError
     def _execute(  # pylint: disable=arguments-differ

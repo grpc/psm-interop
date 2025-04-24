@@ -35,6 +35,10 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
     @override
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang is _Lang.CPP:
+            return config.version_gte("v1.69.x")
+        elif config.client_lang is _Lang.PYTHON:
+            return config.version_gte("v1.69.x")
+        elif config.client_lang is _Lang.JAVA:
             return config.version_gte("v1.71.x")
         return False
 
@@ -65,7 +69,10 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
             test_client: _XdsTestClient = self.startCloudRunTestClient(
                 test_server
             )
-
+        # When getting stats from the Cloud Run client, there is a proxy
+        # involved.The proxy uses HTTP/1.1 for plaintext connections, but since
+        # gRPC requires HTTP/2.0,we must use encrypted communication (HTTPS) to
+        # ensure compatibility with gRPC.
         with self.subTest("7_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client, secure_mode=True)
 

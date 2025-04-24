@@ -26,7 +26,7 @@ from framework.test_app.runners.cloud_run import cloud_run_base_runner
 logger = logging.getLogger(__name__)
 
 DEFAULT_CLIENT_TEST_PORT: Final[int] = 50052
-DEFAULT_PORT: Final[int] = 443
+DEFAULT_PORT: Final[int] = 443  # This is the stats service port.
 
 
 class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
