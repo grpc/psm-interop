@@ -89,7 +89,7 @@ class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
             ),
         )
 
-    def setIamPolicy(self,service_name: str,policy_body: dict):
+    def setIamPolicy(self, service_name: str, policy_body: dict):
         self._set_iam_policy(
             collection=self._services_collection,
             full_name=self.resource_full_name(

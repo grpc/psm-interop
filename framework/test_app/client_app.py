@@ -148,10 +148,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             )
         else:
             return self.load_balancer_stats.get_client_stats(
-            num_rpcs=num_rpcs,
-            timeout_sec=timeout_sec,
-            metadata_keys=metadata_keys,
-        )
+                num_rpcs=num_rpcs,
+                timeout_sec=timeout_sec,
+                metadata_keys=metadata_keys,
+            )
 
     def get_load_balancer_accumulated_stats(
         self,

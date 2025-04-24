@@ -29,6 +29,7 @@ _Lang: TypeAlias = skips.Lang
 _XdsTestServer: TypeAlias = xds_k8s_testcase.XdsTestServer
 _XdsTestClient: TypeAlias = xds_k8s_testcase.XdsTestClient
 
+
 class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
     @staticmethod
     @override
@@ -36,7 +37,7 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
         if config.client_lang is _Lang.CPP:
             return config.version_gte("v1.71.x")
         return False
-    
+
     def test_cloudrun_to_cloudrun(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
@@ -61,13 +62,15 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
             )
 
         with self.subTest("7_start_test_client"):
-            test_client: _XdsTestClient = self.startCloudRunTestClient(test_server)
+            test_client: _XdsTestClient = self.startCloudRunTestClient(
+                test_server
+            )
 
         with self.subTest("8_test_client_xds_config_exists"):
-            self.assertXdsConfigExists(test_client,secure_mode=True)
+            self.assertXdsConfigExists(test_client, secure_mode=True)
 
         with self.subTest("9_test_server_received_rpcs_from_test_client"):
-            self.assertSuccessfulRpcs(test_client,secure_mode=True)
+            self.assertSuccessfulRpcs(test_client, secure_mode=True)
 
 
 if __name__ == "__main__":

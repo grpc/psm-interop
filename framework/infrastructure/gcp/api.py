@@ -580,7 +580,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             else:
                 logger.warning("Failed to delete %s, %r", full_name, error)
         return False
-    
+
     def _set_iam_policy(
         self,
         collection: discovery.Resource,
@@ -595,14 +595,19 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         )
         try:
             collection.setIamPolicy(
-            resource=full_name, body=body, **kwargs
-        ).execute()
+                resource=full_name, body=body, **kwargs
+            ).execute()
             return True
         except _HttpError as error:
             if error.resp and error.resp.status == 404:
-                logger.debug("Cannot set IAM policy for %s since it doesn't exist", full_name)
+                logger.debug(
+                    "Cannot set IAM policy for %s since it doesn't exist",
+                    full_name,
+                )
             else:
-                logger.warning("Failed to set IAM policy for %s, %r", full_name, error)
+                logger.warning(
+                    "Failed to set IAM policy for %s, %r", full_name, error
+                )
         return False
 
     # TODO(sergiitk): Use ResponseError and TransportError

@@ -389,9 +389,15 @@ class XdsKubernetesBaseTestCase(
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
     def assertSuccessfulRpcs(
-        self, test_client: XdsTestClient, num_rpcs: int = 100, *,secure_mode:bool=False
+        self,
+        test_client: XdsTestClient,
+        num_rpcs: int = 100,
+        *,
+        secure_mode: bool = False,
     ) -> _LoadBalancerStatsResponse:
-        lb_stats = self.getClientRpcStats(test_client, num_rpcs,secure_mode=secure_mode)
+        lb_stats = self.getClientRpcStats(
+            test_client, num_rpcs, secure_mode=secure_mode
+        )
         self.assertAllBackendsReceivedRpcs(lb_stats)
         failed = int(lb_stats.num_failures)
         self.assertLessEqual(
@@ -572,13 +578,17 @@ class XdsKubernetesBaseTestCase(
                 seen.add("endpoint_config")
         self.assertSameElements(want, seen)
 
-    def assertXdsConfigExists(self, test_client: XdsTestClient, *, secure_mode:bool=False):
+    def assertXdsConfigExists(
+        self, test_client: XdsTestClient, *, secure_mode: bool = False
+    ):
         if secure_mode:
             config = test_client.secure_csds.fetch_client_status(
                 log_level=logging.INFO
             )
         else:
-            config = test_client.csds.fetch_client_status(log_level=logging.INFO)
+            config = test_client.csds.fetch_client_status(
+                log_level=logging.INFO
+            )
         self.assertIsNotNone(config)
         seen = set()
         want = frozenset(

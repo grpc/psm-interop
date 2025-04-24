@@ -90,14 +90,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
         self.current_revision = self.service.uri
         client_uri = self.current_revision[0].removeprefix("https://")
-        client =client_app.XdsTestClient(
-                ip=client_uri,
+        client = client_app.XdsTestClient(
+            ip=client_uri,
             rpc_port=DEFAULT_PORT,
             rpc_host=client_uri,
             server_target=self.server_target,
             hostname=self.current_revision,
             maintenance_port=DEFAULT_PORT,
-            )
+        )
         self._start_completed()
         return client
 
@@ -116,57 +116,57 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             raise ValueError("image_name cannot be empty or None")
 
         service_body = {
-                    "launch_stage": "alpha",
-                    "template": {
-                        "containers": [
+            "launch_stage": "alpha",
+            "template": {
+                "containers": [
+                    {
+                        "image": image_name,
+                        "ports": [
                             {
-                                "image": image_name,
-                                "ports": [
-                                    {
-                                        "containerPort": test_port,
-                                        "name": "h2c",
-                                    }
-                                ],
-                                "args": [
-                                    f"--server={server_target}",
-                                    "--secure_mode=true",
-                                ],
-                                "env": [
-                                    {
-                                        "name": "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE",
-                                        "value": "true",
-                                    },
-                                    {
-                                        "name": "GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS",
-                                        "value": "true",
-                                    },
-                                    {
-                                        "name": "GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER",
-                                        "value": "true",
-                                    },
-                                ],
+                                "containerPort": test_port,
+                                "name": "h2c",
                             }
                         ],
-                        "service_mesh": {
-                            "mesh": mesh_name,
-                            "dataplaneMode": "PROXYLESS_GRPC",
-                        },
-                    },
-                }
+                        "args": [
+                            f"--server={server_target}",
+                            "--secure_mode=true",
+                        ],
+                        "env": [
+                            {
+                                "name": "GRPC_EXPERIMENTAL_XDS_AUTHORITY_REWRITE",
+                                "value": "true",
+                            },
+                            {
+                                "name": "GRPC_EXPERIMENTAL_XDS_SYSTEM_ROOT_CERTS",
+                                "value": "true",
+                            },
+                            {
+                                "name": "GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER",
+                                "value": "true",
+                            },
+                        ],
+                    }
+                ],
+                "service_mesh": {
+                    "mesh": mesh_name,
+                    "dataplaneMode": "PROXYLESS_GRPC",
+                },
+            },
+        }
         logger.info("Deploying Cloud Run service '%s'", service_name)
         self.cloud_run_api_manager.create_service(service_name, service_body)
         # Allow unauthenticated requests for `LoadBalancerStatsServiceClient`
         # and `CsdsClient` to retrieve client statistics.
         policy_body = {
-                    "policy": {
-                        "bindings": [
-                            {
-                                "role": "roles/run.invoker",
-                                "members": ["allUsers"],
-                            }
-                        ],
-                    },
-                }
+            "policy": {
+                "bindings": [
+                    {
+                        "role": "roles/run.invoker",
+                        "members": ["allUsers"],
+                    }
+                ],
+            },
+        }
         self.cloud_run_api_manager.setIamPolicy(service_name, policy_body)
         return self.cloud_run_api_manager.get_service(service_name)
 
