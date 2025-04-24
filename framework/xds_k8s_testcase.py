@@ -678,6 +678,8 @@ class XdsKubernetesBaseTestCase(
                     "Error getting CSDS config dump"
                     f" from client {test_client.hostname}",
                 )
+                # TODO(nice to have): parse and log all health statuses.
+                # https://github.com/envoyproxy/envoy/blob/b6df9719/api/envoy/config/core/v3/health_check.proto#L35
                 logger.info(
                     "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
                     client_config.endpoints,
