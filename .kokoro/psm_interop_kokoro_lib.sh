@@ -178,8 +178,8 @@ psm::cloud_run::setup() {
 #######################################
 psm::cloud_run::get_tests() {
   TESTS=(
-    "gke_to_cloud_run_csm_test"
-    "cloud_run_to_cloud_run_csm_test"
+    "cloud_run_csm_inbound_test"
+    "cloud_run_csm_outbound_test"
   )
 }
 
