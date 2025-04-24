@@ -378,7 +378,8 @@ def cleanup_td_for_gke(
         project=project,
         network=network,
         resource_prefix=prefix,
-        resource_suffix=suffix)
+        resource_suffix=suffix,
+    )
 
     logger.info(
         "----- Removing traffic director for gke, prefix %s, suffix %s",
