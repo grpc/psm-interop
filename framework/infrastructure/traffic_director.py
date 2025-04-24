@@ -194,6 +194,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.delete_alternative_target_grpc_proxy(force=force)
         self.delete_url_map(force=force)
         self.delete_alternative_url_map(force=force)
+        self.de
         self.delete_backend_service(force=force)
         self.delete_alternative_backend_service(force=force)
         self.delete_affinity_backend_service(force=force)

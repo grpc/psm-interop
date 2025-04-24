@@ -373,13 +373,12 @@ def cleanup_td_for_gke(
         enable_dualstack=enable_dualstack,
         compute_api_version=compute_api_version,
     )
-    # TODO: cleanup appnet resources.
-    # appnet_td = traffic_director.TrafficDirectorAppNetManager(
-    #     gcp_api_manager,
-    #     project=project,
-    #     network=network,
-    #     resource_prefix=resource_prefix,
-    #     resource_suffix=resource_suffix)
+    appnet_td = traffic_director.TrafficDirectorAppNetManager(
+        gcp_api_manager,
+        project=project,
+        network=network,
+        resource_prefix=prefix,
+        resource_suffix=suffix)
 
     logger.info(
         "----- Removing traffic director for gke, prefix %s, suffix %s",
@@ -387,7 +386,7 @@ def cleanup_td_for_gke(
         suffix,
     )
     security_td.cleanup(force=True)
-    # appnet_td.cleanup(force=True)
+    appnet_td.cleanup(force=True)
     plain_td.cleanup(force=True)
 
 
