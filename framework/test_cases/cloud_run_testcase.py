@@ -191,8 +191,7 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             log_level=logging.INFO,
         )
         try:
-            # retryer(self.cleanup)
-            pass
+            retryer(self.cleanup)
         except retryers.RetryError:
             logger.exception("Got error during teardown")
         finally:
