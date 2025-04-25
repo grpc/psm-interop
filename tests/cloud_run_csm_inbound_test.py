@@ -38,6 +38,10 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
     @override
     def is_supported(config: skips.TestConfig) -> bool:
         if config.client_lang is _Lang.CPP:
+            return config.version_gte("v1.69.x")
+        elif config.client_lang is _Lang.PYTHON:
+            return config.version_gte("v1.69.x")
+        elif config.client_lang is _Lang.JAVA:
             return config.version_gte("v1.71.x")
         return False
 
@@ -86,4 +90,4 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
 
 
 if __name__ == "__main__":
-    absltest.main(failfast=True)
+    absltest.main()
