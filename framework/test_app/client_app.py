@@ -86,11 +86,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.rpc_port}",
         )
 
-    # Secure mode is used when retrieving stats from the Cloud Run client. In
-    # this setup, a proxy is involved. The proxy uses HTTP/1.1 for plaintext
-    # connections. However, since gRPC requires HTTP/2, we must use encrypted
-    # communication (HTTPS) to ensure compatibility. Future container types can
-    # be added here as needed.
+    # For fetching stats from gRPC client containers requiring secure
+    # communication, like Cloud run where, a proxy is involved. The proxy uses
+    # HTTP/1.1 for plaintext connections. However, since gRPC requires HTTP/2,
+    # we must use encrypted communication (HTTPS) to ensure compatibility.
     @property
     @functools.lru_cache(None)
     def secure_load_balancer_stats(self) -> _LoadBalancerStatsServiceClient:
@@ -123,11 +122,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
-    # Secure mode is used when retrieving stats from the Cloud Run client. In
-    # this setup, a proxy is involved. The proxy uses HTTP/1.1 for plaintext
-    # connections. However, since gRPC requires HTTP/2, we must use encrypted
-    # communication (HTTPS) to ensure compatibility. Future container types can
-    # be added here as needed.
+    # For fetching stats from gRPC client containers requiring secure
+    # communication, like Cloud run where, a proxy is involved. The proxy uses
+    # HTTP/1.1 for plaintext connections. However, since gRPC requires HTTP/2,
+    # we must use encrypted communication (HTTPS) to ensure compatibility.
     @property
     @functools.lru_cache(None)
     def secure_csds(self) -> _CsdsClient:
