@@ -156,6 +156,9 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Do not need to set up the Kubernetes API manager since both client and
+        # server run on Cloud Run.
+        cls.k8s_api_manager= None
         super().setUpClass()
 
     def startCloudRunTestClient(
@@ -188,7 +191,8 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             log_level=logging.INFO,
         )
         try:
-            retryer(self.cleanup)
+            # retryer(self.cleanup)
+            pass
         except retryers.RetryError:
             logger.exception("Got error during teardown")
         finally:

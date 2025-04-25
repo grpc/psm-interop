@@ -28,7 +28,7 @@ from absl import flags
 from absl.testing import absltest
 from google.protobuf import json_format
 import grpc
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, override
 
 from framework import xds_flags
 from framework import xds_k8s_flags
@@ -239,9 +239,11 @@ class XdsKubernetesBaseTestCase(
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
-        cls.k8s_api_manager = k8s.KubernetesApiManager(
-            xds_k8s_flags.KUBE_CONTEXT.value
-        )
+        if not hasattr(cls, "k8s_api_manager"):
+            cls.k8s_api_manager = k8s.KubernetesApiManager(
+                xds_k8s_flags.KUBE_CONTEXT.value
+                )
+
         if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
             cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
                 xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value
@@ -288,7 +290,8 @@ class XdsKubernetesBaseTestCase(
 
     @classmethod
     def tearDownClass(cls):
-        cls.k8s_api_manager.close()
+        if cls.k8s_api_manager is not None:
+            cls.k8s_api_manager.close()
         if cls.secondary_k8s_api_manager is not None:
             cls.secondary_k8s_api_manager.close()
         cls.gcp_api_manager.close()
@@ -393,7 +396,7 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int = 100,
         *,
-        secure_mode: Optional[bool] = False,
+        secure_mode:bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = self.getClientRpcStats(
             test_client, num_rpcs, secure_mode=secure_mode
@@ -579,7 +582,7 @@ class XdsKubernetesBaseTestCase(
         self.assertSameElements(want, seen)
 
     def assertXdsConfigExists(
-        self, test_client: XdsTestClient, *, secure_mode: Optional[bool] = False
+        self, test_client: XdsTestClient, *, secure_mode: bool = False
     ):
         if secure_mode:
             config = test_client.secure_csds.fetch_client_status(
@@ -752,13 +755,14 @@ class XdsKubernetesBaseTestCase(
             msg=f"Expected all RPCs to fail: {failed} of {num_rpcs} failed",
         )
 
+    @override
     def getClientRpcStats(
         self,
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode: Optional[bool] = False,
+        secure_mode:bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,

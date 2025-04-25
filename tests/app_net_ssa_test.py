@@ -16,7 +16,7 @@ from typing import Final, List, Optional
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, override
 
 from framework import xds_k8s_testcase
 from framework.helpers import skips
@@ -44,13 +44,14 @@ class AppNetSsaTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             return config.version_gte("v1.62.x")
         return False
 
+    @override
     def getClientRpcStats(
         self,
         test_client: _XdsTestClient,
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode: Optional[bool] = False,
+        secure_mode:bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         return super().getClientRpcStats(
