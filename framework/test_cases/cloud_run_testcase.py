@@ -158,7 +158,7 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
     def setUpClass(cls):
         # Do not need to set up the Kubernetes API manager since both client and
         # server run on Cloud Run.
-        cls.k8s_api_manager= None
+        cls.k8s_api_manager = None
         super().setUpClass()
 
     def startCloudRunTestClient(

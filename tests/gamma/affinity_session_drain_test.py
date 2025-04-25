@@ -86,7 +86,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode:bool = False,
+        secure_mode: bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         if not metadata_keys:

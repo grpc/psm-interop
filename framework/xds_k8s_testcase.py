@@ -242,7 +242,7 @@ class XdsKubernetesBaseTestCase(
         if not hasattr(cls, "k8s_api_manager"):
             cls.k8s_api_manager = k8s.KubernetesApiManager(
                 xds_k8s_flags.KUBE_CONTEXT.value
-                )
+            )
 
         if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
             cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
@@ -396,7 +396,7 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int = 100,
         *,
-        secure_mode:bool = False,
+        secure_mode: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = self.getClientRpcStats(
             test_client, num_rpcs, secure_mode=secure_mode
@@ -762,7 +762,7 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode:bool = False,
+        secure_mode: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
