@@ -78,4 +78,4 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
 
 
 if __name__ == "__main__":
-    absltest.main(failfast=True)
+    absltest.main()
