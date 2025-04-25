@@ -386,8 +386,13 @@ def cleanup_td_for_gke(
         prefix,
         suffix,
     )
+    logger.info(
+        "--- Cleaning up %s resources...", security_td.__class__.__name__
+    )
     security_td.cleanup(force=True)
+    logger.info("--- Cleaning up %s resources...", appnet_td.__class__.__name__)
     appnet_td.cleanup(force=True)
+    logger.info("--- Cleaning up %s resources...", plain_td.__class__.__name__)
     plain_td.cleanup(force=True)
 
 
