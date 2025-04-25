@@ -90,4 +90,4 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
 
 
 if __name__ == "__main__":
-    absltest.main(failfast=True)
+    absltest.main()
