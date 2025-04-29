@@ -58,9 +58,9 @@ def main(argv):
     run_kwargs["server_target"] = server_target
 
     mesh = td.create_mesh()
-    run_kwargs["config_mesh"] = (
-        f"projects/{td.project}/locations/global/meshes/{mesh.name}"
-    )
+    run_kwargs[
+        "config_mesh"
+    ] = f"projects/{td.project}/locations/global/meshes/{mesh.name}"
     logger.info("Config Mesh: %s", mesh.name)
     client_runner = common.make_cloud_run_client_runner(
         run_kwargs["config_mesh"], server_target
