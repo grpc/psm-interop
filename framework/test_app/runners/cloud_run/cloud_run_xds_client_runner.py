@@ -46,8 +46,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         network: str,
         region: str,
         gcp_api_manager: gcp.api.GcpApiManager,
-        mesh_name: str,
-        server_target: str,
     ):
         super().__init__(
             project,
@@ -59,8 +57,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
         self._initalize_cloud_run_api_manager()
-        self.mesh_name = mesh_name
-        self.server_target = server_target
 
         # Mutable state associated with each run.
         self._reset_state()
@@ -72,21 +68,23 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         self.current_revision = None
 
     @override
-    def run(self, **kwargs) -> client_app.XdsTestClient:
+    def run(  # pylint: disable=arguments-differ
+        self, *, server_target: str, mesh_name: str
+    ) -> client_app.XdsTestClient:
         """Deploys and manages the xDS Test Client on Cloud Run."""
         logger.info(
             "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
             self.image_name,
-            self.server_target,
+            server_target,
         )
 
-        super().run(**kwargs)
+        super().run()
         self.service = self.deploy_service(
             service_name=self.service_name,
             image_name=self.image_name,
-            mesh_name=self.mesh_name,
-            server_target=self.server_target,
+            mesh_name=mesh_name,
+            server_target=server_target,
         )
         self.current_revision = self.service.uri
         client_uri = self.current_revision.removeprefix("https://")
@@ -94,7 +92,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             ip=client_uri,
             rpc_port=DEFAULT_PORT,
             rpc_host=client_uri,
-            server_target=self.server_target,
+            server_target=server_target,
             hostname=self.current_revision,
             maintenance_port=DEFAULT_PORT,
         )

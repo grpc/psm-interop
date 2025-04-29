@@ -99,7 +99,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             api_manager=self.gcp_api_manager,
         )
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> None:
         if self.time_start_requested and not self.time_stopped:
             if self.time_start_completed:
                 raise RuntimeError(

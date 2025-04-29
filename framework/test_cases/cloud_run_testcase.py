@@ -171,10 +171,11 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             network=self.network,
             region=self.region,
             gcp_api_manager=self.gcp_api_manager,
+        )
+        test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
         )
-        test_client = self.client_runner.run()
         return test_client
 
     def cleanup(self):
