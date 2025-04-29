@@ -42,7 +42,7 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
             return config.version_gte("v1.71.x")
         return False
 
-    def test_cloudrun_to_cloudrun(self):
+    def test_cloud_run_to_cloud_run(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
 
