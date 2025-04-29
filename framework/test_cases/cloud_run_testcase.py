@@ -152,13 +152,13 @@ class CloudRunXdsKubernetesTestCase(
 
 
 class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
+    # TODO: Create a new class that parses all generic flags and creates
+    # resources and have this class extend the new class adding cloud run
+    # specific resources.
     client_runner: CloudRunClientRunner
 
     @classmethod
     def setUpClass(cls):
-        # Do not need to set up the Kubernetes API manager since both client and
-        # server run on Cloud Run.
-        cls.k8s_api_manager = None
         super().setUpClass()
 
     def startCloudRunTestClient(

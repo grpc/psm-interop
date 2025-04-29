@@ -122,6 +122,8 @@ class TdPropagationRetryableError(Exception):
 class XdsKubernetesBaseTestCase(
     base_testcase.BaseTestCase
 ):  # pylint: disable=too-many-public-methods
+    # TODO: Create a new class that parses all the flags except kubernetes and
+    # have this class extend the new class adding kubernetes specific resources.
     lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
@@ -239,10 +241,9 @@ class XdsKubernetesBaseTestCase(
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
-        if not hasattr(cls, "k8s_api_manager"):
-            cls.k8s_api_manager = k8s.KubernetesApiManager(
-                xds_k8s_flags.KUBE_CONTEXT.value
-            )
+        cls.k8s_api_manager = k8s.KubernetesApiManager(
+            xds_k8s_flags.KUBE_CONTEXT.value
+        )
 
         if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
             cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
@@ -570,6 +571,29 @@ class XdsKubernetesBaseTestCase(
                 server_hostnames,
                 f"Unexpected server {server_hostname} received RPCs",
             )
+
+    def assertXdsConfigExistsWithRetry(
+        self,
+        test_client,
+        secure_mode=False,
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+    ):
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Could not find correct bootstrap config"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self.assertXdsConfigExists,
+            test_client,
+            secure_mode=secure_mode,
+        )
 
     def assertEDSConfigExists(self, config: ClientConfig):
         seen = set()

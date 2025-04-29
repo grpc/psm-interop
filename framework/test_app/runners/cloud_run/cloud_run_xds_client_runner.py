@@ -89,7 +89,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             server_target=self.server_target,
         )
         self.current_revision = self.service.uri
-        client_uri = self.current_revision[0].removeprefix("https://")
+        client_uri = self.current_revision.removeprefix("https://")
         client = client_app.XdsTestClient(
             ip=client_uri,
             rpc_port=DEFAULT_PORT,
