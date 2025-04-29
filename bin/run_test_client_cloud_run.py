@@ -55,17 +55,12 @@ def main(argv):
     if xds_flags.SERVER_XDS_PORT.value != 80:
         server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
 
-    run_kwargs["server_target"] = server_target
-
     mesh = td.create_mesh()
-    run_kwargs[
-        "config_mesh"
-    ] = f"projects/{td.project}/locations/global/meshes/{mesh.name}"
-    logger.info("Config Mesh: %s", mesh.name)
-    client_runner = common.make_cloud_run_client_runner(
-        run_kwargs["config_mesh"], server_target
+    mesh_name = f"projects/{td.project}/locations/global/meshes/{mesh.name}"
+    client_runner = common.make_cloud_run_client_runner()
+    client_runner.run(
+        mesh_name=mesh_name, server_target=server_target, **run_kwargs
     )
-    client_runner.run(**run_kwargs)
 
 
 if __name__ == "__main__":
