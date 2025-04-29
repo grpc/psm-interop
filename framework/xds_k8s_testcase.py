@@ -291,8 +291,7 @@ class XdsKubernetesBaseTestCase(
 
     @classmethod
     def tearDownClass(cls):
-        if cls.k8s_api_manager is not None:
-            cls.k8s_api_manager.close()
+        cls.k8s_api_manager.close()
         if cls.secondary_k8s_api_manager is not None:
             cls.secondary_k8s_api_manager.close()
         cls.gcp_api_manager.close()

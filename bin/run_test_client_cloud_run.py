@@ -49,13 +49,19 @@ def main(argv):
     td = cloud_run_mesh_manager.CloudRunMeshManager(
         **common.td_attrs(), region=xds_flags.CLOUD_RUN_REGION.value
     )
-    run_kwargs["config_mesh"] = td.make_resource_name(td.MESH_NAME)
+
     # Default server target pattern.
     server_target = f"xds:///{xds_flags.SERVER_XDS_HOST.value}"
     if xds_flags.SERVER_XDS_PORT.value != 80:
         server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
 
     run_kwargs["server_target"] = server_target
+
+    mesh = td.create_mesh()
+    run_kwargs["config_mesh"] = (
+        f"projects/{td.project}/locations/global/meshes/{mesh.name}"
+    )
+    logger.info("Config Mesh: %s", mesh.name)
     client_runner = common.make_cloud_run_client_runner(
         run_kwargs["config_mesh"], server_target
     )

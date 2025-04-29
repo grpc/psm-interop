@@ -68,6 +68,8 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     @override
     def _reset_state(self):
         super()._reset_state()
+        self.mesh_name = None
+        self.server_target = None
         self.service = None
         self.current_revision = None
 
