@@ -52,7 +52,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             gcp_api_manager=gcp_api_manager,
         )
 
-        self._initalize_cloud_run_api_manager()
+        self._initalize_cloud_run()
 
         self._reset_state()
 
@@ -112,8 +112,8 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         }
 
         logger.info("Deploying Cloud Run service '%s'", service_name)
-        self.cloud_run_api_manager.create_service(service_name, service_body)
-        return self.cloud_run_api_manager.get_service(service_name)
+        self.cloud_run.create_service(service_name, service_body)
+        return self.cloud_run.get_service(service_name)
 
     @override
     def cleanup(self, *, force=False):

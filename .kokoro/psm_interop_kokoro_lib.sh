@@ -179,6 +179,8 @@ psm::cloud_run::setup() {
 psm::cloud_run::get_tests() {
   TESTS=(
     "cloud_run_csm_inbound_test"
+    # TODO: Handle this test specially since it doesn't use Kubernetes. 
+    # Skip Kubernetes-specific setup like `gcloud container clusters get-credentials`.
     "cloud_run_csm_outbound_test"
   )
 }

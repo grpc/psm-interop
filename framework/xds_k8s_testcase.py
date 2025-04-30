@@ -396,10 +396,10 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         num_rpcs: int = 100,
         *,
-        secure_mode: bool = False,
+        secure_channel: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = self.getClientRpcStats(
-            test_client, num_rpcs, secure_mode=secure_mode
+            test_client, num_rpcs, secure_channel=secure_channel
         )
         self.assertAllBackendsReceivedRpcs(lb_stats)
         failed = int(lb_stats.num_failures)
@@ -574,7 +574,7 @@ class XdsKubernetesBaseTestCase(
     def assertXdsConfigExistsWithRetry(
         self,
         test_client,
-        secure_mode=False,
+        secure_channel=False,
         *,
         retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
@@ -591,7 +591,7 @@ class XdsKubernetesBaseTestCase(
         retryer(
             self.assertXdsConfigExists,
             test_client,
-            secure_mode=secure_mode,
+            secure_channel=secure_channel,
         )
 
     def assertEDSConfigExists(self, config: ClientConfig):
@@ -605,9 +605,9 @@ class XdsKubernetesBaseTestCase(
         self.assertSameElements(want, seen)
 
     def assertXdsConfigExists(
-        self, test_client: XdsTestClient, *, secure_mode: bool = False
+        self, test_client: XdsTestClient, *, secure_channel: bool = False
     ):
-        if secure_mode:
+        if secure_channel:
             config = test_client.secure_csds.fetch_client_status(
                 log_level=logging.INFO
             )
@@ -785,12 +785,12 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
-        secure_mode: bool = False,
+        secure_channel: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
             metadata_keys=metadata_keys,
-            secure_mode=secure_mode,
+            secure_channel=secure_channel,
         )
         logger.info(
             "[%s] << Received LoadBalancerStatsResponse:\n%s",

@@ -56,7 +56,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             gcp_api_manager=gcp_api_manager,
         )
 
-        self._initalize_cloud_run_api_manager()
+        self._initalize_cloud_run()
 
         # Mutable state associated with each run.
         self._reset_state()
@@ -87,9 +87,9 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             server_target=server_target,
         )
         self.current_revision = self.service.uri
-        client_uri = self.current_revision.removeprefix("https://")
+        client_uri = self.service.uri.removeprefix("https://")
         client = client_app.XdsTestClient(
-            ip=client_uri,
+            ip="0.0.0.0",
             rpc_port=DEFAULT_PORT,
             rpc_host=client_uri,
             server_target=server_target,
@@ -152,7 +152,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             },
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
-        self.cloud_run_api_manager.create_service(service_name, service_body)
+        self.cloud_run.create_service(service_name, service_body)
         # Allow unauthenticated requests for `LoadBalancerStatsServiceClient`
         # and `CsdsClient` to retrieve client statistics.
         policy_body = {
@@ -165,15 +165,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 ],
             },
         }
-        self.cloud_run_api_manager.setIamPolicy(service_name, policy_body)
-        return self.cloud_run_api_manager.get_service(service_name)
+        self.cloud_run.set_iam_policy(service_name, policy_body)
+        return self.cloud_run.get_service(service_name)
 
     @override
     def cleanup(self, *, force=False):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
-            self.service = None
-            self.current_revision = None
+            self._reset_state()
         finally:
             self._stop()

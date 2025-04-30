@@ -590,7 +590,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
     ):
         logger.info(
             "Setting IAM policy for %s resource:\n%s",
-            self.api_name,
+            self.resource_full_name,
             self.resource_pretty_format(body),
         )
         try:
