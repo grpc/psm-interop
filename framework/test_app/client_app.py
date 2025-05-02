@@ -439,6 +439,11 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         for channel in self.channelz.find_channels_for_target(
             self.server_target, **kwargs
         ):
+            logger.info(
+                "[%s] xDS control plane channel: %s",
+                self.hostname,
+                _ChannelzServiceClient.channel_repr(channel),
+            )
             for subchannel in self.channelz.list_channel_subchannels(
                 channel, **kwargs
             ):
