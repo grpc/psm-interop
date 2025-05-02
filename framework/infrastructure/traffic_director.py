@@ -14,10 +14,9 @@
 import functools
 import logging
 import random
-from typing import Any, Dict, Final, List, Optional
+from typing import Any, Dict, Final, List, Optional, TypeAlias
 
 import googleapiclient.errors
-from typing_extensions import TypeAlias
 
 from framework import xds_flags
 from framework.infrastructure import gcp
