@@ -130,7 +130,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     @functools.lru_cache(None)
     def secure_csds(self) -> _CsdsClient:
         return _CsdsClient(
-            self._make_channel(self.maintenance_port, secure_channel=True),
+            self._make_channel(
+                self.maintenance_port,
+                secure_channel=True,
+            ),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 

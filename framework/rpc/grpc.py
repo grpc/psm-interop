@@ -16,6 +16,7 @@ import re
 from typing import Any, Dict, Optional
 
 from google.protobuf import json_format
+import subprocess
 import google.protobuf.message
 import grpc
 
@@ -99,8 +100,23 @@ class GrpcApp:
         if port not in self.channels:
             target = f"{self.rpc_host}:{port}"
             if secure_channel:
+                result = subprocess.run(
+                    [
+                        "gcloud",
+                        "auth",
+                        "print-identity-token",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+                IDENTITY_TOKEN = result.stdout.decode("utf-8").strip()
+                composite_credentials = grpc.composite_channel_credentials(
+                    grpc.ssl_channel_credentials(),
+                    grpc.access_token_call_credentials(IDENTITY_TOKEN),
+                )
+
                 self.channels[port] = grpc.secure_channel(
-                    target, grpc.ssl_channel_credentials()
+                    target, credentials=composite_credentials
                 )
             else:
                 self.channels[port] = grpc.insecure_channel(target)

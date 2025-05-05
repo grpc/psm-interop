@@ -153,19 +153,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
         self.cloud_run.create_service(service_name, service_body)
-        # Allow unauthenticated requests for `LoadBalancerStatsServiceClient`
-        # and `CsdsClient` to retrieve client statistics.
-        policy_body = {
-            "policy": {
-                "bindings": [
-                    {
-                        "role": "roles/run.invoker",
-                        "members": ["allUsers"],
-                    }
-                ],
-            },
-        }
-        self.cloud_run.set_iam_policy(service_name, policy_body)
         return self.cloud_run.get_service(service_name)
 
     @override

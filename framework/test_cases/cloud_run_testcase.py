@@ -179,9 +179,9 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         return test_client
 
     def cleanup(self):
+        self.client_runner.cleanup(force=self.force_cleanup)
         self.server_runner.cleanup(force=self.force_cleanup)
         self.td.cleanup(force=self.force_cleanup)
-        self.client_runner.cleanup(force=self.force_cleanup)
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)

@@ -56,10 +56,9 @@ def main(argv):
         server_target = f"{server_target}:{xds_flags.SERVER_XDS_PORT.value}"
 
     mesh = td.create_mesh()
-    mesh_name = f"projects/{td.project}/locations/global/meshes/{mesh.name}"
     client_runner = common.make_cloud_run_client_runner()
     client_runner.run(
-        mesh_name=mesh_name, server_target=server_target, **run_kwargs
+        mesh_name=mesh.url, server_target=server_target, **run_kwargs
     )
 
 

@@ -186,10 +186,14 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
 
 def make_cloud_run_client_runner() -> CloudRunClientRunner:
     # CloudRunClientRunner arguments.
+    client_namespace = KubernetesClientRunner.make_namespace_name(
+        xds_flags.RESOURCE_PREFIX.value, xds_flags.RESOURCE_SUFFIX.value
+    )
+
     runner_kwargs = dict(
         project=xds_flags.PROJECT.value,
-        service_name=xds_flags.CLIENT_NAME.value,
-        image_name=xds_k8s_flags.SERVER_IMAGE.value,
+        service_name=client_namespace,
+        image_name=xds_k8s_flags.CLIENT_IMAGE.value,
         network=xds_flags.NETWORK.value,
         region=xds_flags.CLOUD_RUN_REGION.value,
         gcp_api_manager=gcp.api.GcpApiManager(),
