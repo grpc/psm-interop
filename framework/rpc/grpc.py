@@ -100,13 +100,20 @@ class GrpcApp:
         if port not in self.channels:
             target = f"{self.rpc_host}:{port}"
             if secure_channel:
-                # Use Google Cloud Identity Token for authentication
+                # Retrieve token using Google default authentication.
                 request = google.auth.transport.requests.Request()
                 credentials, _ = google.auth.default()
+                logger.debug(
+                    "Using credentials %s of typ", credentials, target
+                )
                 credentials.refresh(request)
-                identity_token = credentials.id_token
+                identity_token: str = (
+                    credentials.id_token
+                    if hasattr(credentials, "id_token")
+                    else credentials.token
+                )
                 if not identity_token:
-                    raise ValueError("Failed to obtain identity token. ")
+                    raise ValueError("Failed to obtain identity token.")
 
                 composite_credentials = grpc.composite_channel_credentials(
                     grpc.ssl_channel_credentials(),
