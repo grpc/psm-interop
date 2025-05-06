@@ -104,9 +104,15 @@ class GrpcApp:
                 request = google.auth.transport.requests.Request()
                 credentials, _ = google.auth.default()
                 logger.debug(
-                    "Using credentials %s of typ", credentials, target
+                    "Using credentials %s of type %s",
+                    credentials,
+                    str(type(credentials)),
                 )
                 credentials.refresh(request)
+                if credentials.expiry:
+                    logger.debug(
+                        "Token expires at %s", credentials.expiry.isoformat()
+                    )
                 identity_token: str = (
                     credentials.id_token
                     if hasattr(credentials, "id_token")
