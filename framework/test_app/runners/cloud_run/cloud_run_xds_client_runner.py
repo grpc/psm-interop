@@ -86,14 +86,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             mesh_name=mesh_name,
             server_target=server_target,
         )
-        self.current_revision = self.service.uri
-        client_uri = self.service.uri.removeprefix("https://")
+        self.current_revision = self.service.revision
+        service_hostname = self.service.uri.removeprefix("https://")
         client = client_app.XdsTestClient(
             ip="0.0.0.0",
             rpc_port=DEFAULT_PORT,
-            rpc_host=client_uri,
+            rpc_host=service_hostname,
             server_target=server_target,
-            hostname=self.current_revision,
+            hostname=self.service.uri,
             maintenance_port=DEFAULT_PORT,
         )
         self._start_completed()

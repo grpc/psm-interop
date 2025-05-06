@@ -61,8 +61,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         super()._reset_state()
         self.service = None
         self.current_revision = None
-        self.pods_to_servers = {}
-        self.replica_count = 0
 
     @override
     def run(self, **kwargs) -> list[server_app.XdsTestServer]:
@@ -78,10 +76,10 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             service_name=self.service_name,
             image_name=self.image_name,
         )
-        self.current_revision = self.service.uri
+        self.current_revision = self.service.revision
         servers = [
             server_app.XdsTestServer(
-                ip="0.0.0.0", rpc_port=0, hostname=self.current_revision
+                ip="0.0.0.0", rpc_port=0, hostname=self.service.uri
             )
         ]
         self._start_completed()
@@ -120,7 +118,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
-            self.service = None
-            self.current_revision = None
+            self._reset_state()
         finally:
             self._stop()

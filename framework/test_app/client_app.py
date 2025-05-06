@@ -130,10 +130,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     @functools.lru_cache(None)
     def secure_csds(self) -> _CsdsClient:
         return _CsdsClient(
-            self._make_channel(
-                self.maintenance_port,
-                secure_channel=True,
-            ),
+            self._make_channel(self.maintenance_port, secure_channel=True),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
@@ -151,18 +148,16 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         """
         Shortcut to LoadBalancerStatsServiceClient.get_client_stats()
         """
-        if secure_channel:
-            return self.secure_load_balancer_stats.get_client_stats(
-                num_rpcs=num_rpcs,
-                timeout_sec=timeout_sec,
-                metadata_keys=metadata_keys,
-            )
-        else:
-            return self.load_balancer_stats.get_client_stats(
-                num_rpcs=num_rpcs,
-                timeout_sec=timeout_sec,
-                metadata_keys=metadata_keys,
-            )
+        lb_stats: _LoadBalancerStatsServiceClient = (
+            self.secure_load_balancer_stats
+            if secure_channel
+            else self.load_balancer_stats
+        )
+        return lb_stats.get_client_stats(
+            num_rpcs=num_rpcs,
+            timeout_sec=timeout_sec,
+            metadata_keys=metadata_keys,
+        )
 
     def get_load_balancer_accumulated_stats(
         self,

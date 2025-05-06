@@ -71,6 +71,7 @@ KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 TestConfig: TypeAlias = skips.TestConfig
 Lang: TypeAlias = skips.Lang
+_CsdsClient = grpc_csds.CsdsClient
 _LoadBalancerStatsResponse = grpc_testing.LoadBalancerStatsResponse
 _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
@@ -607,14 +608,10 @@ class XdsKubernetesBaseTestCase(
     def assertXdsConfigExists(
         self, test_client: XdsTestClient, *, secure_channel: bool = False
     ):
-        if secure_channel:
-            config = test_client.secure_csds.fetch_client_status(
-                log_level=logging.INFO
-            )
-        else:
-            config = test_client.csds.fetch_client_status(
-                log_level=logging.INFO
-            )
+        csds: _CsdsClient = (
+            test_client.secure_csds if secure_channel else test_client.csds
+        )
+        config = csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
         seen = set()
         want = frozenset(

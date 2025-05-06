@@ -581,29 +581,6 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
                 logger.warning("Failed to delete %s, %r", full_name, error)
         return False
 
-    def _set_iam_policy(
-        self,
-        collection: discovery.Resource,
-        body: dict,
-        full_name: str,
-        **kwargs,
-    ):
-        logger.info(
-            "Setting IAM policy for %s resource:\n%s",
-            full_name,
-            self.resource_pretty_format(body),
-        )
-        try:
-            collection.setIamPolicy(
-                resource=full_name, body=body, **kwargs
-            ).execute()
-            return True
-        except _HttpError as error:
-            logger.warning(
-                "Failed to set IAM policy for %s, %r", full_name, error
-            )
-            raise
-
     # TODO(sergiitk): Use ResponseError and TransportError
     def _execute(  # pylint: disable=arguments-differ
         self,

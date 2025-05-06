@@ -21,6 +21,7 @@ from framework.infrastructure import gcp
 @dataclasses.dataclass(frozen=True)
 class CloudRunService:
     service_name: str
+    revision: str
     uri: str
 
     @classmethod
@@ -30,6 +31,7 @@ class CloudRunService:
         return cls(
             service_name=name,
             uri=response["uri"],
+            revision=response["latestCreatedRevision"],
         )
 
 
@@ -87,13 +89,4 @@ class CloudRunV2(gcp.api.GcpStandardCloudApiResource, metaclass=abc.ABCMeta):
             full_name=self.resource_full_name(
                 service_name, self.SERVICES, self.region
             ),
-        )
-
-    def set_iam_policy(self, service_name: str, policy_body: dict):
-        self._set_iam_policy(
-            collection=self._services_collection,
-            full_name=self.resource_full_name(
-                service_name, self.SERVICES, self.region
-            ),
-            body=policy_body,
         )

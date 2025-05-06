@@ -15,8 +15,8 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+import google.auth.transport.requests
 from google.protobuf import json_format
-import subprocess
 import google.protobuf.message
 import grpc
 
@@ -100,19 +100,17 @@ class GrpcApp:
         if port not in self.channels:
             target = f"{self.rpc_host}:{port}"
             if secure_channel:
-                result = subprocess.run(
-                    [
-                        "gcloud",
-                        "auth",
-                        "print-identity-token",
-                    ],
-                    check=True,
-                    capture_output=True,
-                )
-                IDENTITY_TOKEN = result.stdout.decode("utf-8").strip()
+                # Use Google Cloud Identity Token for authentication
+                request = google.auth.transport.requests.Request()
+                credentials, _ = google.auth.default()
+                credentials.refresh(request)
+                identity_token = credentials.id_token
+                if not identity_token:
+                    raise ValueError("Failed to obtain identity token. ")
+
                 composite_credentials = grpc.composite_channel_credentials(
                     grpc.ssl_channel_credentials(),
-                    grpc.access_token_call_credentials(IDENTITY_TOKEN),
+                    grpc.access_token_call_credentials(identity_token),
                 )
 
                 self.channels[port] = grpc.secure_channel(
