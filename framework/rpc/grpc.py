@@ -15,6 +15,7 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+import google.auth.credentials
 import google.auth.transport.requests
 from google.protobuf import json_format
 import google.protobuf.message
@@ -96,41 +97,56 @@ class GrpcApp:
         # Cache gRPC channels per port
         self.channels = dict()
 
+    @classmethod
+    def _make_call_creds_token(cls) -> str:
+        # https://googleapis.dev/python/google-auth/latest/reference/google.auth.credentials.html
+        creds: google.auth.credentials.Credentials
+
+        # Retrieve token using Google default authentication.
+        # https://googleapis.dev/python/google-auth/latest/reference/google.auth.html
+        creds, project = google.auth.default()
+        # Refresh is needed even to generate the initial token.
+        creds.refresh(google.auth.transport.requests.Request())
+
+        logger.info(
+            "Retrieved call credentials %s, project=%s, expiry=%s",
+            creds.__class__,
+            project,
+            creds.expiry.isoformat() if creds.expiry else "None",
+        )
+
+        if not creds.valid:
+            raise ValueError("Retrieved call credentials are invalid.")
+
+        token: str = (
+            creds.id_token if hasattr(creds, "id_token") else creds.token
+        )
+        if not token:
+            raise ValueError("Retrieved call credentials token is empty.")
+
+        return token
+
+    def _create_new_channel(
+        self, target: str, *, secure_channel: bool = False
+    ) -> grpc.Channel:
+        if not secure_channel:
+            return grpc.insecure_channel(target)
+
+        # TODO: impl own CallCredentials that autorefreshes on expiry.
+        call_creds_token = self._make_call_creds_token()
+        composite_credentials = grpc.composite_channel_credentials(
+            grpc.ssl_channel_credentials(),
+            grpc.access_token_call_credentials(call_creds_token),
+        )
+
+        return grpc.secure_channel(target, credentials=composite_credentials)
+
     def _make_channel(self, port, secure_channel=False) -> grpc.Channel:
         if port not in self.channels:
-            target = f"{self.rpc_host}:{port}"
-            if secure_channel:
-                # Retrieve token using Google default authentication.
-                request = google.auth.transport.requests.Request()
-                credentials, _ = google.auth.default()
-                logger.debug(
-                    "Using credentials %s of type %s",
-                    credentials,
-                    str(type(credentials)),
-                )
-                credentials.refresh(request)
-                if credentials.expiry:
-                    logger.debug(
-                        "Token expires at %s", credentials.expiry.isoformat()
-                    )
-                identity_token: str = (
-                    credentials.id_token
-                    if hasattr(credentials, "id_token")
-                    else credentials.token
-                )
-                if not identity_token:
-                    raise ValueError("Failed to obtain identity token.")
+            self.channels[port] = self._create_new_channel(
+                f"{self.rpc_host}:{port}", secure_channel=secure_channel
+            )
 
-                composite_credentials = grpc.composite_channel_credentials(
-                    grpc.ssl_channel_credentials(),
-                    grpc.access_token_call_credentials(identity_token),
-                )
-
-                self.channels[port] = grpc.secure_channel(
-                    target, credentials=composite_credentials
-                )
-            else:
-                self.channels[port] = grpc.insecure_channel(target)
         return self.channels[port]
 
     def close(self):
