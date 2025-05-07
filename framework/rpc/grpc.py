@@ -115,11 +115,16 @@ class GrpcApp:
         else:
             # If the default credentials don't provide OpenId token (id_token),
             # fallback to Compute IDTokenCredentials.
+            #
+            # Note that using OpenId may be too specific to CloudRun, and
+            # especially setting target_audience. If needed for other purposes,
+            # we should rethink the approach.
             creds = google.auth.compute_engine.IDTokenCredentials(
                 request=auth_request,
                 target_audience=self.rpc_host,
                 use_metadata_identity_endpoint=True,
             )
+            creds.refresh(auth_request)
             token = creds.token
 
         expires_str = "N/A"
