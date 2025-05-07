@@ -121,7 +121,7 @@ class GrpcApp:
             # we should rethink the approach.
             creds = google.auth.compute_engine.IDTokenCredentials(
                 request=auth_request,
-                target_audience=self.rpc_host,
+                target_audience=f"https://{self.rpc_host}",
                 use_metadata_identity_endpoint=True,
             )
             creds.refresh(auth_request)
