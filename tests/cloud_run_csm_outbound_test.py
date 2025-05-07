@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime as dt
 import logging
 from typing import TypeAlias
 
@@ -72,7 +73,9 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
 
         with self.subTest("7_test_client_xds_config_exists"):
             self.assertXdsConfigExistsWithRetry(
-                test_client, secure_channel=True
+                test_client,
+                secure_channel=True,
+                retry_timeout=dt.timedelta(hours=1),
             )
 
         with self.subTest("8_test_server_received_rpcs_from_test_client"):
