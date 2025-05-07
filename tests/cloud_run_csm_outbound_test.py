@@ -73,9 +73,7 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
 
         with self.subTest("7_test_client_xds_config_exists"):
             self.assertXdsConfigExistsWithRetry(
-                test_client,
-                secure_channel=True,
-                retry_timeout=dt.timedelta(hours=1),
+                test_client, secure_channel=True
             )
 
         with self.subTest("8_test_server_received_rpcs_from_test_client"):

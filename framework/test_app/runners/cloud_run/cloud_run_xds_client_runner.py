@@ -69,17 +69,20 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     @override
     def run(  # pylint: disable=arguments-differ
-        self, *, server_target: str, mesh_name: str
+        self,
+        *,
+        server_target: str,
+        mesh_name: str,
     ) -> client_app.XdsTestClient:
         """Deploys and manages the xDS Test Client on Cloud Run."""
+        super().run()
+
         logger.info(
             "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
             self.image_name,
             server_target,
         )
-
-        super().run()
         self.service = self.deploy_service(
             service_name=self.service_name,
             image_name=self.image_name,
@@ -87,17 +90,34 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             server_target=server_target,
         )
         self.current_revision = self.service.revision
-        service_hostname = self.service.uri.removeprefix("https://")
-        client = client_app.XdsTestClient(
+        client = self._make_client_from_service(server_target, self.service)
+        self._start_completed()
+        return client
+
+    def reuse_from_service(
+        self,
+        *,
+        server_target: str,
+    ) -> client_app.XdsTestClient:
+        if not self.service:
+            self.service = self.cloud_run.get_service(self.service_name)
+
+        return self._make_client_from_service(server_target, self.service)
+
+    @classmethod
+    def _make_client_from_service(
+        cls,
+        server_target: str,
+        service: gcp.cloud_run.CloudRunService,
+    ) -> client_app.XdsTestClient:
+        service_hostname = service.uri.removeprefix("https://")
+        return client_app.XdsTestClient(
             ip="0.0.0.0",
             rpc_port=DEFAULT_PORT,
             rpc_host=service_hostname,
             server_target=server_target,
-            hostname=self.service.uri,
-            maintenance_port=DEFAULT_PORT,
+            hostname=service_hostname,
         )
-        self._start_completed()
-        return client
 
     def deploy_service(
         self,

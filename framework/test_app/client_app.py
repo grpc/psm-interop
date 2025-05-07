@@ -116,6 +116,14 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
 
     @property
     @functools.lru_cache(None)
+    def secure_channelz(self) -> _ChannelzServiceClient:
+        return _ChannelzServiceClient(
+            self._make_channel(self.maintenance_port, secure_channel=True),
+            log_target=f"{self.hostname}:{self.maintenance_port}",
+        )
+
+    @property
+    @functools.lru_cache(None)
     def csds(self) -> _CsdsClient:
         return _CsdsClient(
             self._make_channel(self.maintenance_port),

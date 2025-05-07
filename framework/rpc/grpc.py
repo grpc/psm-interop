@@ -15,6 +15,8 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+import google.auth
+import google.auth.compute_engine
 import google.auth.credentials
 import google.auth.transport.requests
 from google.protobuf import json_format
@@ -97,30 +99,45 @@ class GrpcApp:
         # Cache gRPC channels per port
         self.channels = dict()
 
-    @classmethod
-    def _make_call_creds_token(cls) -> str:
+    def _make_openid_creds_token(self) -> str:
         # https://googleapis.dev/python/google-auth/latest/reference/google.auth.credentials.html
         creds: google.auth.credentials.Credentials
+        auth_request = google.auth.transport.requests.Request()
 
         # Retrieve token using Google default authentication.
         # https://googleapis.dev/python/google-auth/latest/reference/google.auth.html
         creds, project = google.auth.default()
         # Refresh is needed even to generate the initial token.
-        creds.refresh(google.auth.transport.requests.Request())
+        creds.refresh(auth_request)
+
+        if hasattr(creds, "id_token") and creds.id_token:
+            token = creds.id_token
+        else:
+            # If the default credentials don't provide OpenId token (id_token),
+            # fallback to Compute IDTokenCredentials.
+            creds = google.auth.compute_engine.IDTokenCredentials(
+                request=auth_request,
+                target_audience=self.rpc_host,
+                use_metadata_identity_endpoint=True,
+            )
+            token = creds.token
+
+        expires_str = "N/A"
+        if creds.expiry:
+            expires_str = creds.expiry.isoformat(timespec="seconds")
 
         logger.info(
-            "Retrieved call credentials %s, project=%s, expiry=%s",
-            creds.__class__,
+            "Made call credentials type=%s.%s, project=%s, host=%s, expiry=%s",
+            creds.__module__,
+            creds.__class__.__qualname__,
             project,
-            creds.expiry.isoformat() if creds.expiry else "None",
+            self.rpc_host,
+            expires_str,
         )
 
         if not creds.valid:
             raise ValueError("Retrieved call credentials are invalid.")
 
-        token: str = (
-            creds.id_token if hasattr(creds, "id_token") else creds.token
-        )
         if not token:
             raise ValueError("Retrieved call credentials token is empty.")
 
@@ -133,7 +150,7 @@ class GrpcApp:
             return grpc.insecure_channel(target)
 
         # TODO: impl own CallCredentials that autorefreshes on expiry.
-        call_creds_token = self._make_call_creds_token()
+        call_creds_token = self._make_openid_creds_token()
         composite_credentials = grpc.composite_channel_credentials(
             grpc.ssl_channel_credentials(),
             grpc.access_token_call_credentials(call_creds_token),
