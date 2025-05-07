@@ -52,7 +52,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             gcp_api_manager=gcp_api_manager,
         )
 
-        self._initalize_cloud_run_api_manager()
+        self._initalize_cloud_run()
 
         self._reset_state()
 
@@ -61,8 +61,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         super()._reset_state()
         self.service = None
         self.current_revision = None
-        self.pods_to_servers = {}
-        self.replica_count = 0
 
     @override
     def run(self, **kwargs) -> list[server_app.XdsTestServer]:
@@ -78,10 +76,10 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
             service_name=self.service_name,
             image_name=self.image_name,
         )
-        self.current_revision = self.service.uri
+        self.current_revision = self.service.revision
         servers = [
             server_app.XdsTestServer(
-                ip="0.0.0.0", rpc_port=0, hostname=self.current_revision
+                ip="0.0.0.0", rpc_port=0, hostname=self.service.uri
             )
         ]
         self._start_completed()
@@ -112,15 +110,14 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
         }
 
         logger.info("Deploying Cloud Run service '%s'", service_name)
-        self.cloud_run_api_manager.create_service(service_name, service_body)
-        return self.cloud_run_api_manager.get_service(service_name)
+        self.cloud_run.create_service(service_name, service_body)
+        return self.cloud_run.get_service(service_name)
 
     @override
     def cleanup(self, *, force=False):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
-            self.service = None
-            self.current_revision = None
+            self._reset_state()
         finally:
             self._stop()

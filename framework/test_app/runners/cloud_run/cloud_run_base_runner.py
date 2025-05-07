@@ -89,17 +89,17 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         # Highlighter.
         self._highlighter = _HighlighterYaml()
 
-        self._initalize_cloud_run_api_manager()
+        self._initalize_cloud_run()
 
-    def _initalize_cloud_run_api_manager(self):
+    def _initalize_cloud_run(self):
         """Initializes the CloudRunV2."""
-        self.cloud_run_api_manager = gcp.cloud_run.CloudRunV2(
+        self.cloud_run = gcp.cloud_run.CloudRunV2(
             project=self.project,
             region=self.region,
             api_manager=self.gcp_api_manager,
         )
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> None:
         if self.time_start_requested and not self.time_stopped:
             if self.time_start_completed:
                 raise RuntimeError(
@@ -193,4 +193,4 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
     def cleanup(self, *, force: bool = False):
         """Deletes Cloud Run Service"""
         logger.info("Deleting Cloud Run service: %s", self.service_name)
-        self.cloud_run_api_manager.delete_service(self.service_name)
+        self.cloud_run.delete_service(self.service_name)

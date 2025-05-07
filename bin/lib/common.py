@@ -27,6 +27,7 @@ from framework.infrastructure import k8s
 from framework.infrastructure.gcp import cloud_run
 from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
 from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import gamma_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
@@ -48,6 +49,7 @@ KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 GammaServerRunner = gamma_server_runner.GammaServerRunner
 CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
+CloudRunClientRunner = cloud_run_xds_client_runner.CloudRunClientRunner
 _XdsTestServer = server_app.XdsTestServer
 _XdsTestClient = client_app.XdsTestClient
 
@@ -64,9 +66,12 @@ def gcp_api_manager():
 
 @functools.cache
 def cloud_run_api_manager():
-    return cloud_run.CloudRunV2(project=xds_flags.PROJECT.value,
-                                        region=xds_flags.CLOUD_RUN_REGION.value,
-                                        api_manager=gcp_api_manager())
+    return cloud_run.CloudRunV2(
+        project=xds_flags.PROJECT.value,
+        region=xds_flags.CLOUD_RUN_REGION.value,
+        api_manager=gcp_api_manager(),
+    )
+
 
 def td_attrs():
     return dict(
@@ -164,6 +169,7 @@ def make_server_runner(
 
     return server_runner(namespace, **runner_kwargs)
 
+
 def make_cloud_run_server_runner() -> CloudRunServerRunner:
     # CloudRunServerRunner arguments.
     runner_kwargs = dict(
@@ -176,6 +182,25 @@ def make_cloud_run_server_runner() -> CloudRunServerRunner:
     )
     server_runner = CloudRunServerRunner
     return server_runner(**runner_kwargs)
+
+
+def make_cloud_run_client_runner() -> CloudRunClientRunner:
+    # CloudRunClientRunner arguments.
+    client_namespace = KubernetesClientRunner.make_namespace_name(
+        xds_flags.RESOURCE_PREFIX.value, xds_flags.RESOURCE_SUFFIX.value
+    )
+
+    runner_kwargs = dict(
+        project=xds_flags.PROJECT.value,
+        service_name=client_namespace,
+        image_name=xds_k8s_flags.CLIENT_IMAGE.value,
+        network=xds_flags.NETWORK.value,
+        region=xds_flags.CLOUD_RUN_REGION.value,
+        gcp_api_manager=gcp.api.GcpApiManager(),
+    )
+    client_runner = CloudRunClientRunner
+    return client_runner(**runner_kwargs)
+
 
 def _ensure_atexit(signum, frame):
     """Needed to handle signals or atexit handler won't be called."""

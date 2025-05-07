@@ -22,7 +22,9 @@ from framework.helpers import retryers
 from framework.infrastructure import k8s
 from framework.infrastructure import traffic_director
 import framework.infrastructure.mesh_resource_manager.cloud_run_mesh_manager as td_cloud_run
+from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
 from framework.test_app.runners.cloud_run import cloud_run_xds_server_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
 
@@ -31,9 +33,11 @@ logger = logging.getLogger(__name__)
 # Type aliases
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 CloudRunServerRunner = cloud_run_xds_server_runner.CloudRunServerRunner
+CloudRunClientRunner = cloud_run_xds_client_runner.CloudRunClientRunner
 CloudRunMeshManager = td_cloud_run.CloudRunMeshManager
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 XdsTestServer = server_app.XdsTestServer
+XdsTestClient = client_app.XdsTestClient
 
 
 class CloudRunXdsKubernetesTestCase(
@@ -104,11 +108,11 @@ class CloudRunXdsKubernetesTestCase(
         _ = config
 
     def cleanup(self):
-        self.server_runner.cleanup(force=self.force_cleanup)
-        self.td.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(
             force=self.force_cleanup, force_namespace=self.force_cleanup
         )
+        self.server_runner.cleanup(force=self.force_cleanup)
+        self.td.cleanup(force=self.force_cleanup)
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)
@@ -145,3 +149,53 @@ class CloudRunXdsKubernetesTestCase(
                     " is caused by the test client app crash."
                 ),
             )
+
+
+class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
+    # TODO: Create a new class that parses all generic flags and creates
+    # resources and have this class extend the new class adding cloud run
+    # specific resources.
+    client_runner: CloudRunClientRunner
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+    def startCloudRunTestClient(
+        self, test_server: XdsTestServer
+    ) -> XdsTestClient:
+        self.client_runner = CloudRunClientRunner(
+            project=self.project,
+            service_name=self.client_namespace,
+            image_name=self.client_image,
+            network=self.network,
+            region=self.region,
+            gcp_api_manager=self.gcp_api_manager,
+        )
+        test_client = self.client_runner.run(
+            server_target=test_server.xds_uri,
+            mesh_name=self.td.mesh.url,
+        )
+        return test_client
+
+    def cleanup(self):
+        self.client_runner.cleanup(force=self.force_cleanup)
+        self.server_runner.cleanup(force=self.force_cleanup)
+        self.td.cleanup(force=self.force_cleanup)
+
+    def tearDown(self):
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=dt.timedelta(seconds=10),
+            attempts=3,
+            log_level=logging.INFO,
+        )
+        try:
+            retryer(self.cleanup)
+        except retryers.RetryError:
+            logger.exception("Got error during teardown")
+        finally:
+            logger.info("----- Test client/server logs -----")
+            self.client_runner.logs_explorer_run_history_links()
+            self.server_runner.logs_explorer_run_history_links()
