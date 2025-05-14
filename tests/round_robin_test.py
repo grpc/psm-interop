@@ -62,8 +62,11 @@ class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("09_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
+        
+        with self.subTest("10_check_all_servers_are_active"):
+            self.assertActiveNumberOfServers(expected_num_servers=REPLICA_COUNT, test_client=test_client)
 
-        with self.subTest("10_round_robin"):
+        with self.subTest("11_round_robin"):
             num_rpcs = 100
             expected_rpcs_per_replica = num_rpcs / REPLICA_COUNT
 

@@ -411,6 +411,53 @@ class XdsKubernetesBaseTestCase(
         )
         return lb_stats
 
+    # Return number of servers using RPC stats
+    def getActiveNumberOfServers(
+        self,
+        test_client: XdsTestClient,
+        secure_channel: bool = False,
+    ) -> int:
+        lb_stats = self.getClientRpcStats(
+            test_client, 1, secure_channel=secure_channel
+        )
+        num_servers = lb_stats.lb_stats.rpcs_by_peer.keys()
+        return len(num_servers)
+
+    def _assertActiveNumberOfServers(
+        self,
+        expected_num_servers: int,
+        test_client: XdsTestClient,
+        secure_channel: bool = False
+    ) -> None:
+        self.assertEqual(
+            self.getActiveNumberOfServers(test_client, secure_channel),
+            expected_num_servers)
+
+    def assertActiveNumberOfServers(
+        self,
+        expected_num_servers: int,
+        test_client: XdsTestClient,
+        secure_channel: bool = False,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=1)  
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Didn't find the expected number of active servers {expected_num_servers}"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self._assertActiveNumberOfServers,
+            expected_num_servers,
+            test_client,
+            secure_channel,
+        )
+        
+
     @staticmethod
     def diffAccumulatedStatsPerMethod(
         before: _LoadBalancerAccumulatedStatsResponse,
