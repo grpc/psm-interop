@@ -411,17 +411,19 @@ class XdsKubernetesBaseTestCase(
         )
         return lb_stats
 
-    # Return number of servers using RPC stats
+    # Return number of servers using subchannels
     def getActiveNumberOfServers(
         self,
         test_client: XdsTestClient,
         secure_channel: bool = False,
     ) -> int:
-        lb_stats = self.getClientRpcStats(
-            test_client, 1, secure_channel=secure_channel
+        channel = test_client.wait_for_server_channel_state(
+            state=_ChannelState.READY
         )
-        num_servers = lb_stats.rpcs_by_peer.keys()
-        return len(num_servers)
+        subchannels = list(
+            test_client.channelz.list_channel_subchannels(channel)
+        )
+        return len(subchannels)
 
     def _assertActiveNumberOfServers(
         self,
