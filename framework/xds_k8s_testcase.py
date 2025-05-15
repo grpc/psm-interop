@@ -420,7 +420,7 @@ class XdsKubernetesBaseTestCase(
         lb_stats = self.getClientRpcStats(
             test_client, 1, secure_channel=secure_channel
         )
-        num_servers = lb_stats.lb_stats.rpcs_by_peer.keys()
+        num_servers = lb_stats.rpcs_by_peer.keys()
         return len(num_servers)
 
     def _assertActiveNumberOfServers(
@@ -439,7 +439,7 @@ class XdsKubernetesBaseTestCase(
         test_client: XdsTestClient,
         secure_channel: bool = False,
         retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
-        retry_wait: dt.timedelta = dt.timedelta(seconds=1)  
+        retry_wait: dt.timedelta = dt.timedelta(seconds=30)  
     ) -> None:
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
