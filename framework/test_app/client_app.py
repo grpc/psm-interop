@@ -49,6 +49,7 @@ REQ_LB_STATS_METADATA_ALL = ("*",)
 DEFAULT_TD_XDS_URI = "trafficdirector.googleapis.com:443"
 
 
+# pylint: disable=too-many-public-methods
 class XdsTestClient(framework.rpc.grpc.GrpcApp):
     """
     Represents RPC services implemented in Client component of the xds test app.
@@ -85,6 +86,18 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.rpc_port}",
         )
 
+    # For fetching stats from gRPC client containers requiring secure
+    # communication, like Cloud run where, a proxy is involved. The proxy uses
+    # HTTP/1.1 for plaintext connections. However, since gRPC requires HTTP/2,
+    # we must use encrypted communication (HTTPS) to ensure compatibility.
+    @property
+    @functools.lru_cache(None)
+    def secure_load_balancer_stats(self) -> _LoadBalancerStatsServiceClient:
+        return _LoadBalancerStatsServiceClient(
+            self._make_channel(self.rpc_port, secure_channel=True),
+            log_target=f"{self.hostname}:{self.rpc_port}",
+        )
+
     @property
     @functools.lru_cache(None)
     def update_config(self):
@@ -103,9 +116,29 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
 
     @property
     @functools.lru_cache(None)
+    def secure_channelz(self) -> _ChannelzServiceClient:
+        return _ChannelzServiceClient(
+            self._make_channel(self.maintenance_port, secure_channel=True),
+            log_target=f"{self.hostname}:{self.maintenance_port}",
+        )
+
+    @property
+    @functools.lru_cache(None)
     def csds(self) -> _CsdsClient:
         return _CsdsClient(
             self._make_channel(self.maintenance_port),
+            log_target=f"{self.hostname}:{self.maintenance_port}",
+        )
+
+    # For fetching stats from gRPC client containers requiring secure
+    # communication, like Cloud run where, a proxy is involved. The proxy uses
+    # HTTP/1.1 for plaintext connections. However, since gRPC requires HTTP/2,
+    # we must use encrypted communication (HTTPS) to ensure compatibility.
+    @property
+    @functools.lru_cache(None)
+    def secure_csds(self) -> _CsdsClient:
+        return _CsdsClient(
+            self._make_channel(self.maintenance_port, secure_channel=True),
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
@@ -118,11 +151,17 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         num_rpcs: int,
         metadata_keys: Optional[tuple[str, ...]] = None,
         timeout_sec: Optional[int] = None,
+        secure_channel: bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """
         Shortcut to LoadBalancerStatsServiceClient.get_client_stats()
         """
-        return self.load_balancer_stats.get_client_stats(
+        lb_stats: _LoadBalancerStatsServiceClient = (
+            self.secure_load_balancer_stats
+            if secure_channel
+            else self.load_balancer_stats
+        )
+        return lb_stats.get_client_stats(
             num_rpcs=num_rpcs,
             timeout_sec=timeout_sec,
             metadata_keys=metadata_keys,

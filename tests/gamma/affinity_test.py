@@ -45,12 +45,14 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
             return config.version_gte("v1.62.x")
         return False
 
+    @override
     def getClientRpcStats(
         self,
         test_client: _XdsTestClient,
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
+        secure_channel: bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         return super().getClientRpcStats(
