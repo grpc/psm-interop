@@ -36,7 +36,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _Lang: TypeAlias = skips.Lang
 
 # Constants.
-REPLICA_COUNT: Final[int] = 6
+REPLICA_COUNT: Final[int] = 4
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): update comment
