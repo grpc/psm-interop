@@ -68,6 +68,8 @@ def get_free_port() -> int:
 class FallbackTest(absltest.TestCase):
     bootstrap: framework.helpers.docker.Bootstrap = None
     dockerInternalIp: str
+    primary_port: int
+    fallback_port: int
 
     @staticmethod
     def setUpClass():
@@ -76,11 +78,15 @@ class FallbackTest(absltest.TestCase):
         FallbackTest.dockerInternalIp = socket.gethostbyname(
             socket.gethostname()
         )
+        FallbackTest.primary_port = get_free_port()
+        FallbackTest.fallback_port = get_free_port()
+        servers=[
+            f"{_HOST_NAME.value}:{FallbackTest.primary_port}",
+            f"{_HOST_NAME.value}:{FallbackTest.fallback_port}",
+        ]
         FallbackTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
-            primary_port=get_free_port(),
-            fallback_port=get_free_port(),
-            host_name=_HOST_NAME.value,
+            servers=servers
         )
 
     def setUp(self):
@@ -135,7 +141,7 @@ class FallbackTest(absltest.TestCase):
     ):
         self.assertEqual(
             client.expect_channel_status(
-                self.bootstrap.primary_port,
+                self.primary_port,
                 primary_status,
                 timeout=datetime.timedelta(
                     milliseconds=_STATUS_TIMEOUT_MS.value
@@ -148,7 +154,7 @@ class FallbackTest(absltest.TestCase):
         )
         self.assertEqual(
             client.expect_channel_status(
-                self.bootstrap.fallback_port,
+                self.fallback_port,
                 fallback_status,
                 timeout=datetime.timedelta(
                     milliseconds=_STATUS_TIMEOUT_MS.value
@@ -175,7 +181,7 @@ class FallbackTest(absltest.TestCase):
             # Fallback control plane start, send traffic to server2
             with self.start_control_plane(
                 name="fallback_xds_config",
-                port=self.bootstrap.fallback_port,
+                port=self.fallback_port,
                 upstream_port=server2.port,
             ):
                 self.assert_ads_connections(
@@ -189,7 +195,7 @@ class FallbackTest(absltest.TestCase):
                 # Primary control plane start. Will use it
                 with self.start_control_plane(
                     name="primary_xds_config",
-                    port=self.bootstrap.primary_port,
+                    port=self.primary_port,
                     upstream_port=server1.port,
                 ):
                     self.assert_ads_connections(
@@ -227,13 +233,13 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server2") as server2,
             self.start_control_plane(
                 "primary_xds_config_run_1",
-                port=self.bootstrap.primary_port,
+                port=self.primary_port,
                 upstream_port=server1.port,
                 cluster_name="cluster_name",
             ) as primary,
             self.start_control_plane(
                 "fallback_xds_config",
-                port=self.bootstrap.fallback_port,
+                port=self.fallback_port,
                 upstream_port=server2.port,
             ),
         ):
@@ -256,7 +262,7 @@ class FallbackTest(absltest.TestCase):
                 # Rerun primary control plane
                 with self.start_control_plane(
                     "primary_xds_config_run_2",
-                    port=self.bootstrap.primary_port,
+                    port=self.primary_port,
                     upstream_port=server1.port,
                 ):
                     self.assert_ads_connections(
@@ -276,12 +282,12 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server3") as server3,
             self.start_control_plane(
                 "primary_xds_config_run_1",
-                port=self.bootstrap.primary_port,
+                port=self.primary_port,
                 upstream_port=server1.port,
             ) as primary,
             self.start_control_plane(
                 "fallback_xds_config",
-                port=self.bootstrap.fallback_port,
+                port=self.fallback_port,
                 upstream_port=server2.port,
             ),
             self.start_client() as client,
@@ -317,7 +323,7 @@ class FallbackTest(absltest.TestCase):
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
-                port=self.bootstrap.primary_port,
+                port=self.primary_port,
                 upstream_port=server3.port,
             ):
                 self.assert_ads_connections(

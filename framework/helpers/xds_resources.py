@@ -20,6 +20,7 @@ from envoy.config.endpoint.v3 import endpoint_components_pb2
 from envoy.config.endpoint.v3 import endpoint_pb2
 from envoy.config.listener.v3 import api_listener_pb2
 from envoy.config.listener.v3 import listener_pb2
+from envoy.config.listener.v3 import listener_components_pb2
 from envoy.config.route.v3 import route_components_pb2
 from envoy.config.route.v3 import route_pb2
 from envoy.extensions.filters.http.router.v3 import router_pb2
@@ -39,7 +40,7 @@ def _wrap_in_any(msg: message.Message) -> any_pb2.Any:
     return any_msg
 
 
-def _build_listener(listener_name: str, cluster_name: str):
+def build_listener(listener_name: str, cluster_name: str):
     hcm = http_connection_manager_pb2.HttpConnectionManager(
         route_config=route_pb2.RouteConfiguration(
             virtual_hosts=[
@@ -70,7 +71,7 @@ def _build_listener(listener_name: str, cluster_name: str):
     )
 
 
-def _build_endpoint(
+def build_endpoint(
     cluster_name: str, upstream_host: str, upstream_port: int
 ) -> endpoint_pb2.ClusterLoadAssignment:
     endpoint = endpoint_components_pb2.Endpoint(
@@ -104,7 +105,7 @@ def _build_endpoint(
     )
 
 
-def _build_cluster(cluster_name: str, service_name: str) -> cluster_pb2.Cluster:
+def build_cluster(cluster_name: str, service_name: str) -> cluster_pb2.Cluster:
     return cluster_pb2.Cluster(
         name=cluster_name,
         type=cluster_pb2.Cluster.DiscoveryType.EDS,
@@ -114,6 +115,57 @@ def _build_cluster(cluster_name: str, service_name: str) -> cluster_pb2.Cluster:
             ),
             service_name=service_name,
         ),
+    )
+
+def build_server_listener(server_listener_name: str, port: int, route_config_name: str) -> listener_pb2.Listener:
+    hcm = http_connection_manager_pb2.HttpConnectionManager(
+        rds=http_connection_manager_pb2.Rds(
+            route_config_name=route_config_name,
+            config_source=config_source_pb2.ConfigSource(
+                ads=config_source_pb2.AggregatedConfigSource()
+            )
+        ),
+        http_filters=[
+            http_connection_manager_pb2.HttpFilter(
+                name="router", typed_config=_wrap_in_any(router_pb2.Router())
+            )
+        ],
+    )
+    return listener_pb2.Listener(
+        name=server_listener_name,
+        address=address_pb2.Address(
+            socket_address=address_pb2.SocketAddress(
+                protocol=address_pb2.SocketAddress.TCP,
+                address="0.0.0.0",
+                port_value=port
+            )
+        ),
+        default_filter_chain=listener_components_pb2.FilterChain(
+            filter_chain_match=listener_components_pb2.FilterChainMatch(
+                source_type=listener_components_pb2.FilterChainMatch.ConnectionSourceType.SAME_IP_OR_LOOPBACK
+            ),
+            filters=[
+                listener_components_pb2.Filter(
+                    typed_config=_wrap_in_any(hcm)
+                )
+            ]
+        )
+    )
+
+def build_server_route_config(route_config_name: str) -> route_pb2.RouteConfiguration:
+    return route_pb2.RouteConfiguration(
+        name=route_config_name,
+        virtual_hosts=[
+            route_components_pb2.VirtualHost(
+                domains=["*"],
+                routes=[
+                    route_components_pb2.Route(
+                        match=route_components_pb2.RouteMatch(prefix=""),
+                        non_forwarding_action=route_components_pb2.NonForwardingAction()
+                    )
+                ]
+            )
+        ]
     )
 
 
@@ -130,6 +182,14 @@ def _build_resource_to_set(resource: message.Message):
     )
 
 
+def build_set_resources_request(resources: list[message.Message]):
+    return xdsconfig_pb2.SetResourcesRequest(
+        resources=[
+            _build_resource_to_set(r) for r in resources
+        ]
+    )
+
+
 def build_listener_and_cluster(
     listener_name: str,
     cluster_name: str,
@@ -137,14 +197,9 @@ def build_listener_and_cluster(
     upstream_port: int,
 ) -> xdsconfig_pb2.SetResourcesRequest:
     service_name = f"{cluster_name}_eds_service"
-    listener = _build_listener(listener_name, cluster_name)
-    cluster = _build_cluster(cluster_name, service_name)
-    load_assignment = _build_endpoint(
+    listener = build_listener(listener_name, cluster_name)
+    cluster = build_cluster(cluster_name, service_name)
+    load_assignment = build_endpoint(
         service_name, upstream_host, upstream_port
     )
-    return xdsconfig_pb2.SetResourcesRequest(
-        resources=[
-            _build_resource_to_set(r)
-            for r in [listener, cluster, load_assignment]
-        ]
-    )
+    return build_set_resources_request([listener, cluster, load_assignment])
