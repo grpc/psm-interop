@@ -15,6 +15,10 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+import google.auth
+import google.auth.compute_engine
+import google.auth.credentials
+import google.auth.transport.requests
 from google.protobuf import json_format
 import google.protobuf.message
 import grpc
@@ -95,10 +99,76 @@ class GrpcApp:
         # Cache gRPC channels per port
         self.channels = dict()
 
-    def _make_channel(self, port) -> grpc.Channel:
+    def _make_openid_creds_token(self) -> str:
+        # https://googleapis.dev/python/google-auth/latest/reference/google.auth.credentials.html
+        creds: google.auth.credentials.Credentials
+        auth_request = google.auth.transport.requests.Request()
+
+        # Retrieve token using Google default authentication.
+        # https://googleapis.dev/python/google-auth/latest/reference/google.auth.html
+        creds, project = google.auth.default()
+        # Refresh is needed even to generate the initial token.
+        creds.refresh(auth_request)
+
+        if hasattr(creds, "id_token") and creds.id_token:
+            token = creds.id_token
+        else:
+            # If the default credentials don't provide OpenId token (id_token),
+            # fallback to Compute IDTokenCredentials.
+            #
+            # Note that using OpenId may be too specific to CloudRun, and
+            # especially setting target_audience. If needed for other purposes,
+            # we should rethink the approach.
+            creds = google.auth.compute_engine.IDTokenCredentials(
+                request=auth_request,
+                target_audience=f"https://{self.rpc_host}",
+                use_metadata_identity_endpoint=True,
+            )
+            creds.refresh(auth_request)
+            token = creds.token
+
+        expires_str = "N/A"
+        if creds.expiry:
+            expires_str = creds.expiry.isoformat(timespec="seconds")
+
+        logger.info(
+            "Made call credentials type=%s.%s, project=%s, host=%s, expiry=%s",
+            creds.__module__,
+            creds.__class__.__qualname__,
+            project,
+            self.rpc_host,
+            expires_str,
+        )
+
+        if not creds.valid:
+            raise ValueError("Retrieved call credentials are invalid.")
+
+        if not token:
+            raise ValueError("Retrieved call credentials token is empty.")
+
+        return token
+
+    def _create_new_channel(
+        self, target: str, *, secure_channel: bool = False
+    ) -> grpc.Channel:
+        if not secure_channel:
+            return grpc.insecure_channel(target)
+
+        # TODO: impl own CallCredentials that autorefreshes on expiry.
+        call_creds_token = self._make_openid_creds_token()
+        composite_credentials = grpc.composite_channel_credentials(
+            grpc.ssl_channel_credentials(),
+            grpc.access_token_call_credentials(call_creds_token),
+        )
+
+        return grpc.secure_channel(target, credentials=composite_credentials)
+
+    def _make_channel(self, port, secure_channel=False) -> grpc.Channel:
         if port not in self.channels:
-            target = f"{self.rpc_host}:{port}"
-            self.channels[port] = grpc.insecure_channel(target)
+            self.channels[port] = self._create_new_channel(
+                f"{self.rpc_host}:{port}", secure_channel=secure_channel
+            )
+
         return self.channels[port]
 
     def close(self):

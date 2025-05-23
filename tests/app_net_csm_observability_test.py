@@ -567,6 +567,13 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             metric_time_series = MetricTimeSeries.from_response(
                 metric, time_series[0]
             )
+            # Remove unexpected metric labels - b/414321500
+            metric_time_series.metric_labels.pop(
+                "top_level_controller_name", None
+            )
+            metric_time_series.metric_labels.pop(
+                "top_level_controller_type", None
+            )
             logger.info(
                 "Metric %s:\n%s", metric, metric_time_series.pretty_print()
             )

@@ -21,6 +21,7 @@ from framework.infrastructure import gcp
 @dataclasses.dataclass(frozen=True)
 class CloudRunService:
     service_name: str
+    revision: str
     uri: str
 
     @classmethod
@@ -30,6 +31,7 @@ class CloudRunService:
         return cls(
             service_name=name,
             uri=response["uri"],
+            revision=response["latestCreatedRevision"],
         )
 
 
