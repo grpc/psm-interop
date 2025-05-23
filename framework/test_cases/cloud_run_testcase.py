@@ -14,7 +14,7 @@
 import datetime as dt
 import logging
 
-from typing_extensions import override
+from typing_extensions import override, TypeAlias
 
 from framework import xds_flags
 from framework import xds_k8s_testcase
@@ -171,6 +171,7 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             network=self.network,
             region=self.region,
             gcp_api_manager=self.gcp_api_manager,
+            stats_port=self.client_port,
         )
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
