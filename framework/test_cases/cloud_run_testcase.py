@@ -14,7 +14,7 @@
 import datetime as dt
 import logging
 
-from typing_extensions import TypeAlias, override
+from typing_extensions import override
 
 from framework import xds_flags
 from framework import xds_k8s_testcase
