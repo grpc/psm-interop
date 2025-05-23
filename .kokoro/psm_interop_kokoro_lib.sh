@@ -179,7 +179,7 @@ psm::cloud_run::setup() {
 psm::cloud_run::get_tests() {
   TESTS=(
     "cloud_run_csm_inbound_test"
-    # TODO: Handle this test specially since it doesn't use Kubernetes. 
+    # TODO: Handle this test specially since it doesn't use Kubernetes.
     # Skip Kubernetes-specific setup like `gcloud container clusters get-credentials`.
     "cloud_run_csm_outbound_test"
   )
@@ -260,31 +260,31 @@ psm::dualstack::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
-# --- Fallback TESTS ------------------
+# --- PSM Light TESTS ------------------
 
 #######################################
-# Fallback Test Suite setup.
+# PSM Light Test Suite setup.
 #
-# This test does not need GKE so setting variable to skip some init
+# These tests do not need GKE so setting variable to skip some init
 #######################################
-psm::fallback::setup() {
+psm::light::setup() {
   NO_GKE_CLUSTER=1
   gcloud -q auth configure-docker "${DOCKER_REGISTRY}"
 }
 
 #######################################
-# Prepares the list of tests in Fallback test suite.
+# Prepares the list of tests in PSM Light test suite.
 # Globals:
-#   TESTS: Populated with tests in Fallback test suite.
+#   TESTS: Populated with tests in PSM Light test suite.
 #######################################
-psm::fallback::get_tests() {
+psm::light::get_tests() {
   TESTS=(
     "fallback_test"
   )
 }
 
 #######################################
-# Executes Fallback test case
+# Executes PSM Light test suite
 # Globals:
 #   PSM_TEST_FLAGS: The array with flags for the test
 #   GRPC_LANGUAGE: The name of gRPC languages under test
@@ -294,11 +294,11 @@ psm::fallback::get_tests() {
 #   Writes the output of test execution to stdout, stderr
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
-psm::fallback::run_test() {
+psm::light::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
   PSM_TEST_FLAGS+=(
-    "--flagfile=config/common-fallback.cfg"
+    "--flagfile=config/common-light.cfg"
   )
 
   psm::run::finalize_test_flags "${test_name}"
@@ -403,7 +403,7 @@ psm::csm::run_test() {
 #   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
 #     in the source repo.
 # Arguments:
-#   Test suite name, one of (csm, dualstack, fallback, lb, security, url_map)
+#   Test suite name, one of (csm, dualstack, light, lb, security, url_map)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
@@ -418,7 +418,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | fallback | lb | security | url_map | cloud_run)
+    csm | dualstack | light | lb | security | url_map | cloud_run)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
