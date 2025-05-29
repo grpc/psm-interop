@@ -556,9 +556,9 @@ class XdsKubernetesBaseTestCase(
             0,
             msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
         )
-        self.assertMoreEqual(
-            len(lb_stats.rpcs_by_peer),
+        self.assertLessEqual(
             num_expected_servers,
+            len(lb_stats.rpcs_by_peer),
             msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected at least {num_expected_servers} servers")
 
     def assertRpcsEventuallyGoToGivenServers(
