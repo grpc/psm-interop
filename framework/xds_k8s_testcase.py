@@ -517,6 +517,50 @@ class XdsKubernetesBaseTestCase(
             ),
         )
 
+    def assertRpcsEventuallyReachMinServers(
+      self,
+      test_client: XdsTestClient,
+      num_expected_servers: int,
+      num_rpcs: int = 100,
+      *,
+      retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+      retry_wait: dt.timedelta = dt.timedelta(seconds=1),
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to at least"
+                f" {num_expected_servers} server(s)"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self._assertRpcsEventuallyReachMinServers,
+            test_client,
+            num_expected_servers,
+            num_rpcs,
+        )
+    
+    def _assertRpcsEventuallyReachMinServers(
+        self,
+        test_client: XdsTestClient,
+        num_expected_servers: int,
+        num_rpcs: int,
+    ):
+        lb_stats = self.getClientRpcStats(test_client, num_rpcs)
+        failed = int(lb_stats.num_failures)
+        self.assertLessEqual(
+            failed,
+            0,
+            msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
+        )
+        self.assertMoreEqual(
+            len(lb_stats.rpcs_by_peer),
+            num_expected_servers,
+            msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected at least {num_expected_servers} servers")
+
     def assertRpcsEventuallyGoToGivenServers(
         self,
         test_client: XdsTestClient,
