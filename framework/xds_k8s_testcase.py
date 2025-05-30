@@ -542,7 +542,7 @@ class XdsKubernetesBaseTestCase(
             num_expected_servers,
             num_rpcs,
         )
-    
+
     def _assertRpcsEventuallyReachMinServers(
         self,
         test_client: XdsTestClient,
@@ -559,7 +559,8 @@ class XdsKubernetesBaseTestCase(
         self.assertLessEqual(
             num_expected_servers,
             len(lb_stats.rpcs_by_peer),
-            msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected at least {num_expected_servers} servers")
+            msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected"
+                f" at least {num_expected_servers} servers"
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
