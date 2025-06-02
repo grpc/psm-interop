@@ -491,6 +491,8 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
+        stats = diff_stats.stats_per_method[method]
+
         # 1. Verify there are completed RPCs of the given method with
         #    the expected_status.
         self.assertGreater(
@@ -505,7 +507,6 @@ class XdsKubernetesBaseTestCase(
 
         # 2. Verify the completed RPCs of the given method has no statuses
         #    other than the expected_status,
-        stats = diff_stats.stats_per_method[method]
         for found_status_int, count in stats.result.items():
             found_status = helpers_grpc.status_from_int(found_status_int)
             if found_status != expected_status and count > stray_rpc_limit:
