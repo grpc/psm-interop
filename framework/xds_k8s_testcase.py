@@ -491,7 +491,19 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
-        # 1. Verify the completed RPCs of the given method has no statuses
+        # 1. Verify there are completed RPCs of the given method with
+        #    the expected_status.
+        self.assertGreater(
+            stats.result[expected_status_int],
+            0,
+            msg=(
+                "Expected non-zero completed RPCs with status"
+                f" {expected_status_fmt} for method {method}."
+                f"\nDiff stats:\n{diff_stats_fmt}"
+            ),
+        )
+
+        # 2. Verify the completed RPCs of the given method has no statuses
         #    other than the expected_status,
         stats = diff_stats.stats_per_method[method]
         for found_status_int, count in stats.result.items():
@@ -504,18 +516,6 @@ class XdsKubernetesBaseTestCase(
                     f" for method {method}."
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
-
-        # 2. Verify there are completed RPCs of the given method with
-        #    the expected_status.
-        self.assertGreater(
-            stats.result[expected_status_int],
-            0,
-            msg=(
-                "Expected non-zero completed RPCs with status"
-                f" {expected_status_fmt} for method {method}."
-                f"\nDiff stats:\n{diff_stats_fmt}"
-            ),
-        )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
