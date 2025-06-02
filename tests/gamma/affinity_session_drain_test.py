@@ -129,9 +129,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
                 retry_timeout=TRAFFIC_PIN_TIMEOUT,
                 retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
-            logger.info(
-                "Confirmed at least two servers received traffic"
-            )
+            logger.info("Confirmed at least two servers received traffic")
 
         with self.subTest("05_retrieve_cookie"):
             result = self.assertSsaCookieAssigned(test_client, test_servers)

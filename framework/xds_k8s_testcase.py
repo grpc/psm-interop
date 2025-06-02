@@ -518,13 +518,13 @@ class XdsKubernetesBaseTestCase(
         )
 
     def assertRpcsEventuallyReachMinServers(
-      self,
-      test_client: XdsTestClient,
-      num_expected_servers: int,
-      num_rpcs: int = 100,
-      *,
-      retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
-      retry_wait: dt.timedelta = dt.timedelta(seconds=1),
+        self,
+        test_client: XdsTestClient,
+        num_expected_servers: int,
+        num_rpcs: int = 100,
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=1),
     ) -> None:
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
@@ -560,7 +560,7 @@ class XdsKubernetesBaseTestCase(
             num_expected_servers,
             len(lb_stats.rpcs_by_peer),
             msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected"
-                f" at least {num_expected_servers} servers"
+            f" at least {num_expected_servers} servers",
         )
 
     def assertRpcsEventuallyGoToGivenServers(
