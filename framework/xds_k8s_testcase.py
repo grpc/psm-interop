@@ -561,6 +561,7 @@ class XdsKubernetesBaseTestCase(
             len(lb_stats.rpcs_by_peer),
             msg=f"Rpc went to {lb_stats.rpcs_by_peer} servers expected"
                 f" at least {num_expected_servers} servers"
+        )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
