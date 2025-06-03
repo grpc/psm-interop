@@ -125,7 +125,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
             self.assertRpcsEventuallyReachMinServers(
                 test_client,
                 num_expected_servers=2,
-                num_rpcs=120,  # Nice and even.
+                num_rpcs=120,
                 retry_timeout=TRAFFIC_PIN_TIMEOUT,
                 retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
