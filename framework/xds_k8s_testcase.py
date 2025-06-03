@@ -521,8 +521,8 @@ class XdsKubernetesBaseTestCase(
         self,
         test_client: XdsTestClient,
         num_expected_servers: int,
-        num_rpcs: int = 100,
         *,
+        num_rpcs: int = 100,
         retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
         retry_wait: dt.timedelta = dt.timedelta(seconds=1),
     ) -> None:
