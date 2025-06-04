@@ -504,7 +504,7 @@ class XdsKubernetesBaseTestCase(
                 f"\nDiff stats:\n{diff_stats_fmt}"
             ),
         )
-        
+
         # 2. Verify the completed RPCs of the given method has no statuses
         #    other than the expected_status,
         for found_status_int, count in stats.result.items():
