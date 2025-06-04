@@ -548,7 +548,7 @@ class XdsKubernetesBaseTestCase(
                 self.assertGreaterEqual(
                     len(lb_stats.rpcs_by_peer),
                     num_expected_servers,
-                    msg=f"Rpc went to {len(lb_stats.rpcs_by_peer)} servers expected"
+                    msg=f"RPCs went to {len(lb_stats.rpcs_by_peer)} server(s), expected"
                     f" at least {num_expected_servers} servers",
                 )
 
