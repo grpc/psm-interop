@@ -491,21 +491,9 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
-        # 1. Verify the completed RPCs of the given method has no statuses
-        #    other than the expected_status,
         stats = diff_stats.stats_per_method[method]
-        for found_status_int, count in stats.result.items():
-            found_status = helpers_grpc.status_from_int(found_status_int)
-            if found_status != expected_status and count > stray_rpc_limit:
-                self.fail(
-                    f"Expected only status {expected_status_fmt},"
-                    " but found status"
-                    f" {helpers_grpc.status_pretty(found_status)}"
-                    f" for method {method}."
-                    f"\nDiff stats:\n{diff_stats_fmt}"
-                )
 
-        # 2. Verify there are completed RPCs of the given method with
+        # 1. Verify there are completed RPCs of the given method with
         #    the expected_status.
         self.assertGreater(
             stats.result[expected_status_int],
@@ -516,6 +504,19 @@ class XdsKubernetesBaseTestCase(
                 f"\nDiff stats:\n{diff_stats_fmt}"
             ),
         )
+
+        # 2. Verify the completed RPCs of the given method has no statuses
+        #    other than the expected_status,
+        for found_status_int, count in stats.result.items():
+            found_status = helpers_grpc.status_from_int(found_status_int)
+            if found_status != expected_status and count > stray_rpc_limit:
+                self.fail(
+                    f"Expected only status {expected_status_fmt},"
+                    " but found status"
+                    f" {helpers_grpc.status_pretty(found_status)}"
+                    f" for method {method}."
+                    f"\nDiff stats:\n{diff_stats_fmt}"
+                )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
