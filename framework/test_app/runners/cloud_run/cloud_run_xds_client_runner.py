@@ -124,11 +124,11 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     def deploy_service(
         self,
+        *,
         service_name: str,
         image_name: str,
         mesh_name: str,
         server_target: str,
-        *,
         stats_port: int,
     ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
