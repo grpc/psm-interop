@@ -491,9 +491,22 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
-        # 1. Verify the completed RPCs of the given method has no statuses
-        #    other than the expected_status,
         stats = diff_stats.stats_per_method[method]
+
+        # 1. Verify there are completed RPCs of the given method with
+        #    the expected_status.
+        self.assertGreater(
+            stats.result[expected_status_int],
+            0,
+            msg=(
+                "Expected non-zero completed RPCs with status"
+                f" {expected_status_fmt} for method {method}."
+                f"\nDiff stats:\n{diff_stats_fmt}"
+            ),
+        )
+
+        # 2. Verify the completed RPCs of the given method has no statuses
+        #    other than the expected_status,
         for found_status_int, count in stats.result.items():
             found_status = helpers_grpc.status_from_int(found_status_int)
             if found_status != expected_status and count > stray_rpc_limit:
@@ -505,17 +518,40 @@ class XdsKubernetesBaseTestCase(
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
 
-        # 2. Verify there are completed RPCs of the given method with
-        #    the expected_status.
-        self.assertGreater(
-            stats.result[expected_status_int],
-            0,
-            msg=(
-                "Expected non-zero completed RPCs with status"
-                f" {expected_status_fmt} for method {method}."
-                f"\nDiff stats:\n{diff_stats_fmt}"
+    def assertRpcsEventuallyReachMinServers(
+        self,
+        test_client: XdsTestClient,
+        num_expected_servers: int,
+        *,
+        num_rpcs: int = 100,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to at least"
+                f" {num_expected_servers} server(s)"
+                f" before timeout {retry_timeout} (h:mm:ss)"
             ),
         )
+        for attempt in retryer:
+            with attempt:
+                lb_stats = self.getClientRpcStats(test_client, num_rpcs)
+                failed = int(lb_stats.num_failures)
+                self.assertLessEqual(
+                    failed,
+                    0,
+                    msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
+                )
+                self.assertGreaterEqual(
+                    len(lb_stats.rpcs_by_peer),
+                    num_expected_servers,
+                    msg=f"RPCs went to {len(lb_stats.rpcs_by_peer)} server(s), expected"
+                    f" at least {num_expected_servers} servers",
+                )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
