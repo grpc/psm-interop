@@ -693,7 +693,7 @@ class ComputeV1(
             params = {"project": self.project, resource_type: resource_name}
             if region:
                 params["region"] = region
-            self._execute(collection.delete(**params))
+            self._execute(collection.delete(**params), region=region)
             return True
         except googleapiclient.errors.HttpError as error:
             if error.resp and error.resp.status == 404:

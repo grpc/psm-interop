@@ -28,7 +28,7 @@ from absl import flags
 from absl.testing import absltest
 from google.protobuf import json_format
 import grpc
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, override
 
 from framework import xds_flags
 from framework import xds_k8s_flags
@@ -71,6 +71,7 @@ KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 TestConfig: TypeAlias = skips.TestConfig
 Lang: TypeAlias = skips.Lang
+_CsdsClient = grpc_csds.CsdsClient
 _LoadBalancerStatsResponse = grpc_testing.LoadBalancerStatsResponse
 _LoadBalancerAccumulatedStatsResponse = (
     grpc_testing.LoadBalancerAccumulatedStatsResponse
@@ -122,6 +123,8 @@ class TdPropagationRetryableError(Exception):
 class XdsKubernetesBaseTestCase(
     base_testcase.BaseTestCase
 ):  # pylint: disable=too-many-public-methods
+    # TODO: Create a new class that parses all the flags except kubernetes and
+    # have this class extend the new class adding kubernetes specific resources.
     lang_spec: TestConfig
     client_namespace: str
     client_runner: KubernetesClientRunner
@@ -242,6 +245,7 @@ class XdsKubernetesBaseTestCase(
         cls.k8s_api_manager = k8s.KubernetesApiManager(
             xds_k8s_flags.KUBE_CONTEXT.value
         )
+
         if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
             cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
                 xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value
@@ -389,9 +393,15 @@ class XdsKubernetesBaseTestCase(
         self.td.backend_service_remove_neg_backends(neg_name, neg_zones)
 
     def assertSuccessfulRpcs(
-        self, test_client: XdsTestClient, num_rpcs: int = 100
+        self,
+        test_client: XdsTestClient,
+        num_rpcs: int = 100,
+        *,
+        secure_channel: bool = False,
     ) -> _LoadBalancerStatsResponse:
-        lb_stats = self.getClientRpcStats(test_client, num_rpcs)
+        lb_stats = self.getClientRpcStats(
+            test_client, num_rpcs, secure_channel=secure_channel
+        )
         self.assertAllBackendsReceivedRpcs(lb_stats)
         failed = int(lb_stats.num_failures)
         self.assertLessEqual(
@@ -481,9 +491,22 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
-        # 1. Verify the completed RPCs of the given method has no statuses
-        #    other than the expected_status,
         stats = diff_stats.stats_per_method[method]
+
+        # 1. Verify there are completed RPCs of the given method with
+        #    the expected_status.
+        self.assertGreater(
+            stats.result[expected_status_int],
+            0,
+            msg=(
+                "Expected non-zero completed RPCs with status"
+                f" {expected_status_fmt} for method {method}."
+                f"\nDiff stats:\n{diff_stats_fmt}"
+            ),
+        )
+
+        # 2. Verify the completed RPCs of the given method has no statuses
+        #    other than the expected_status,
         for found_status_int, count in stats.result.items():
             found_status = helpers_grpc.status_from_int(found_status_int)
             if found_status != expected_status and count > stray_rpc_limit:
@@ -495,17 +518,40 @@ class XdsKubernetesBaseTestCase(
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
 
-        # 2. Verify there are completed RPCs of the given method with
-        #    the expected_status.
-        self.assertGreater(
-            stats.result[expected_status_int],
-            0,
-            msg=(
-                "Expected non-zero completed RPCs with status"
-                f" {expected_status_fmt} for method {method}."
-                f"\nDiff stats:\n{diff_stats_fmt}"
+    def assertRpcsEventuallyReachMinServers(
+        self,
+        test_client: XdsTestClient,
+        num_expected_servers: int,
+        *,
+        num_rpcs: int = 100,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to at least"
+                f" {num_expected_servers} server(s)"
+                f" before timeout {retry_timeout} (h:mm:ss)"
             ),
         )
+        for attempt in retryer:
+            with attempt:
+                lb_stats = self.getClientRpcStats(test_client, num_rpcs)
+                failed = int(lb_stats.num_failures)
+                self.assertLessEqual(
+                    failed,
+                    0,
+                    msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
+                )
+                self.assertGreaterEqual(
+                    len(lb_stats.rpcs_by_peer),
+                    num_expected_servers,
+                    msg=f"RPCs went to {len(lb_stats.rpcs_by_peer)} server(s), expected"
+                    f" at least {num_expected_servers} servers",
+                )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
@@ -562,6 +608,29 @@ class XdsKubernetesBaseTestCase(
                 f"Unexpected server {server_hostname} received RPCs",
             )
 
+    def assertXdsConfigExistsWithRetry(
+        self,
+        test_client,
+        secure_channel=False,
+        *,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+    ):
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Could not find correct bootstrap config"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self.assertXdsConfigExists,
+            test_client,
+            secure_channel=secure_channel,
+        )
+
     def assertEDSConfigExists(self, config: ClientConfig):
         seen = set()
         want = frozenset(["endpoint_config"])
@@ -572,8 +641,13 @@ class XdsKubernetesBaseTestCase(
                 seen.add("endpoint_config")
         self.assertSameElements(want, seen)
 
-    def assertXdsConfigExists(self, test_client: XdsTestClient):
-        config = test_client.csds.fetch_client_status(log_level=logging.INFO)
+    def assertXdsConfigExists(
+        self, test_client: XdsTestClient, *, secure_channel: bool = False
+    ):
+        csds: _CsdsClient = (
+            test_client.secure_csds if secure_channel else test_client.csds
+        )
+        config = csds.fetch_client_status(log_level=logging.INFO)
         self.assertIsNotNone(config)
         seen = set()
         want = frozenset(
@@ -653,6 +727,43 @@ class XdsKubernetesBaseTestCase(
             )
             raise retry_error
 
+    def assertHealthyEndpointsCount(
+        self,
+        test_client: XdsTestClient,
+        expected_count: int,
+        *,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=3),
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+        log_level: int = logging.DEBUG,
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            error_note=(
+                f"Timeout waiting for test client {test_client.hostname} to"
+                f" report {expected_count} endpoint(s) in HEALTHY state."
+            ),
+        )
+        for attempt in retryer:
+            with attempt:
+                client_config = test_client.get_csds_parsed(log_level=log_level)
+                self.assertIsNotNone(
+                    client_config,
+                    "Error getting CSDS config dump"
+                    f" from client {test_client.hostname}",
+                )
+                # TODO(nice to have): parse and log all health statuses.
+                # https://github.com/envoyproxy/envoy/blob/b6df9719/api/envoy/config/core/v3/health_check.proto#L35
+                logger.info(
+                    "<< Found EDS endpoints: HEALTHY: %s, DRAINING: %s",
+                    client_config.endpoints,
+                    client_config.draining_endpoints,
+                )
+                self.assertLen(
+                    client_config.endpoints,
+                    expected_count,
+                )
+
     def assertDrainingEndpointsCount(
         self,
         test_client: XdsTestClient,
@@ -700,16 +811,19 @@ class XdsKubernetesBaseTestCase(
             msg=f"Expected all RPCs to fail: {failed} of {num_rpcs} failed",
         )
 
+    @override
     def getClientRpcStats(
         self,
         test_client: XdsTestClient,
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
+        secure_channel: bool = False,
     ) -> _LoadBalancerStatsResponse:
         lb_stats = test_client.get_load_balancer_stats(
             num_rpcs=num_rpcs,
             metadata_keys=metadata_keys,
+            secure_channel=secure_channel,
         )
         logger.info(
             "[%s] << Received LoadBalancerStatsResponse:\n%s",
