@@ -162,10 +162,11 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         super().setUpClass()
 
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer
+        self, test_server: XdsTestServer, enable_spiffe: bool = False
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
+            project_number=self.project_number,
             service_name=self.client_namespace,
             image_name=self.client_image,
             network=self.network,
@@ -175,6 +176,7 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
+            enable_spiffe=enable_spiffe,
         )
         return test_client
 

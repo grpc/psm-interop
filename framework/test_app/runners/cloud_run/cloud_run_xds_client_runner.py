@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CLIENT_TEST_PORT: Final[int] = 50052  # This is the stats service port.
 DEFAULT_PORT: Final[int] = 443
+WORKLOAD_IDENTITY_POOL: Final[str] = "psm-interop-cloudrun-wip-cr"
+NAMESPACE: Final[str] = "psm-interop-cloudrun-wip-cr"
+MANAGED_IDENTITY: Final[str] = "psm-interop-cloudrun-wip-cr-mwid"
 
 
 class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
@@ -35,12 +38,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     mesh_name: str
     server_target: str
 
+    gcp_iam: Optional[gcp.iam.IamV1] = None
     service: Optional[gcp.cloud_run.CloudRunService] = None
     current_revision: Optional[str] = None
 
     def __init__(
         self,
         project: str,
+        project_number: str,
         service_name: str,
         image_name: str,
         network: str,
@@ -56,6 +61,8 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             gcp_api_manager=gcp_api_manager,
         )
 
+        self.project_number = project_number
+        self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, project)
         self._initalize_cloud_run()
 
         # Mutable state associated with each run.
@@ -73,10 +80,13 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         *,
         server_target: str,
         mesh_name: str,
+        enable_spiffe: bool = False,
     ) -> client_app.XdsTestClient:
         """Deploys and manages the xDS Test Client on Cloud Run."""
         super().run()
 
+        if enable_spiffe:
+            self.add_attestation_policy(self.service_name)
         logger.info(
             "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
@@ -88,6 +98,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             image_name=self.image_name,
             mesh_name=mesh_name,
             server_target=server_target,
+            enable_spiffe=enable_spiffe,
         )
         self.current_revision = self.service.revision
         client = self._make_client_from_service(server_target, self.service)
@@ -119,6 +130,19 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             hostname=service_hostname,
         )
 
+    def add_attestation_policy(self, service_name: str):
+        body = {
+            "attestationRule": {
+                "googleCloudResource": f"//run.googleapis.com/projects/{self.project_number}/name/locations/{self.region}/services/{service_name}"
+            }
+        }
+        self.gcp_iam.add_attestation_rule(
+            WORKLOAD_IDENTITY_POOL,
+            NAMESPACE,
+            MANAGED_IDENTITY,
+            body,
+        )
+
     def deploy_service(
         self,
         service_name: str,
@@ -127,6 +151,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         server_target: str,
         *,
         test_port: int = DEFAULT_CLIENT_TEST_PORT,
+        enable_spiffe: bool = False,
     ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
@@ -172,6 +197,29 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             },
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
+        if enable_spiffe:
+            service_body["template"]["containers"][0]["env"].extend(
+                [
+                    # TODO: Remove this when environment variable is changed in JAVA.
+                    {
+                        "name": "GRPC_EXPERIMENTAL_SPIFFE_TRUST_BUNDLE_MAP",
+                        "value": "true",
+                    },
+                    {
+                        "name": "GRPC_EXPERIMENTAL_XDS_MTLS_SPIFFE",
+                        "value": "true",
+                    },
+                ]
+            )
+            service_body["template"]["workload_certificates"] = {
+                "enableWorkloadCertificate": "true"
+            }
+            service_body["template"][
+                "identity"
+            ] = f"//{WORKLOAD_IDENTITY_POOL}.global.{self.project_number}.workload.id.goog/ns/{NAMESPACE}/sa/{MANAGED_IDENTITY}"
+            service_body["template"]["vpc_access"] = {
+                "network_interfaces": {"network": "default-vpc"}
+            }
         self.cloud_run.create_service(service_name, service_body)
         return self.cloud_run.get_service(service_name)
 

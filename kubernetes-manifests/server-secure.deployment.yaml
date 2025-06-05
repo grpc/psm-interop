@@ -17,7 +17,11 @@ spec:
   template:
     metadata:
       annotations:
+        % if enable_spiffe:
+        security.cloud.google.com/managedWorkloadIdentityPool: "svc.id.goog"
+        % else:
         security.cloud.google.com/use-workload-certificates: ""
+        % endif
       labels:
         app: ${app_label}
         deployment_id: ${deployment_id}
@@ -56,10 +60,22 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
+            % if enable_spiffe:
+            ## TODO: Remove this when envinronment varibale is changed in JAVA.
+            - name: GRPC_EXPERIMENTAL_SPIFFE_TRUST_BUNDLE_MAP
+              value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_MTLS_SPIFFE
+              value: "true"
+            % endif
           volumeMounts:
             - mountPath: /tmp/grpc-xds/
               name: grpc-td-conf
               readOnly: true
+            % if enable_spiffe:
+            - mountPath: /var/run/secrets/workload-spiffe-credentials
+              name: fleet-spiffe-credentials
+              readOnly: true
+            % endif
           resources:
             limits:
               cpu: 800m
@@ -92,4 +108,12 @@ spec:
         - name: grpc-td-conf
           emptyDir:
             medium: Memory
+        % if enable_spiffe:
+        - name: fleet-spiffe-credentials
+          csi:
+            driver: podcertificate.gke.io
+            volumeAttributes:
+              signerName: spiffe.gke.io/fleet-svid
+              trustDomain: fleet-project/svc.id.goog
+        % endif
 ...
