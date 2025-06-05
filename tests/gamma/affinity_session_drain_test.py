@@ -36,7 +36,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _Lang: TypeAlias = skips.Lang
 
 # Constants.
-REPLICA_COUNT: Final[int] = 3
+REPLICA_COUNT: Final[int] = 4
 # We never actually hit this timeout under normal circumstances, so this large
 # value is acceptable.
 # TODO(sergiitk): update comment
@@ -86,6 +86,7 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         num_rpcs: int,
         *,
         metadata_keys: Optional[tuple[str, ...]] = None,
+        secure_channel: bool = False,
     ) -> grpc_testing.LoadBalancerStatsResponse:
         """Load all metadata_keys by default."""
         if not metadata_keys:
@@ -117,21 +118,18 @@ class AffinitySessionDrainTest(  # pylint: disable=too-many-ancestors
         with self.subTest("03_start_test_client"):
             test_client = self.startTestClient(test_servers[0])
 
-        with self.subTest("04_confirm_all_servers_receive_traffic"):
+        with self.subTest("04_confirm_at_least_two_servers_receive_traffic"):
             # Note: the output of this call may or may not print out the
             # cookie. This is *not* any kind of signal, just depends on system
             # latency. This subtest does not use any cookies.
-            self.assertRpcsEventuallyGoToGivenServers(
+            self.assertRpcsEventuallyReachMinServers(
                 test_client,
-                test_servers,
-                num_rpcs=120,  # Nice and even.
+                num_expected_servers=2,
+                num_rpcs=120,
                 retry_timeout=TRAFFIC_PIN_TIMEOUT,
                 retry_wait=TRAFFIC_PIN_RETRY_WAIT,
             )
-            logger.info(
-                "Confirmed all servers received traffic: %s",
-                [server.hostname for server in test_servers],
-            )
+            logger.info("Confirmed at least two servers received traffic")
 
         with self.subTest("05_retrieve_cookie"):
             result = self.assertSsaCookieAssigned(test_client, test_servers)

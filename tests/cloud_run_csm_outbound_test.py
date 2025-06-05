@@ -20,7 +20,6 @@ from typing_extensions import override
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.infrastructure import gcp
-from framework.test_app.runners.k8s import k8s_xds_client_runner
 from framework.test_cases import cloud_run_testcase
 
 logger = logging.getLogger(__name__)
@@ -29,11 +28,9 @@ logger = logging.getLogger(__name__)
 _Lang: TypeAlias = skips.Lang
 _XdsTestServer: TypeAlias = xds_k8s_testcase.XdsTestServer
 _XdsTestClient: TypeAlias = xds_k8s_testcase.XdsTestClient
-KubernetesClientRunner: TypeAlias = k8s_xds_client_runner.KubernetesClientRunner
-ClientDeploymentArgs: TypeAlias = k8s_xds_client_runner.ClientDeploymentArgs
 
 
-class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
+class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
@@ -45,19 +42,11 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
             return config.version_gte("v1.71.x")
         return False
 
-    @override
-    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super().initKubernetesClientRunner(
-            deployment_args=ClientDeploymentArgs(
-                is_trusted_xds_server_experimental=True,
-            )
-        )
-
-    def test_gke_to_cloud_run(self):
+    def test_cloud_run_to_cloud_run(self):
         with self.subTest("0_create_mesh"):
             self.td.create_mesh()
 
-        with self.subTest("1_start_cloud_run_test_server"):
+        with self.subTest("1_start_cloudrun_test_server"):
             test_server: _XdsTestServer = self.startTestServers()[0]
 
         with self.subTest("2_create_serverless_neg"):
@@ -65,7 +54,7 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
 
         with self.subTest("3_create_backend_service"):
             self.td.create_backend_service(
-                protocol=gcp.compute.ComputeV1.BackendServiceProtocol.HTTP2,
+                protocol=gcp.compute.ComputeV1.BackendServiceProtocol.HTTP2
             )
 
         with self.subTest("4_add_server_backends_to_backend_service"):
@@ -76,17 +65,18 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
                 self.server_xds_host, self.server_xds_port
             )
 
-        with self.subTest("6_start_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(
-                test_server,
-                config_mesh=self.td.mesh.name,
+        with self.subTest("6_start_cloudrun_test_client"):
+            test_client: _XdsTestClient = self.startCloudRunTestClient(
+                test_server
             )
 
         with self.subTest("7_test_client_xds_config_exists"):
-            self.assertXdsConfigExists(test_client)
+            self.assertXdsConfigExistsWithRetry(
+                test_client, secure_channel=True
+            )
 
         with self.subTest("8_test_server_received_rpcs_from_test_client"):
-            self.assertSuccessfulRpcs(test_client)
+            self.assertSuccessfulRpcs(test_client, secure_channel=True)
 
 
 if __name__ == "__main__":
