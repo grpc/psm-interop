@@ -112,7 +112,7 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
                 if server_socket_remote_port == client_socket_local_port:
                     return server_socket
             elif server_socket.remote == client_socket.local:
-                    return server_socket
+                return server_socket
         return None
 
     @staticmethod

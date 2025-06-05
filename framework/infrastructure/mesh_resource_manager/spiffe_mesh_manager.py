@@ -17,7 +17,6 @@ from typing import Optional
 from framework.infrastructure import gcp
 import framework.infrastructure.traffic_director as td_base
 
-
 # Network Services
 GrpcRoute = gcp.network_services.GrpcRoute
 Mesh = gcp.network_services.Mesh

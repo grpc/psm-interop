@@ -133,7 +133,11 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     def add_attestation_policy(self, service_name: str):
         body = {
             "attestationRule": {
-                "googleCloudResource": f"//run.googleapis.com/projects/{self.project_number}/name/locations/{self.region}/services/{service_name}"
+                "googleCloudResource": (
+                    f"//run.googleapis.com/projects/"
+                    f"{self.project_number}/name/locations/{self.region}/services"
+                    f"/{service_name}"
+                )
             }
         }
         self.gcp_iam.add_attestation_rule(
@@ -214,9 +218,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             service_body["template"]["workload_certificates"] = {
                 "enableWorkloadCertificate": "true"
             }
-            service_body["template"][
-                "identity"
-            ] = f"//{WORKLOAD_IDENTITY_POOL}.global.{self.project_number}.workload.id.goog/ns/{NAMESPACE}/sa/{MANAGED_IDENTITY}"
+            service_body["template"]["identity"] = (
+                f"//{WORKLOAD_IDENTITY_POOL}.global.{self.project_number}."
+                f"workload.id.goog/ns/{NAMESPACE}/sa/{MANAGED_IDENTITY}"
+            )
             service_body["template"]["vpc_access"] = {
                 "network_interfaces": {"network": "default-vpc"}
             }

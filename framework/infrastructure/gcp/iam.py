@@ -239,15 +239,19 @@ class IamV1(gcp.api.GcpProjectApiResource):
         Returns full resource name of the managed identity.
 
         The resource name of the service account in the following format:
-        projects/{PROJECT_ID}/locations/global/workloadIdentityPools/{WORKLOAD_IDENTITY_POOL}/namespaces/{NAMESPACE}/managedIdentities/{MANAGED_IDENTITY}.
+        projects/{PROJECT_ID}/locations/global/workloadIdentityPools/
+        {WORKLOAD_IDENTITY_POOL}/namespaces/{NAMESPACE}/managedIdentities/{MANAGED_IDENTITY}.
 
 
         Args:
-            workloadIdentityPool: The WORKLOAD_IDENTITY_POOL value
-            namespace: The NAMESPACE value
-            managedIdentity: The MANAGED_IDENTITY value
+            workloadIdentityPool: The WORKLOAD_IDENTITY_POOL value namespace:
+            The NAMESPACE value managedIdentity: The MANAGED_IDENTITY value
         """
-        return f"projects/{self.project}/locations/global/workloadIdentityPools/{workloadIdentityPool}/namespaces/{namespace}/managedIdentities/{managedIdentity}"
+        return (
+            f"projects/{self.project}/locations/global/workloadIdentityPools/"
+            f"{workloadIdentityPool}/namespaces/{namespace}/managedIdentities/"
+            f"{managedIdentity}"
+        )
 
     def get_service_account(self, account: str) -> ServiceAccount:
         resource_name = self.service_account_resource_name(account)
