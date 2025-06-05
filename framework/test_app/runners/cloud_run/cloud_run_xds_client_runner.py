@@ -25,7 +25,6 @@ from framework.test_app.runners.cloud_run import cloud_run_base_runner
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CLIENT_TEST_PORT: Final[int] = 50052  # This is the stats service port.
 DEFAULT_PORT: Final[int] = 443
 
 
@@ -34,6 +33,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     mesh_name: str
     server_target: str
+    stats_port: int
 
     service: Optional[gcp.cloud_run.CloudRunService] = None
     current_revision: Optional[str] = None
@@ -46,6 +46,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         network: str,
         region: str,
         gcp_api_manager: gcp.api.GcpApiManager,
+        stats_port: int = 8079,
     ):
         super().__init__(
             project,
@@ -55,6 +56,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             region=region,
             gcp_api_manager=gcp_api_manager,
         )
+        self.stats_port = stats_port
 
         self._initalize_cloud_run()
 
@@ -88,6 +90,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             image_name=self.image_name,
             mesh_name=mesh_name,
             server_target=server_target,
+            stats_port=self.stats_port,
         )
         self.current_revision = self.service.revision
         client = self._make_client_from_service(server_target, self.service)
@@ -121,12 +124,12 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     def deploy_service(
         self,
+        *,
         service_name: str,
         image_name: str,
         mesh_name: str,
         server_target: str,
-        *,
-        test_port: int = DEFAULT_CLIENT_TEST_PORT,
+        stats_port: int,
     ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
@@ -141,13 +144,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                         "image": image_name,
                         "ports": [
                             {
-                                "containerPort": test_port,
+                                "containerPort": stats_port,
                                 "name": "h2c",
                             }
                         ],
                         "args": [
                             f"--server={server_target}",
                             "--secure_mode=true",
+                            f"--stats_port={stats_port}",
                         ],
                         "env": [
                             {
