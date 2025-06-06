@@ -260,6 +260,45 @@ psm::dualstack::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- SPIFFE TESTS ------------------
+
+#######################################
+# SPIFFE Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::spiffe::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_INTEROP_FLEET
+}
+
+#######################################
+# Prepares the list of tests in PSM SPIFFE test suite.
+# Globals:
+#   TESTS: Populated with tests in PSM spiffe test suite.
+#######################################
+psm::spiffe::get_tests() {
+  TESTS=(
+    "spiffe_cloud_run_csm_inbound_test")
+}
+
+#######################################
+# Executes SPIFFE test case
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::spiffe::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- PSM Light TESTS ------------------
 
 #######################################
@@ -834,6 +873,10 @@ activate_gke_cluster() {
       ;;
     GKE_CLUSTER_DUALSTACK)
       GKE_CLUSTER_NAME="psm-interop-dualstack"
+      GKE_CLUSTER_ZONE="us-central1-a"
+      ;;
+    GKE_CLUSTER_PSM_INTEROP_FLEET)
+      GKE_CLUSTER_NAME="psm-interop-fleet-cluster"
       GKE_CLUSTER_ZONE="us-central1-a"
       ;;
     *)

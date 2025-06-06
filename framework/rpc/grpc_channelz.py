@@ -96,10 +96,22 @@ class ChannelzServiceClient(framework.rpc.grpc.GrpcClientHelper):
 
     @staticmethod
     def find_server_socket_matching_client(
-        server_sockets: Iterator[Socket], client_socket: Socket
+        server_sockets: Iterator[Socket],
+        client_socket: Socket,
+        *,
+        match_only_port: bool = False,
     ) -> Socket:
         for server_socket in server_sockets:
-            if server_socket.remote == client_socket.local:
+            if match_only_port:
+                server_socket_remote_port = (
+                    server_socket.remote.tcpip_address.port
+                )
+                client_socket_local_port = (
+                    client_socket.local.tcpip_address.port
+                )
+                if server_socket_remote_port == client_socket_local_port:
+                    return server_socket
+            elif server_socket.remote == client_socket.local:
                 return server_socket
         return None
 

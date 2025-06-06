@@ -38,6 +38,7 @@ class ServerDeploymentArgs:
     csm_workload_name: str = ""
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
+    enable_spiffe: bool = False
 
     def as_dict(self):
         return {
@@ -49,6 +50,7 @@ class ServerDeploymentArgs:
             "csm_workload_name": self.csm_workload_name,
             "csm_canonical_service_name": self.csm_canonical_service_name,
             "enable_dualstack": self.enable_dualstack,
+            "enable_spiffe": self.enable_spiffe,
         }
 
 
@@ -229,6 +231,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
                 neg_name=self.gcp_neg_name,
                 test_port=test_port,
                 enable_dualstack=self.deployment_args.enable_dualstack,
+                enable_spiffe=self.deployment_args.enable_spiffe,
             )
         self._wait_service_neg_status_annotation(self.service_name, test_port)
 

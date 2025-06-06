@@ -168,7 +168,10 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         return self.channelz.list_server_sockets(server)
 
     def get_server_socket_matching_client(
-        self, client_socket: grpc_channelz.Socket
+        self,
+        client_socket: grpc_channelz.Socket,
+        *,
+        match_only_port: bool = False,
     ):
         """Find test server socket that matches given test client socket.
 
@@ -184,9 +187,10 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
             self.hostname,
             client_local,
         )
-
         server_socket = self.channelz.find_server_socket_matching_client(
-            self.get_test_server_sockets(), client_socket
+            self.get_test_server_sockets(),
+            client_socket,
+            match_only_port=match_only_port,
         )
         if not server_socket:
             raise self.NotFound(
