@@ -19,7 +19,7 @@
     "${name}": {
       "xds_servers": [
         {
-          "server_uri": "{server}",
+          "server_uri": "${server}",
           "channel_creds": [
             {
               "type": "insecure"
@@ -33,7 +33,7 @@
     }${','*bool(i < len(authorities) - 1)}
 % endfor
   },
-% if server_template
+% if server_template:
   "server_listener_resource_name_template": "${server_template}",
 % endif
   "node": {

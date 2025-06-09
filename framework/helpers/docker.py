@@ -98,6 +98,7 @@ def Configure(config, image: str, name: str):
     config["detach"] = True
     config["environment"] = {
         "GRPC_EXPERIMENTAL_XDS_FALLBACK": "true",
+        "GRPC_EXPERIMENTAL_XDS_FEDERATION": "true",
         "GRPC_TRACE": "xds_client",
         "GRPC_VERBOSITY": "info",
         "GRPC_XDS_BOOTSTRAP": "/grpc/bootstrap.json",
@@ -308,7 +309,7 @@ class Server(GrpcProcess):
         self,
         manager: ProcessManager,
         port: int,
-        management_port: int,
+        maintenance_port: int,
         name: str,
         image: str,
     ):
@@ -318,12 +319,13 @@ class Server(GrpcProcess):
             image=image,
             name=name,
             command=[
-                f"--management_port={management_port}",
-                "--secure-mode=true"
+                f"--port={port}",
+                f"--maintenance_port={maintenance_port}",
+                "--secure_mode=true"
             ],
             ports={
-                str(port): port,
-                str(management_port): management_port
+                port: port,
+                maintenance_port: maintenance_port
             },
             volumes={
                 manager.bootstrap.mount_dir: {
@@ -332,11 +334,11 @@ class Server(GrpcProcess):
                 }
             },
         )
-        self.management_port = management_port
+        self.maintenance_port = maintenance_port
 
     def management_channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
-            self.grpc_channel = grpc.insecure_channel(f"localhost:{self.management_port}")
+            self.grpc_channel = grpc.insecure_channel(f"localhost:{self.maintenance_port}")
         return self.grpc_channel
 
     def expect_channel_status(

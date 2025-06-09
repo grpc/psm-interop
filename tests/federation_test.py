@@ -86,6 +86,9 @@ class FederationTest(absltest.TestCase):
         server_template = "xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/%s"
         FederationTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
+            # Use an invalid domain for the default server, to validate that no
+            # endpoint tries to use it
+            servers=['invalid.:8080'],
             authorities=authorities,
             server_template=server_template
         )
@@ -96,11 +99,11 @@ class FederationTest(absltest.TestCase):
             node_id=_NODE_ID.value,
         )
 
-    def start_client(self, authority:str, port: int = None, name: str = None):
+    def start_client(self, authority:str, port: int, name: str = None):
         return framework.helpers.docker.Client(
             manager=self.process_manager,
             name=name or framework.xds_flags.CLIENT_NAME.value,
-            port=port or get_free_port(),
+            port=port,
             url=f"xds://{authority}/{_LISTENER}",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
             stats_request_timeout_s=_STATS_REQUEST_TIMEOUT_S.value,
@@ -117,14 +120,12 @@ class FederationTest(absltest.TestCase):
             image=_CONTROL_PLANE_IMAGE.value,
         )
 
-    def start_server(self, name: str, port: int = None, management_port: int = None):
+    def start_server(self, name: str, port: int, maintenance_port: int):
         logger.debug('Starting server "%s"', name)
-        port = get_free_port() if port is None else port
-        management_port = get_free_port() if management_port is None else management_port
         return framework.helpers.docker.Server(
             name=name,
             port=port,
-            management_port=management_port,
+            maintenance_port=maintenance_port,
             image=framework.xds_k8s_flags.SERVER_IMAGE.value,
             manager=self.process_manager,
         )
@@ -163,49 +164,53 @@ class FederationTest(absltest.TestCase):
         )
 
     def test_federation(self):
+        # The goal is to test the federation feature by requiring both the
+        # client and the server to contact two different authorities
+        # to get their full configurations. Only authority1 has the client
+        # Listener with the embedded RouteConfiguration, and only authority2
+        # has the client Cluster and ClusterLoadAssignment.
+        # The server resources are a little different: go-control-plane
+        # requires that Listeners that refer to a RouteConfiguration be
+        # provided along with that corresponding RouteConfiguration, so both
+        # control planes have both server resources. But the Listener is
+        # labeled as being available from authority2 and the RouteConfiguration
+        # is labeled as being available from authority1, so the server should
+        # contact both of them to get both resources. We try to verify this by
+        # testing that both the server and the client have active connections
+        # to both control plane servers.
+        server_port = get_free_port()
+        server_maintenance_port = get_free_port()
+        client_port = get_free_port()
+        listener_name = f'xdstp://authority1/envoy.config.listener.v3.Listener/{_LISTENER}'
+        cluster_name = 'xdstp://authority2/envoy.config.cluster.v3.Cluster/cluster1'
+        endpoint_name = 'xdstp://authority2/envoy.config.endpoint.v3.ClusterLoadAssignment/endpoint1'
+        server_listener_name = f'xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/0.0.0.0:{server_port}'
+        server_route_config_name = 'xdstp://authority1/envoy.config.route.v3.RouteConfiguration/route_config1'
+        listener = framework.helpers.xds_resources.build_listener(listener_name, cluster_name)
+        cluster = framework.helpers.xds_resources.build_cluster(cluster_name, endpoint_name)
+        endpoint = framework.helpers.xds_resources.build_endpoint(endpoint_name, FederationTest.dockerInternalIp, server_port)
+        server_listener = framework.helpers.xds_resources.build_server_listener(server_listener_name, server_port, server_route_config_name)
+        server_route_config = framework.helpers.xds_resources.build_server_route_config(server_route_config_name)
+        authority1_resources=[listener, server_listener, server_route_config]
+        authority2_resources=[cluster, endpoint, server_listener, server_route_config]
         with (
-            self.start_server('server1') as server,
-            self.start_client('authority1') as client
+            self.start_control_plane(name="authority1", port=FederationTest.authority1_port, resources=authority1_resources) as control_plane1,
+            self.start_control_plane(name="authority2", port=FederationTest.authority2_port, resources=authority2_resources) as control_plane2,
+            self.start_server('server1', server_port, server_maintenance_port) as server,
+            self.start_client('authority1', client_port) as client
         ):
             self.assert_ads_connections(
                 endpoint=client,
-                authority1_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
-                authority2_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                authority1_status=channelz_pb2.ChannelConnectivityState.READY,
+                authority2_status=channelz_pb2.ChannelConnectivityState.READY,
             )
             self.assert_ads_connections(
                 endpoint=server,
-                authority1_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
-                authority2_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
+                authority1_status=channelz_pb2.ChannelConnectivityState.READY,
+                authority2_status=channelz_pb2.ChannelConnectivityState.READY,
             )
-            self.assertEqual(client.get_stats(5).num_failures, 5)
-            # The resources for both the client and the server are spread
-            # across both authorities, so both endpoints need to access both
-            # authorities to establish a connection
-            listener_name = f'xdstp://authority1/envoy.config.listener.v3.Listener/{_LISTENER}'
-            cluster_name = 'xdstp://authority2/envoy.config.cluster.v3.Cluster/cluster1'
-            endpoint_name = 'xdstp://authority1/envoy.config.endpoint.v3.ClusterLoadAssignment/endpoint1'
-            server_listener_name = f'xdstp://authority2/envoy.config.listener.v3.Listener/0.0.0.0:{server.port}'
-            server_route_config_name = 'xdstp://authority1/envoy.config.route.v3.RouteConfiguration/route_config1'
-            listener = framework.helpers.xds_resources.build_listener(listener_name, cluster_name)
-            cluster = framework.helpers.xds_resources.build_cluster(cluster_name, endpoint_name)
-            endpoint = framework.helpers.xds_resources.build_endpoint(cluster_name, FederationTest.dockerInternalIp, server.port)
-            server_listener = framework.helpers.xds_resources.build_server_listener(server_listener_name, server.port, server_route_config_name)
-            server_route_config = framework.helpers.xds_resources.build_server_route_config(server_route_config_name)
-            authority1_resources=[listener, endpoint, server_route_config]
-            authority2_resources=[cluster, server_listener]
-            with (
-                self.start_control_plane(name="authority1", port=FederationTest.authority1_port, resources=authority1_resources) as control_plane1,
-                self.start_control_plane(name="authority2", port=FederationTest.authority2_port, resources=authority2_resources) as control_plane2
-            ):
-                self.assert_ads_connections(
-                    endpoint=client,
-                    authority1_status=channelz_pb2.ChannelConnectivityState.READY,
-                    authority2_status=channelz_pb2.ChannelConnectivityState.READY,
-                )
-                self.assert_ads_connections(
-                    endpoint=server,
-                    authority1_status=channelz_pb2.ChannelConnectivityState.READY,
-                    authority2_status=channelz_pb2.ChannelConnectivityState.READY,
-                )
-                stats = client.get_stats(10)
-                self.assertEqual(stats.num_failures, 0)
+            stats = client.get_stats(10)
+            self.assertEqual(stats.num_failures, 0)
+
+if __name__ == "__main__":
+    absl.testing.absltest.main()

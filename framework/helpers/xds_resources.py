@@ -140,20 +140,18 @@ def build_server_listener(server_listener_name: str, port: int, route_config_nam
                 port_value=port
             )
         ),
-        default_filter_chain=listener_components_pb2.FilterChain(
-            filter_chain_match=listener_components_pb2.FilterChainMatch(
-                source_type=listener_components_pb2.FilterChainMatch.ConnectionSourceType.SAME_IP_OR_LOOPBACK
-            ),
+        filter_chains=[listener_components_pb2.FilterChain(
             filters=[
                 listener_components_pb2.Filter(
+                    name='default_filter',
                     typed_config=_wrap_in_any(hcm)
                 )
             ]
-        )
+        )]
     )
 
 def build_server_route_config(route_config_name: str) -> route_pb2.RouteConfiguration:
-    return route_pb2.RouteConfiguration(
+    route = route_pb2.RouteConfiguration(
         name=route_config_name,
         virtual_hosts=[
             route_components_pb2.VirtualHost(
@@ -167,6 +165,7 @@ def build_server_route_config(route_config_name: str) -> route_pb2.RouteConfigur
             )
         ]
     )
+    return route
 
 
 def _build_resource_to_set(resource: message.Message):
