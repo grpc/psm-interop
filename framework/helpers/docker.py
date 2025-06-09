@@ -50,7 +50,11 @@ def _make_working_dir(base: pathlib.Path) -> str:
 
 
 class Bootstrap:
-    def __init__(self, base: pathlib.Path, **kwargs):
+    def __init__(
+        self,
+        base: pathlib.Path,
+        **kwargs
+    ):
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
@@ -94,7 +98,7 @@ def Configure(config, image: str, name: str):
     config["detach"] = True
     config["environment"] = {
         "GRPC_EXPERIMENTAL_XDS_FALLBACK": "true",
-        # "GRPC_EXPERIMENTAL_XDS_FEDERATION": "true",
+        "GRPC_EXPERIMENTAL_XDS_FEDERATION": "true",
         "GRPC_TRACE": "xds_client",
         "GRPC_VERBOSITY": "info",
         "GRPC_XDS_BOOTSTRAP": "/grpc/bootstrap.json",
@@ -317,9 +321,12 @@ class Server(GrpcProcess):
             command=[
                 f"--port={port}",
                 f"--maintenance_port={maintenance_port}",
-                "--secure_mode=true",
+                "--secure_mode=true"
             ],
-            ports={port: port, maintenance_port: maintenance_port},
+            ports={
+                port: port,
+                maintenance_port: maintenance_port
+            },
             volumes={
                 manager.bootstrap.mount_dir: {
                     "bind": "/grpc",
@@ -331,9 +338,7 @@ class Server(GrpcProcess):
 
     def management_channel(self) -> grpc.Channel:
         if self.grpc_channel is None:
-            self.grpc_channel = grpc.insecure_channel(
-                f"localhost:{self.maintenance_port}"
-            )
+            self.grpc_channel = grpc.insecure_channel(f"localhost:{self.maintenance_port}")
         return self.grpc_channel
 
     def expect_channel_status(
