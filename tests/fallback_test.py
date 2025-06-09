@@ -22,14 +22,13 @@ from grpc_channelz.v1 import channelz_pb2
 from typing_extensions import TypeAlias, override
 
 import framework
+from framework.helpers import skips
 import framework.helpers.docker
 import framework.helpers.logs
 import framework.helpers.retryers
 import framework.helpers.xds_resources
 import framework.xds_flags
 import framework.xds_k8s_testcase
-
-from framework.helpers import skips
 
 _Lang = skips.Lang
 
@@ -92,13 +91,12 @@ class FallbackTest(absltest.TestCase):
         )
         FallbackTest.primary_port = get_free_port()
         FallbackTest.fallback_port = get_free_port()
-        servers=[
+        servers = [
             f"{_HOST_NAME.value}:{FallbackTest.primary_port}",
             f"{_HOST_NAME.value}:{FallbackTest.fallback_port}",
         ]
         FallbackTest.bootstrap = framework.helpers.docker.Bootstrap(
-            framework.helpers.logs.log_dir_mkdir("bootstrap"),
-            servers=servers
+            framework.helpers.logs.log_dir_mkdir("bootstrap"), servers=servers
         )
 
     def setUp(self):

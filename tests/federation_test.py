@@ -18,6 +18,7 @@ import socket
 import absl
 from absl import flags
 from absl.testing import absltest
+from google.protobuf import message
 from grpc_channelz.v1 import channelz_pb2
 
 import framework
@@ -27,7 +28,6 @@ import framework.helpers.retryers
 import framework.helpers.xds_resources
 import framework.xds_flags
 import framework.xds_k8s_testcase
-from google.protobuf import message
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +59,12 @@ _LISTENER = "listener_0"
 
 absl.flags.adopt_module_key_flags(framework.xds_k8s_testcase)
 
+
 def get_free_port() -> int:
-      with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-          sock.bind(("localhost", 0))
-          return sock.getsockname()[1]
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("localhost", 0))
+        return sock.getsockname()[1]
+
 
 class FederationTest(absltest.TestCase):
     bootstrap: framework.helpers.docker.Bootstrap = None
@@ -80,17 +82,17 @@ class FederationTest(absltest.TestCase):
         FederationTest.authority1_port = get_free_port()
         FederationTest.authority2_port = get_free_port()
         authorities = {
-          "authority1": f"{_HOST_NAME.value}:{FederationTest.authority1_port}",
-          "authority2": f"{_HOST_NAME.value}:{FederationTest.authority2_port}"
+            "authority1": f"{_HOST_NAME.value}:{FederationTest.authority1_port}",
+            "authority2": f"{_HOST_NAME.value}:{FederationTest.authority2_port}",
         }
         server_template = "xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/%s"
         FederationTest.bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
             # Use an invalid domain for the default server, to validate that no
             # endpoint tries to use it
-            servers=['invalid.:8080'],
+            servers=["invalid.:8080"],
             authorities=authorities,
-            server_template=server_template
+            server_template=server_template,
         )
 
     def setUp(self):
@@ -99,7 +101,7 @@ class FederationTest(absltest.TestCase):
             node_id=_NODE_ID.value,
         )
 
-    def start_client(self, authority:str, port: int, name: str = None):
+    def start_client(self, authority: str, port: int, name: str = None):
         return framework.helpers.docker.Client(
             manager=self.process_manager,
             name=name or framework.xds_flags.CLIENT_NAME.value,
@@ -116,7 +118,9 @@ class FederationTest(absltest.TestCase):
             self.process_manager,
             name=name,
             port=port,
-            initial_resources=framework.helpers.xds_resources.build_set_resources_request(resources),
+            initial_resources=framework.helpers.xds_resources.build_set_resources_request(
+                resources
+            ),
             image=_CONTROL_PLANE_IMAGE.value,
         )
 
@@ -132,7 +136,8 @@ class FederationTest(absltest.TestCase):
 
     def assert_ads_connections(
         self,
-        endpoint: framework.helpers.docker.Client | framework.helpers.docker.Server,
+        endpoint: framework.helpers.docker.Client
+        | framework.helpers.docker.Server,
         authority1_status: channelz_pb2.ChannelConnectivityState,
         authority2_status: channelz_pb2.ChannelConnectivityState,
     ):
@@ -181,23 +186,54 @@ class FederationTest(absltest.TestCase):
         server_port = get_free_port()
         server_maintenance_port = get_free_port()
         client_port = get_free_port()
-        listener_name = f'xdstp://authority1/envoy.config.listener.v3.Listener/{_LISTENER}'
-        cluster_name = 'xdstp://authority2/envoy.config.cluster.v3.Cluster/cluster1'
-        endpoint_name = 'xdstp://authority2/envoy.config.endpoint.v3.ClusterLoadAssignment/endpoint1'
-        server_listener_name = f'xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/0.0.0.0:{server_port}'
-        server_route_config_name = 'xdstp://authority1/envoy.config.route.v3.RouteConfiguration/route_config1'
-        listener = framework.helpers.xds_resources.build_listener(listener_name, cluster_name)
-        cluster = framework.helpers.xds_resources.build_cluster(cluster_name, endpoint_name)
-        endpoint = framework.helpers.xds_resources.build_endpoint(endpoint_name, FederationTest.dockerInternalIp, server_port)
-        server_listener = framework.helpers.xds_resources.build_server_listener(server_listener_name, server_port, server_route_config_name)
-        server_route_config = framework.helpers.xds_resources.build_server_route_config(server_route_config_name)
-        authority1_resources=[listener, server_listener, server_route_config]
-        authority2_resources=[cluster, endpoint, server_listener, server_route_config]
+        listener_name = (
+            f"xdstp://authority1/envoy.config.listener.v3.Listener/{_LISTENER}"
+        )
+        cluster_name = (
+            "xdstp://authority2/envoy.config.cluster.v3.Cluster/cluster1"
+        )
+        endpoint_name = "xdstp://authority2/envoy.config.endpoint.v3.ClusterLoadAssignment/endpoint1"
+        server_listener_name = f"xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/0.0.0.0:{server_port}"
+        server_route_config_name = "xdstp://authority1/envoy.config.route.v3.RouteConfiguration/route_config1"
+        listener = framework.helpers.xds_resources.build_listener(
+            listener_name, cluster_name
+        )
+        cluster = framework.helpers.xds_resources.build_cluster(
+            cluster_name, endpoint_name
+        )
+        endpoint = framework.helpers.xds_resources.build_endpoint(
+            endpoint_name, FederationTest.dockerInternalIp, server_port
+        )
+        server_listener = framework.helpers.xds_resources.build_server_listener(
+            server_listener_name, server_port, server_route_config_name
+        )
+        server_route_config = (
+            framework.helpers.xds_resources.build_server_route_config(
+                server_route_config_name
+            )
+        )
+        authority1_resources = [listener, server_listener, server_route_config]
+        authority2_resources = [
+            cluster,
+            endpoint,
+            server_listener,
+            server_route_config,
+        ]
         with (
-            self.start_control_plane(name="authority1", port=FederationTest.authority1_port, resources=authority1_resources) as control_plane1,
-            self.start_control_plane(name="authority2", port=FederationTest.authority2_port, resources=authority2_resources) as control_plane2,
-            self.start_server('server1', server_port, server_maintenance_port) as server,
-            self.start_client('authority1', client_port) as client
+            self.start_control_plane(
+                name="authority1",
+                port=FederationTest.authority1_port,
+                resources=authority1_resources,
+            ) as control_plane1,
+            self.start_control_plane(
+                name="authority2",
+                port=FederationTest.authority2_port,
+                resources=authority2_resources,
+            ) as control_plane2,
+            self.start_server(
+                "server1", server_port, server_maintenance_port
+            ) as server,
+            self.start_client("authority1", client_port) as client,
         ):
             self.assert_ads_connections(
                 endpoint=client,
@@ -211,6 +247,7 @@ class FederationTest(absltest.TestCase):
             )
             stats = client.get_stats(10)
             self.assertEqual(stats.num_failures, 0)
+
 
 if __name__ == "__main__":
     absl.testing.absltest.main()
