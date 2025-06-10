@@ -1295,7 +1295,10 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         mode: SecurityMode,
         test_client: XdsTestClient,
         test_server: XdsTestServer,
+        # A secure channel is used to call services exposed by the Cloud Run client.
         secure_channel: bool = False,
+        # Set to true when we want to match only port, not IP, when socket
+        # addresses may differ (e.g., in VPC Routing).
         match_only_port: bool = False,
     ):
         client_socket, server_socket = self.getConnectedSockets(

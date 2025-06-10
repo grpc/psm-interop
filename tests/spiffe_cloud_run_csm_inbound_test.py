@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 _Lang: TypeAlias = skips.Lang
 _XdsTestServer: TypeAlias = xds_k8s_testcase.XdsTestServer
 _XdsTestClient: TypeAlias = xds_k8s_testcase.XdsTestClient
-_SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
 KubernetesServerRunner: TypeAlias = k8s_xds_server_runner.KubernetesServerRunner
 ServerDeploymentArgs: TypeAlias = k8s_xds_server_runner.ServerDeploymentArgs
 
@@ -119,7 +118,7 @@ class SpiffeCloudRunCsmInboundTest(
 
         with self.subTest("9_assert_successful_rpcs"):
             self.assertTestAppSecurityWithRetry(
-                _SecurityMode.MTLS,
+                self.SecurityMode.MTLS,
                 test_client,
                 test_server,
                 secure_channel=True,
