@@ -274,11 +274,12 @@ psm::spiffe::setup() {
 #######################################
 # Prepares the list of tests in PSM SPIFFE test suite.
 # Globals:
-#   TESTS: Populated with tests in PSM spiffe test suite.
+#   TESTS: Populated with tests in PSM SPIFFE test suite.
 #######################################
 psm::spiffe::get_tests() {
   TESTS=(
-    "spiffe_cloud_run_csm_inbound_test")
+    "spiffe_cloud_run_csm_inbound_test"
+  )
 }
 
 #######################################
@@ -294,7 +295,6 @@ psm::spiffe::get_tests() {
 #######################################
 psm::spiffe::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
-
   psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
