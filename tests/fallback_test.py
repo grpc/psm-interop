@@ -76,14 +76,12 @@ class FallbackTest(absltest.TestCase):
     fallback_port: int
 
     @staticmethod
-    @override
-    def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang == _Lang.NODE:
-            return False
-        return True
-
-    @staticmethod
     def setUpClass():
+        client_lang = skips.get_lang(framework.xds_k8s_flags.CLIENT_IMAGE.value)
+        if client_lang == _Lang.NODE:
+            logger.info("Skipping fallback test with Node.js")
+            raise absltest.SkipTest(f"Unsupported language: Node.js")
+
         # Use the host IP for when we need to use IP address and not the host
         # name, such as EDS resources
         FallbackTest.dockerInternalIp = socket.gethostbyname(
