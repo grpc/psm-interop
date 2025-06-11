@@ -280,6 +280,7 @@ psm::light::setup() {
 psm::light::get_tests() {
   TESTS=(
     "fallback_test"
+    "federation_test"
   )
 }
 
