@@ -298,6 +298,10 @@ psm::spiffe::run_test() {
     PSM_TEST_FLAGS+=(
     "--flagfile=config/common-cloudrun.cfg"
   )
+    # Only java supports extra checks for certificate matches (via channelz socket info).
+  if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
+    PSM_TEST_FLAGS+=("--nocheck_local_certs")
+  fi
   psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }

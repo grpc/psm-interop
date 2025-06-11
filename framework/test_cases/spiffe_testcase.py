@@ -17,12 +17,12 @@ import logging
 from typing_extensions import Final
 
 from framework import xds_k8s_testcase
-from framework.test_cases import cloud_run_testcase
 from framework.helpers import retryers
 from framework.infrastructure import traffic_director
 import framework.infrastructure.mesh_resource_manager.spiffe_mesh_manager as td_spiffe
 from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_cases import cloud_run_testcase
 
 logger = logging.getLogger(__name__)
 
