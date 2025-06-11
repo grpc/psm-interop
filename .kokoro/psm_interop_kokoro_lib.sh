@@ -457,7 +457,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | light | lb | security | url_map | cloud_run)
+    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
