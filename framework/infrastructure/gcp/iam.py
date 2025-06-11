@@ -312,7 +312,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
         resource_name = self.managed_identity_resource_name(
             workloadIdentityPool, namespace, managedIdentity
         )
-        logger.debug(
+        logger.info(
             "Adding Attestation Rule to Managed Identity %s:\n%s",
             resource_name,
             self.resource_pretty_format(body),
