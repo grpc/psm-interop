@@ -1295,9 +1295,17 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         mode: SecurityMode,
         test_client: XdsTestClient,
         test_server: XdsTestServer,
+        # A secure channel is used to call services exposed by the Cloud Run client.
+        secure_channel: bool = False,
+        # Set to true when we want to match only port, not IP, when socket
+        # addresses may differ (e.g., in VPC Routing).
+        match_only_port: bool = False,
     ):
         client_socket, server_socket = self.getConnectedSockets(
-            test_client, test_server
+            test_client,
+            test_server,
+            secure_channel=secure_channel,
+            match_only_port=match_only_port,
         )
         server_security: grpc_channelz.Security = server_socket.security
         client_security: grpc_channelz.Security = client_socket.security
@@ -1503,10 +1511,18 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 
     @staticmethod
     def getConnectedSockets(
-        test_client: XdsTestClient, test_server: XdsTestServer
+        test_client: XdsTestClient,
+        test_server: XdsTestServer,
+        *,
+        secure_channel: bool = False,
+        match_only_port: bool = False,
     ) -> Tuple[grpc_channelz.Socket, grpc_channelz.Socket]:
-        client_sock = test_client.get_active_server_channel_socket()
-        server_sock = test_server.get_server_socket_matching_client(client_sock)
+        client_sock = test_client.get_active_server_channel_socket(
+            secure_channel=secure_channel
+        )
+        server_sock = test_server.get_server_socket_matching_client(
+            client_sock, match_only_port=match_only_port
+        )
         return client_sock, server_sock
 
     @classmethod
