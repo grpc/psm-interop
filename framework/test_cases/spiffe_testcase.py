@@ -20,6 +20,7 @@ from framework import xds_k8s_testcase
 from framework.helpers import retryers
 from framework.infrastructure import traffic_director
 import framework.infrastructure.mesh_resource_manager.spiffe_mesh_manager as td_spiffe
+from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_app import client_app
 from framework.test_app import server_app
 from framework.test_cases import cloud_run_testcase
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Type aliases
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 SpiffeMeshManager = td_spiffe.SpiffeMeshManager
+KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 _SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
@@ -40,6 +42,7 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
     cloud_run_testcase.CloudRunXdsTestCase
 ):
     td: SpiffeMeshManager
+    server_runner: KubernetesServerRunner
 
     @classmethod
     def setUpClass(cls):
@@ -87,3 +90,25 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             secure_channel=secure_channel,
             match_only_port=match_only_port,
         )
+
+    def cleanup(self):
+        self.td.cleanup(force=self.force_cleanup)
+        self.client_runner.cleanup(force=self.force_cleanup)
+        self.server_runner.cleanup(force=self.force_cleanup)
+
+    def tearDown(self):
+        logger.info("----- TestMethod %s teardown -----", self.test_name)
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=dt.timedelta(seconds=10),
+            attempts=3,
+            log_level=logging.INFO,
+        )
+        try:
+            retryer(self.cleanup)
+        except retryers.RetryError:
+            logger.exception("Got error during teardown")
+        finally:
+            logger.info("----- Test client/server logs -----")
+            self.client_runner.logs_explorer_run_history_links()
+            self.server_runner.logs_explorer_run_history_links()
