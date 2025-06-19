@@ -296,7 +296,7 @@ psm::spiffe::get_tests() {
 psm::spiffe::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
     PSM_TEST_FLAGS+=(
-    "--flagfile=config/common-cloudrun.cfg"
+    "--flagfile=config/common-spiffe.cfg"
   )
     # Only java supports extra checks for certificate matches (via channelz socket info).
   if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
@@ -449,7 +449,7 @@ psm::csm::run_test() {
 #   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
 #     in the source repo.
 # Arguments:
-#   Test suite name, one of (csm, dualstack, light, lb, security, url_map)
+#   Test suite name, one of (csm, dualstack, light, lb, security, url_map, cloud_run, spiffe)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################

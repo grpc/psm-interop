@@ -31,14 +31,12 @@ _XdsTestClient: TypeAlias = xds_k8s_testcase.XdsTestClient
 KubernetesServerRunner: TypeAlias = k8s_xds_server_runner.KubernetesServerRunner
 ServerDeploymentArgs: TypeAlias = k8s_xds_server_runner.ServerDeploymentArgs
 
-CR_WORKLOAD_IDENTITY_POOL: Final[str] = "psm-interop-cloudrun-wip-cr"
-NAMESPACE_NAME: Final[str] = "psm-interop-cloudrun-wip-cr"
-MANAGED_IDENTITY_ID: Final[str] = "psm-interop-cloudrun-wip-cr-mwid"
-
 
 class SpiffeCloudRunCsmInboundTest(
     spiffe_testcase.SpiffeMtlsXdsKubernetesCloudRunTestCase
 ):
+    """Test case for SPIFFE mTLS from GKE to Cloud Run with CSM enabled."""
+
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
@@ -68,9 +66,9 @@ class SpiffeCloudRunCsmInboundTest(
                             f"{self.client_namespace}/sa/{self.client_name}"
                         ),
                         (
-                            f"spiffe://{CR_WORKLOAD_IDENTITY_POOL}.global."
+                            f"spiffe://{self.workload_identity_pool}.global."
                             f"{self.project_number}.workload.id.goog/ns/"
-                            f"{NAMESPACE_NAME}/sa/{MANAGED_IDENTITY_ID}"
+                            f"{self.mwid_namespace_name}/sa/{self.managed_identity_id}"
                         ),
                     ],
                 },
@@ -124,8 +122,8 @@ class SpiffeCloudRunCsmInboundTest(
                 secure_channel=True,
                 match_only_port=True,
             )
-            logger.info("[SUCCESS] mTLS security mode confirmed.")
             self.assertSuccessfulRpcs(test_client, secure_channel=True)
+            logger.info("[SUCCESS] mTLS security mode confirmed.")
 
 
 if __name__ == "__main__":

@@ -233,7 +233,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
         return f"projects/{self.project}/serviceAccounts/{account}"
 
     def managed_identity_resource_name(
-        self, workloadIdentityPool, namespace, managedIdentity
+        self, workload_identity_pool, namespace, managed_identity
     ) -> str:
         """
         Returns full resource name of the managed identity.
@@ -244,13 +244,14 @@ class IamV1(gcp.api.GcpProjectApiResource):
 
 
         Args:
-            workloadIdentityPool: The WORKLOAD_IDENTITY_POOL value namespace:
-            The NAMESPACE value managedIdentity: The MANAGED_IDENTITY value
+            workload_identity_pool: The WORKLOAD_IDENTITY_POOL value
+            namespace: The NAMESPACE value
+            managed_identity: The MANAGED_IDENTITY value
         """
         return (
             f"projects/{self.project}/locations/global/workloadIdentityPools/"
-            f"{workloadIdentityPool}/namespaces/{namespace}/managedIdentities/"
-            f"{managedIdentity}"
+            f"{workload_identity_pool}/namespaces/{namespace}/managedIdentities/"
+            f"{managed_identity}"
         )
 
     def get_service_account(self, account: str) -> ServiceAccount:
@@ -303,14 +304,14 @@ class IamV1(gcp.api.GcpProjectApiResource):
             raise
 
     def add_attestation_rule(
-        self, workloadIdentityPool, namespace, managedIdentity, body
+        self, workload_identity_pool, namespace, managed_identity, body
     ):
         """Adds attesttion rule to a google cloud resource.
 
         https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
         """
         resource_name = self.managed_identity_resource_name(
-            workloadIdentityPool, namespace, managedIdentity
+            workload_identity_pool, namespace, managed_identity
         )
         logger.info(
             "Adding Attestation Rule to Managed Identity %s:\n%s",

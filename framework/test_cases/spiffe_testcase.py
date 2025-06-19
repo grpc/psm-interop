@@ -16,12 +16,14 @@ import logging
 
 from typing_extensions import Final
 
+from framework import xds_flags
 from framework import xds_k8s_testcase
 from framework.helpers import retryers
 from framework.infrastructure import traffic_director
 import framework.infrastructure.mesh_resource_manager.spiffe_mesh_manager as td_spiffe
 from framework.test_app import client_app
 from framework.test_app import server_app
+from framework.test_app.runners.cloud_run import cloud_run_xds_client_runner
 from framework.test_app.runners.k8s import k8s_xds_server_runner
 from framework.test_cases import cloud_run_testcase
 
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 TrafficDirectorManager = traffic_director.TrafficDirectorManager
 SpiffeMeshManager = td_spiffe.SpiffeMeshManager
 KubernetesServerRunner = k8s_xds_server_runner.KubernetesServerRunner
+CloudRunClientRunner = cloud_run_xds_client_runner.CloudRunClientRunner
 XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 _SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
@@ -41,6 +44,10 @@ TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
 class SpiffeMtlsXdsKubernetesCloudRunTestCase(
     cloud_run_testcase.CloudRunXdsTestCase
 ):
+    cr_workload_identity_pool: str
+    mwid_namespace_name: str
+    managed_identity_id: str
+
     td: SpiffeMeshManager
     server_runner: KubernetesServerRunner
 
@@ -50,6 +57,9 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
         the class.
         """
         super().setUpClass()
+        cls.workload_identity_pool = xds_flags.WORKLOAD_IDENTITY.value
+        cls.mwid_namespace_name = xds_flags.MANAGED_IDENTITY_NAMESPACE.value
+        cls.managed_identity_id = xds_flags.MANAGED_IDENTITY.value
 
     def initTrafficDirectorManager(self) -> TrafficDirectorManager:
         return SpiffeMeshManager(
@@ -61,6 +71,29 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             compute_api_version=self.compute_api_version,
             enable_dualstack=self.enable_dualstack,
         )
+
+    def startCloudRunTestClient(
+        self, test_server: XdsTestServer, *, enable_spiffe: bool = False
+    ) -> XdsTestClient:
+        self.client_runner = CloudRunClientRunner(
+            project=self.project,
+            project_number=self.project_number,
+            service_name=self.client_namespace,
+            image_name=self.client_image,
+            network=self.network,
+            region=self.region,
+            gcp_api_manager=self.gcp_api_manager,
+            stats_port=self.client_port,
+            workload_identity_pool=self.workload_identity_pool,
+            namespace=self.mwid_namespace_name,
+            managed_identity=self.managed_identity_id,
+        )
+        test_client = self.client_runner.run(
+            server_target=test_server.xds_uri,
+            mesh_name=self.td.mesh.url,
+            enable_spiffe=enable_spiffe,
+        )
+        return test_client
 
     def assertTestAppSecurityWithRetry(
         self,
@@ -90,25 +123,3 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             secure_channel=secure_channel,
             match_only_port=match_only_port,
         )
-
-    def cleanup(self):
-        self.td.cleanup(force=self.force_cleanup)
-        self.client_runner.cleanup(force=self.force_cleanup)
-        self.server_runner.cleanup(force=self.force_cleanup)
-
-    def tearDown(self):
-        logger.info("----- TestMethod %s teardown -----", self.test_name)
-
-        retryer = retryers.constant_retryer(
-            wait_fixed=dt.timedelta(seconds=10),
-            attempts=3,
-            log_level=logging.INFO,
-        )
-        try:
-            retryer(self.cleanup)
-        except retryers.RetryError:
-            logger.exception("Got error during teardown")
-        finally:
-            logger.info("----- Test client/server logs -----")
-            self.client_runner.logs_explorer_run_history_links()
-            self.server_runner.logs_explorer_run_history_links()

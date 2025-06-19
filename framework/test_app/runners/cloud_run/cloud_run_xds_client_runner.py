@@ -26,9 +26,6 @@ from framework.test_app.runners.cloud_run import cloud_run_base_runner
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT: Final[int] = 443
-WORKLOAD_IDENTITY_POOL: Final[str] = "psm-interop-cloudrun-wip-cr"
-NAMESPACE: Final[str] = "psm-interop-cloudrun-wip-cr"
-MANAGED_IDENTITY: Final[str] = "psm-interop-cloudrun-wip-cr-mwid"
 
 
 class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
@@ -37,6 +34,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     mesh_name: str
     server_target: str
     stats_port: int
+    network: str
 
     gcp_iam: Optional[gcp.iam.IamV1] = None
     service: Optional[gcp.cloud_run.CloudRunService] = None
@@ -52,6 +50,9 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         region: str,
         gcp_api_manager: gcp.api.GcpApiManager,
         stats_port: int = 8079,
+        workload_identity_pool: Optional[str] = None,
+        namespace: Optional[str] = None,
+        managed_identity: Optional[str] = None,
     ):
         super().__init__(
             project,
@@ -62,6 +63,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             gcp_api_manager=gcp_api_manager,
         )
         self.stats_port = stats_port
+        self.network = network
+        self.workload_identity_pool = workload_identity_pool
+        self.namespace = namespace
+        self.managed_identity = managed_identity
 
         self.project_number = project_number
         self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, project)
@@ -102,6 +107,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             server_target=server_target,
             enable_spiffe=enable_spiffe,
             stats_port=self.stats_port,
+            network=self.network,
         )
         self.current_revision = self.service.revision
         client = self._make_client_from_service(server_target, self.service)
@@ -144,9 +150,9 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             }
         }
         self.gcp_iam.add_attestation_rule(
-            WORKLOAD_IDENTITY_POOL,
-            NAMESPACE,
-            MANAGED_IDENTITY,
+            self.workload_identity_pool,
+            self.namespace,
+            self.managed_identity,
             body,
         )
 
@@ -159,13 +165,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         server_target: str,
         enable_spiffe: bool = False,
         stats_port: int,
+        network: str,
     ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
         if not image_name:
             raise ValueError("image_name cannot be empty or None")
 
-        service_body = {
+        service_body: dict[str, any] = {
             "launch_stage": "alpha",
             "template": {
                 "containers": [
@@ -206,28 +213,32 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
         if enable_spiffe:
-            service_body["template"]["containers"][0]["env"].extend(
-                [
-                    # TODO: Remove this when environment variable is changed in JAVA.
-                    {
-                        "name": "GRPC_EXPERIMENTAL_SPIFFE_TRUST_BUNDLE_MAP",
-                        "value": "true",
-                    },
-                    {
-                        "name": "GRPC_EXPERIMENTAL_XDS_MTLS_SPIFFE",
-                        "value": "true",
-                    },
-                ]
-            )
-            service_body["template"]["workload_certificates"] = {
-                "enableWorkloadCertificate": "true"
-            }
-            service_body["template"]["identity"] = (
-                f"//{WORKLOAD_IDENTITY_POOL}.global.{self.project_number}."
-                f"workload.id.goog/ns/{NAMESPACE}/sa/{MANAGED_IDENTITY}"
-            )
-            service_body["template"]["vpc_access"] = {
-                "network_interfaces": {"network": "default-vpc"}
+            service_body["template"]["containers"][0]["env"] += [
+                # TODO: Remove this when environment variable is changed in JAVA.
+                {
+                    "name": "GRPC_EXPERIMENTAL_SPIFFE_TRUST_BUNDLE_MAP",
+                    "value": "true",
+                },
+                {
+                    "name": "GRPC_EXPERIMENTAL_XDS_MTLS_SPIFFE",
+                    "value": "true",
+                },
+            ]
+            if not self.workload_identity_pool:
+                raise ValueError(
+                    "workload_identity_pool cannot be empty or None"
+                )
+            if not self.namespace:
+                raise ValueError("namespace cannot be empty or None")
+            if not self.managed_identity:
+                raise ValueError("managed_identity cannot be empty or None")
+            service_body["template"] |= {
+                "workload_certificates": {"enableWorkloadCertificate": "true"},
+                "identity": (
+                    f"//{self.workload_identity_pool}.global.{self.project_number}."
+                    f"workload.id.goog/ns/{self.namespace}/sa/{self.managed_identity}"
+                ),
+                "vpc_access": {"network_interfaces": {"network": network}},
             }
         self.cloud_run.create_service(service_name, service_body)
         return self.cloud_run.get_service(service_name)
