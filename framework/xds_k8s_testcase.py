@@ -1307,8 +1307,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             test_client: The test client instance.
             test_server: The test server instance.
             secure_channel: Use a secure channel to call services exposed by the Cloud Run client.
-            match_only_port: Whether to match only the port (not the IP address) in socket comparisons
-            useful in cases like VPC routing where IPs may differ.
+            match_only_port: Whether to match only the port (not the IP address)
+            in socket comparisons useful in cases like VPC routing where IPs may differ.
         """
 
         client_socket, server_socket = self.getConnectedSockets(
