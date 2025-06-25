@@ -235,9 +235,13 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
                 raise retry_err from cause
             raise
 
-    def get_active_server_channel_socket(self) -> _ChannelzSocket:
+    def get_active_server_channel_socket(
+        self,
+        *,
+        secure_channel: bool = False,
+    ) -> _ChannelzSocket:
         channel = self.find_server_channel_with_state(
-            _ChannelzChannelState.READY
+            _ChannelzChannelState.READY, secure_channel=secure_channel
         )
         # Get the first subchannel of the active channel to the server.
         logger.debug(
@@ -249,17 +253,18 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             channel.ref.channel_id,
             channel.subchannel_ref[0].name,
         )
+        channelz: _ChannelzServiceClient = (
+            self.secure_channelz if secure_channel else self.channelz
+        )
         subchannel, *subchannels = list(
-            self.channelz.list_channel_subchannels(channel)
+            channelz.list_channel_subchannels(channel)
         )
         if subchannels:
             logger.warning(
                 "[%s] Unexpected subchannels: %r", self.hostname, subchannels
             )
         # Get the first socket of the subchannel
-        socket, *sockets = list(
-            self.channelz.list_subchannels_sockets(subchannel)
-        )
+        socket, *sockets = list(channelz.list_subchannels_sockets(subchannel))
         if sockets:
             logger.warning(
                 "[%s] Unexpected sockets: %r", self.hostname, subchannels
@@ -407,6 +412,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         *,
         rpc_deadline: Optional[_timedelta] = None,
         check_subchannel=True,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         rpc_params = {}
         if rpc_deadline is not None:
@@ -415,7 +421,9 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         expected_state_name: str = _ChannelzChannelState.Name(expected_state)
         target: str = self.server_target
 
-        for channel in self.find_channels(target, **rpc_params):
+        for channel in self.find_channels(
+            target, **rpc_params, secure_channel=secure_channel
+        ):
             channel_state: _ChannelzChannelState = channel.data.state.state
             logger.info(
                 "[%s] Server channel: %s",
@@ -428,7 +436,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
                     # one subchannel in the requested state.
                     try:
                         subchannel = self.find_subchannel_with_state(
-                            channel, expected_state, **rpc_params
+                            channel,
+                            expected_state,
+                            secure_channel=secure_channel,
+                            **rpc_params,
                         )
                         logger.info(
                             "[%s] Found subchannel in state %s: %s",
@@ -453,14 +464,27 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
     def find_channels(
         self,
         target: str,
+        *,
+        secure_channel: bool = False,
         **rpc_params,
     ) -> Iterable[_ChannelzChannel]:
-        return self.channelz.find_channels_for_target(target, **rpc_params)
+        channelz: _ChannelzServiceClient = (
+            self.secure_channelz if secure_channel else self.channelz
+        )
+        return channelz.find_channels_for_target(target, **rpc_params)
 
     def find_subchannel_with_state(
-        self, channel: _ChannelzChannel, state: _ChannelzChannelState, **kwargs
+        self,
+        channel: _ChannelzChannel,
+        state: _ChannelzChannelState,
+        *,
+        secure_channel: bool = False,
+        **kwargs,
     ) -> _ChannelzSubchannel:
-        subchannels = self.channelz.list_channel_subchannels(channel, **kwargs)
+        channelz: _ChannelzServiceClient = (
+            self.secure_channelz if secure_channel else self.channelz
+        )
+        subchannels = channelz.list_channel_subchannels(channel, **kwargs)
         for subchannel in subchannels:
             if subchannel.data.state.state is state:
                 return subchannel
@@ -472,10 +496,17 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         )
 
     def find_subchannels_with_state(
-        self, state: _ChannelzChannelState, **kwargs
+        self,
+        state: _ChannelzChannelState,
+        *,
+        secure_channel: bool = False,
+        **kwargs,
     ) -> List[_ChannelzSubchannel]:
         subchannels = []
-        for channel in self.channelz.find_channels_for_target(
+        channelz: _ChannelzServiceClient = (
+            self.secure_channelz if secure_channel else self.channelz
+        )
+        for channel in channelz.find_channels_for_target(
             self.server_target, **kwargs
         ):
             logger.info(
@@ -483,7 +514,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
                 self.hostname,
                 _ChannelzServiceClient.channel_repr(channel),
             )
-            for subchannel in self.channelz.list_channel_subchannels(
+            for subchannel in channelz.list_channel_subchannels(
                 channel, **kwargs
             ):
                 if subchannel.data.state.state is state:

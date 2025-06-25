@@ -197,6 +197,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
     """
 
     _service_accounts: gcp.api.discovery.Resource
+    _managed_identities: gcp.api.discovery.Resource
 
     # Operations that affect conditional role bindings must specify version 3.
     # Otherwise conditions are omitted, and role names returned with a suffix,
@@ -208,6 +209,13 @@ class IamV1(gcp.api.GcpProjectApiResource):
         super().__init__(api_manager.iam("v1"), project)
         # Shortcut to projects/*/serviceAccounts/ endpoints
         self._service_accounts = self.api.projects().serviceAccounts()
+        self._managed_identities = (
+            self.api.projects()
+            .locations()
+            .workloadIdentityPools()
+            .namespaces()
+            .managedIdentities()
+        )
 
     def service_account_resource_name(self, account) -> str:
         """
@@ -223,6 +231,28 @@ class IamV1(gcp.api.GcpProjectApiResource):
             account: The ACCOUNT value
         """
         return f"projects/{self.project}/serviceAccounts/{account}"
+
+    def managed_identity_resource_name(
+        self, workload_identity_pool, namespace, managed_identity
+    ) -> str:
+        """
+        Returns full resource name of the managed identity.
+
+        The resource name of the service account in the following format:
+        projects/{PROJECT_ID}/locations/global/workloadIdentityPools/
+        {WORKLOAD_IDENTITY_POOL}/namespaces/{NAMESPACE}/managedIdentities/{MANAGED_IDENTITY}.
+
+
+        Args:
+            workload_identity_pool: The WORKLOAD_IDENTITY_POOL value
+            namespace: The NAMESPACE value
+            managed_identity: The MANAGED_IDENTITY value
+        """
+        return (
+            f"projects/{self.project}/locations/global/workloadIdentityPools/"
+            f"{workload_identity_pool}/namespaces/{namespace}/managedIdentities/"
+            f"{managed_identity}"
+        )
 
     def get_service_account(self, account: str) -> ServiceAccount:
         resource_name = self.service_account_resource_name(account)
@@ -271,6 +301,31 @@ class IamV1(gcp.api.GcpProjectApiResource):
                 # https://cloud.google.com/iam/docs/policies#etag
                 logger.debug(error)
                 raise EtagConflict from error
+            raise
+
+    def add_attestation_rule(
+        self, workload_identity_pool, namespace, managed_identity, body
+    ):
+        """Adds attesttion rule to a google cloud resource.
+
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
+        """
+        resource_name = self.managed_identity_resource_name(
+            workload_identity_pool, namespace, managed_identity
+        )
+        logger.info(
+            "Adding Attestation Rule to Managed Identity %s:\n%s",
+            resource_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            request: _HttpRequest = self._managed_identities.addAttestationRule(
+                resource=resource_name,
+                body=body,
+            )
+            self._execute(request)
+        except gcp.api.ResponseError as error:
+            logger.debug(error)
             raise
 
     @handle_etag_conflict
