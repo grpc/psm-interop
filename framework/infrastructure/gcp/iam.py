@@ -328,6 +328,33 @@ class IamV1(gcp.api.GcpProjectApiResource):
             logger.debug(error)
             raise
 
+    def remove_attestation_rule(
+        self, workload_identity_pool, namespace, managed_identity, body
+    ):
+        """Adds attesttion rule to a google cloud resource.
+
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
+        """
+        resource_name = self.managed_identity_resource_name(
+            workload_identity_pool, namespace, managed_identity
+        )
+        logger.info(
+            "Removing Attestation Rule to Managed Identity %s:\n%s",
+            resource_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            request: _HttpRequest = (
+                self._managed_identities.removeAttestationRule(
+                    resource=resource_name,
+                    body=body,
+                )
+            )
+            self._execute(request)
+        except gcp.api.ResponseError as error:
+            logger.debug(error)
+            raise
+
     @handle_etag_conflict
     def add_service_account_iam_policy_binding(
         self, account: str, role: str, member: str

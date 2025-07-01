@@ -35,6 +35,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     server_target: str
     stats_port: int
     network: str
+    enable_spiffe: bool = False
 
     gcp_iam: Optional[gcp.iam.IamV1] = None
     service: Optional[gcp.cloud_run.CloudRunService] = None
@@ -53,6 +54,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         workload_identity_pool: Optional[str] = None,
         namespace: Optional[str] = None,
         managed_identity: Optional[str] = None,
+        enable_spiffe: bool = False,
     ):
         super().__init__(
             project,
@@ -156,6 +158,23 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             body,
         )
 
+    def remove_attestation_policy(self, service_name: str):
+        body = {
+            "attestationRule": {
+                "googleCloudResource": (
+                    f"//run.googleapis.com/projects/"
+                    f"{self.project_number}/name/locations/{self.region}/services"
+                    f"/{service_name}"
+                )
+            }
+        }
+        self.gcp_iam.remove_attestation_rule(
+            self.workload_identity_pool,
+            self.namespace,
+            self.managed_identity,
+            body,
+        )
+
     def deploy_service(
         self,
         *,
@@ -247,6 +266,8 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     def cleanup(self, *, force=False):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
+            if self.enable_spiffe:
+                self.remove_attestation_policy(self.service_name)
             super().cleanup(force=force)
             self._reset_state()
         finally:
