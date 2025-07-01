@@ -205,6 +205,22 @@ CLOUD_RUN_REGION = flags.DEFINE_string(
     help="The region for cloud run deployment",
 )
 
+WORKLOAD_IDENTITY = flags.DEFINE_string(
+    "workload_identity",
+    default=None,
+    help=("The name of the Workload Identity Pool to use for the test."),
+)
+MANAGED_IDENTITY_NAMESPACE = flags.DEFINE_string(
+    "managed_identity_namespace",
+    default=None,
+    help=("The managed identity namespace to use for the test"),
+)
+MANAGED_IDENTITY = flags.DEFINE_string(
+    "managed_identity",
+    default=None,
+    help=("The Managed Identity to use for the test."),
+)
+
 
 def set_socket_default_timeout_from_flag() -> None:
     """A helper to configure default socket timeout from a flag.

@@ -491,9 +491,22 @@ class XdsKubernetesBaseTestCase(
             diff_stats, ignore_empty=True, highlight=False
         )
 
-        # 1. Verify the completed RPCs of the given method has no statuses
-        #    other than the expected_status,
         stats = diff_stats.stats_per_method[method]
+
+        # 1. Verify there are completed RPCs of the given method with
+        #    the expected_status.
+        self.assertGreater(
+            stats.result[expected_status_int],
+            0,
+            msg=(
+                "Expected non-zero completed RPCs with status"
+                f" {expected_status_fmt} for method {method}."
+                f"\nDiff stats:\n{diff_stats_fmt}"
+            ),
+        )
+
+        # 2. Verify the completed RPCs of the given method has no statuses
+        #    other than the expected_status,
         for found_status_int, count in stats.result.items():
             found_status = helpers_grpc.status_from_int(found_status_int)
             if found_status != expected_status and count > stray_rpc_limit:
@@ -505,17 +518,40 @@ class XdsKubernetesBaseTestCase(
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
 
-        # 2. Verify there are completed RPCs of the given method with
-        #    the expected_status.
-        self.assertGreater(
-            stats.result[expected_status_int],
-            0,
-            msg=(
-                "Expected non-zero completed RPCs with status"
-                f" {expected_status_fmt} for method {method}."
-                f"\nDiff stats:\n{diff_stats_fmt}"
+    def assertRpcsEventuallyReachMinServers(
+        self,
+        test_client: XdsTestClient,
+        num_expected_servers: int,
+        *,
+        num_rpcs: int = 100,
+        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
+        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
+    ) -> None:
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"RPCs (num_rpcs={num_rpcs}) did not go to at least"
+                f" {num_expected_servers} server(s)"
+                f" before timeout {retry_timeout} (h:mm:ss)"
             ),
         )
+        for attempt in retryer:
+            with attempt:
+                lb_stats = self.getClientRpcStats(test_client, num_rpcs)
+                failed = int(lb_stats.num_failures)
+                self.assertLessEqual(
+                    failed,
+                    0,
+                    msg=f"Expected all RPCs to succeed: {failed} of {num_rpcs} failed",
+                )
+                self.assertGreaterEqual(
+                    len(lb_stats.rpcs_by_peer),
+                    num_expected_servers,
+                    msg=f"RPCs went to {len(lb_stats.rpcs_by_peer)} server(s), expected"
+                    f" at least {num_expected_servers} servers",
+                )
 
     def assertRpcsEventuallyGoToGivenServers(
         self,
@@ -1259,9 +1295,27 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         mode: SecurityMode,
         test_client: XdsTestClient,
         test_server: XdsTestServer,
+        *,
+        secure_channel: bool = False,
+        match_only_port: bool = False,
     ):
+        """Asserts that the test client and server are using the expected
+        security configuration.
+
+        Args:
+            mode: The expected security mode (MTLS, TLS, or PLAINTEXT).
+            test_client: The test client instance.
+            test_server: The test server instance.
+            secure_channel: Use a secure channel to call services exposed by the Cloud Run client.
+            match_only_port: Whether to match only the port (not the IP address)
+            in socket comparisons useful in cases like VPC routing where IPs may differ.
+        """
+
         client_socket, server_socket = self.getConnectedSockets(
-            test_client, test_server
+            test_client,
+            test_server,
+            secure_channel=secure_channel,
+            match_only_port=match_only_port,
         )
         server_security: grpc_channelz.Security = server_socket.security
         client_security: grpc_channelz.Security = client_socket.security
@@ -1467,10 +1521,18 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 
     @staticmethod
     def getConnectedSockets(
-        test_client: XdsTestClient, test_server: XdsTestServer
+        test_client: XdsTestClient,
+        test_server: XdsTestServer,
+        *,
+        secure_channel: bool = False,
+        match_only_port: bool = False,
     ) -> Tuple[grpc_channelz.Socket, grpc_channelz.Socket]:
-        client_sock = test_client.get_active_server_channel_socket()
-        server_sock = test_server.get_server_socket_matching_client(client_sock)
+        client_sock = test_client.get_active_server_channel_socket(
+            secure_channel=secure_channel
+        )
+        server_sock = test_server.get_server_socket_matching_client(
+            client_sock, match_only_port=match_only_port
+        )
         return client_sock, server_sock
 
     @classmethod
