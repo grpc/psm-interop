@@ -331,9 +331,9 @@ class IamV1(gcp.api.GcpProjectApiResource):
     def remove_attestation_rule(
         self, workload_identity_pool, namespace, managed_identity, body
     ):
-        """Adds attesttion rule to a google cloud resource.
+        """Removes attesttion rule to a google cloud resource.
 
-        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/removeAttestationRule
         """
         resource_name = self.managed_identity_resource_name(
             workload_identity_pool, namespace, managed_identity
