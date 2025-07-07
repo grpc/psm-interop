@@ -14,6 +14,7 @@
 import datetime
 import logging
 import socket
+import time
 
 import absl
 from absl import flags
@@ -311,6 +312,7 @@ class FallbackTest(absltest.TestCase):
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=channelz_pb2.ChannelConnectivityState.READY,
             )
+            time.sleep(20)
             stats = client.get_stats(10)
             self.assertEqual(stats.num_failures, 0)
             self.assertIn("server2", stats.rpcs_by_peer)
@@ -320,6 +322,7 @@ class FallbackTest(absltest.TestCase):
                 port=self.bootstrap.primary_port,
                 upstream_port=server3.port,
             ):
+                time.sleep(60)
                 self.assert_ads_connections(
                     client,
                     primary_status=channelz_pb2.ChannelConnectivityState.READY,
