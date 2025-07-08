@@ -15,7 +15,7 @@
 Run xDS Test Client on Cloud Run.
 """
 import logging
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 from typing_extensions import override
 
@@ -94,14 +94,14 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         """Deploys and manages the xDS Test Client on Cloud Run."""
         super().run()
 
-        if self.enable_spiffe:
-            self.add_attestation_policy(self.service_name)
         logger.info(
             "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
             self.image_name,
             server_target,
         )
+        if self.enable_spiffe:
+            self.add_attestation_policy(self.service_name)
         self.service = self.deploy_service(
             service_name=self.service_name,
             image_name=self.image_name,
@@ -140,8 +140,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             hostname=service_hostname,
         )
 
-    def add_attestation_policy(self, service_name: str):
-        body = {
+    def _make_attestation_policy_body(
+        self, service_name: str
+    ) -> dict[str, dict[str, str]]:
+        return {
             "attestationRule": {
                 "googleCloudResource": (
                     f"//run.googleapis.com/projects/"
@@ -150,6 +152,9 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 )
             }
         }
+
+    def add_attestation_policy(self, service_name: str):
+        body = self._make_attestation_policy_body(service_name)
         self.gcp_iam.add_attestation_rule(
             self.workload_identity_pool,
             self.namespace,
@@ -158,16 +163,8 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         )
 
     def remove_attestation_policy(self, service_name: str):
-        body = {
-            "attestationRule": {
-                "googleCloudResource": (
-                    f"//run.googleapis.com/projects/"
-                    f"{self.project_number}/name/locations/{self.region}/services"
-                    f"/{service_name}"
-                )
-            }
-        }
-        self.gcp_iam.remove_attestation_rule(
+        body = self._make_attestation_policy_body(service_name)
+        return self.gcp_iam.remove_attestation_rule(
             self.workload_identity_pool,
             self.namespace,
             self.managed_identity,
@@ -189,7 +186,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         if not image_name:
             raise ValueError("image_name cannot be empty or None")
 
-        service_body: dict[str, any] = {
+        service_body: dict[str, Any] = {
             "launch_stage": "alpha",
             "template": {
                 "containers": [
