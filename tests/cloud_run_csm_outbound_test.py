@@ -38,8 +38,6 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
             return config.version_gte("v1.69.x")
         elif config.client_lang is _Lang.PYTHON:
             return config.version_gte("v1.69.x")
-        elif config.client_lang is _Lang.JAVA:
-            return config.version_gte("v1.71.x")
         return False
 
     def test_cloud_run_to_cloud_run(self):
