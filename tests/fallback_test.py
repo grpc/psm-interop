@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import absl
+
 import datetime
 import logging
 import socket
 
+import absl
 from absl import flags
 from absl.testing import absltest
-from framework.helpers import retryers
 from grpc_channelz.v1 import channelz_pb2
 
 import framework
+from framework.helpers import retryers
+
 import framework.helpers.docker
 import framework.helpers.logs
 import framework.helpers.xds_resources
@@ -132,7 +134,8 @@ class FallbackTest(absltest.TestCase):
         primary_status: channelz_pb2.ChannelConnectivityState,
         fallback_status: channelz_pb2.ChannelConnectivityState,
     ):
-        self.assertTrue(self.ads_connections_status_check_result)
+        self.assertTrue(self.ads_connections_status_check_result(
+            client, primary_status, fallback_status))
 
     def ads_connections_status_check_result(
         self,
@@ -316,7 +319,8 @@ class FallbackTest(absltest.TestCase):
             retryer = retryers.constant_retryer(
                 wait_fixed=datetime.timedelta(seconds=1),
                 timeout=datetime.timedelta(seconds=20),
-                check_result=lambda stats: stats.num_failures == 0 and "server2" in stats.rpcs_by_peer,
+                check_result=lambda stats: stats.num_failures == 0 and \
+                    "server2" in stats.rpcs_by_peer,
             )
             retryer(client.get_stats, 10)
             # Check that post-recovery uses a new config
@@ -331,7 +335,8 @@ class FallbackTest(absltest.TestCase):
                 retryer = retryers.constant_retryer(
                     wait_fixed=datetime.timedelta(seconds=1),
                     timeout=datetime.timedelta(seconds=20),
-                    check_result=lambda stats: stats.num_failures == 0 and "server3" in stats.rpcs_by_peer,
+                    check_result=lambda stats: stats.num_failures == 0 and \
+                        "server3" in stats.rpcs_by_peer,
                 )
                 retryer(client.get_stats, 10)
 
