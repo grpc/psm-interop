@@ -59,6 +59,7 @@ _LISTENER = "listener_0"
 
 absl.flags.adopt_module_key_flags(framework.xds_k8s_testcase)
 
+
 def get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("localhost", 0))
@@ -133,8 +134,11 @@ class FallbackTest(absltest.TestCase):
         primary_status: channelz_pb2.ChannelConnectivityState,
         fallback_status: channelz_pb2.ChannelConnectivityState,
     ):
-        self.assertTrue(self.ads_connections_status_check_result(
-            client, primary_status, fallback_status))
+        self.assertTrue(
+            self.ads_connections_status_check_result(
+                client, primary_status, fallback_status
+            )
+        )
 
     def ads_connections_status_check_result(
         self,
@@ -142,27 +146,30 @@ class FallbackTest(absltest.TestCase):
         primary_status: channelz_pb2.ChannelConnectivityState,
         fallback_status: channelz_pb2.ChannelConnectivityState,
     ) -> bool:
-        return client.expect_channel_status(
-            self.bootstrap.primary_port,
-            primary_status,
-            timeout=datetime.timedelta(
-                milliseconds=_STATUS_TIMEOUT_MS.value
-            ),
-            poll_interval=datetime.timedelta(
-                milliseconds=_STATUS_POLL_INTERVAL_MS.value
-            ),
-        ) == primary_status and \
-        client.expect_channel_status(
-            self.bootstrap.fallback_port,
-            fallback_status,
-            timeout=datetime.timedelta(
-                milliseconds=_STATUS_TIMEOUT_MS.value
-            ),
-            poll_interval=datetime.timedelta(
-                milliseconds=_STATUS_POLL_INTERVAL_MS.value
-            ),
-        ) == fallback_status
-
+        return (
+            client.expect_channel_status(
+                self.bootstrap.primary_port,
+                primary_status,
+                timeout=datetime.timedelta(
+                    milliseconds=_STATUS_TIMEOUT_MS.value
+                ),
+                poll_interval=datetime.timedelta(
+                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
+                ),
+            )
+            == primary_status
+            and client.expect_channel_status(
+                self.bootstrap.fallback_port,
+                fallback_status,
+                timeout=datetime.timedelta(
+                    milliseconds=_STATUS_TIMEOUT_MS.value
+                ),
+                poll_interval=datetime.timedelta(
+                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
+                ),
+            )
+            == fallback_status
+        )
 
     def test_fallback_on_startup(self):
         with (
@@ -318,8 +325,8 @@ class FallbackTest(absltest.TestCase):
             retryer = retryers.constant_retryer(
                 wait_fixed=datetime.timedelta(seconds=1),
                 timeout=datetime.timedelta(seconds=20),
-                check_result=lambda stats: stats.num_failures == 0 and \
-                    "server2" in stats.rpcs_by_peer,
+                check_result=lambda stats: stats.num_failures == 0
+                and "server2" in stats.rpcs_by_peer,
             )
             retryer(client.get_stats, 10)
             # Check that post-recovery uses a new config
@@ -328,28 +335,34 @@ class FallbackTest(absltest.TestCase):
                 port=self.bootstrap.primary_port,
                 upstream_port=server3.port,
             ):
-                self.check_ads_connections_statuses(client,
+                self.check_ads_connections_statuses(
+                    client,
                     primary_status=channelz_pb2.ChannelConnectivityState.READY,
-                    fallback_status=None,)
+                    fallback_status=None,
+                )
                 retryer = retryers.constant_retryer(
                     wait_fixed=datetime.timedelta(seconds=1),
                     timeout=datetime.timedelta(seconds=20),
-                    check_result=lambda stats: stats.num_failures == 0 and \
-                        "server3" in stats.rpcs_by_peer,
+                    check_result=lambda stats: stats.num_failures == 0
+                    and "server3" in stats.rpcs_by_peer,
                 )
                 retryer(client.get_stats, 10)
 
-    def check_ads_connections_statuses(self, client, primary_status, fallback_status):
+    def check_ads_connections_statuses(
+        self, client, primary_status, fallback_status
+    ):
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=1),
             timeout=datetime.timedelta(seconds=60),
             check_result=lambda result: result is True,
         )
-        retryer(self.ads_connections_status_check_result,
+        retryer(
+            self.ads_connections_status_check_result,
             client,
             primary_status=primary_status,
             fallback_status=fallback_status,
         )
+
 
 if __name__ == "__main__":
     absl.testing.absltest.main()
