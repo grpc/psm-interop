@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import absl
 import datetime
 import logging
 import socket
 
-import absl
 from absl import flags
 from absl.testing import absltest
 from framework.helpers import retryers
@@ -293,7 +293,7 @@ class FallbackTest(absltest.TestCase):
                 primary_status=channelz_pb2.ChannelConnectivityState.READY,
                 fallback_status=None,
             )
-            # Secondary xDS config start, send traffic to server2  
+            # Secondary xDS config start, send traffic to server2
             stats = client.get_stats(5)
             self.assertGreater(stats.rpcs_by_peer["server1"], 0)
             primary.stop_on_resource_request(
@@ -325,7 +325,7 @@ class FallbackTest(absltest.TestCase):
                 port=self.bootstrap.primary_port,
                 upstream_port=server3.port,
             ):
-                self.check_ads_connections_statuses(client,         
+                self.check_ads_connections_statuses(client,
                     primary_status=channelz_pb2.ChannelConnectivityState.READY,
                     fallback_status=None,)
                 retryer = retryers.constant_retryer(
