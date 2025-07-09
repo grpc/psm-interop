@@ -15,7 +15,7 @@
 Run xDS Test Client on Cloud Run.
 """
 import logging
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 from typing_extensions import override
 
@@ -35,6 +35,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     server_target: str
     stats_port: int
     network: str
+    enable_spiffe: bool
 
     gcp_iam: Optional[gcp.iam.IamV1] = None
     service: Optional[gcp.cloud_run.CloudRunService] = None
@@ -53,6 +54,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         workload_identity_pool: Optional[str] = None,
         namespace: Optional[str] = None,
         managed_identity: Optional[str] = None,
+        enable_spiffe: bool = False,
     ):
         super().__init__(
             project,
@@ -62,6 +64,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             region=region,
             gcp_api_manager=gcp_api_manager,
         )
+        self.enable_spiffe = enable_spiffe
         self.stats_port = stats_port
         self.network = network
         self.workload_identity_pool = workload_identity_pool
@@ -87,25 +90,23 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         *,
         server_target: str,
         mesh_name: str,
-        enable_spiffe: bool = False,
     ) -> client_app.XdsTestClient:
         """Deploys and manages the xDS Test Client on Cloud Run."""
         super().run()
 
-        if enable_spiffe:
-            self.add_attestation_policy(self.service_name)
         logger.info(
             "Starting cloud run client with service %s and image %s and server target %s",
             self.service_name,
             self.image_name,
             server_target,
         )
+        if self.enable_spiffe:
+            self.add_attestation_policy(self.service_name)
         self.service = self.deploy_service(
             service_name=self.service_name,
             image_name=self.image_name,
             mesh_name=mesh_name,
             server_target=server_target,
-            enable_spiffe=enable_spiffe,
             stats_port=self.stats_port,
             network=self.network,
         )
@@ -139,8 +140,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             hostname=service_hostname,
         )
 
-    def add_attestation_policy(self, service_name: str):
-        body = {
+    def _make_attestation_policy_body(
+        self, service_name: str
+    ) -> dict[str, dict[str, str]]:
+        return {
             "attestationRule": {
                 "googleCloudResource": (
                     f"//run.googleapis.com/projects/"
@@ -149,7 +152,19 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 )
             }
         }
+
+    def add_attestation_policy(self, service_name: str):
+        body = self._make_attestation_policy_body(service_name)
         self.gcp_iam.add_attestation_rule(
+            self.workload_identity_pool,
+            self.namespace,
+            self.managed_identity,
+            body,
+        )
+
+    def remove_attestation_policy(self, service_name: str):
+        body = self._make_attestation_policy_body(service_name)
+        return self.gcp_iam.remove_attestation_rule(
             self.workload_identity_pool,
             self.namespace,
             self.managed_identity,
@@ -163,7 +178,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         image_name: str,
         mesh_name: str,
         server_target: str,
-        enable_spiffe: bool = False,
         stats_port: int,
         network: str,
     ) -> gcp.cloud_run.CloudRunService:
@@ -172,7 +186,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         if not image_name:
             raise ValueError("image_name cannot be empty or None")
 
-        service_body: dict[str, any] = {
+        service_body: dict[str, Any] = {
             "launch_stage": "alpha",
             "template": {
                 "containers": [
@@ -212,7 +226,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             },
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
-        if enable_spiffe:
+        if self.enable_spiffe:
             service_body["template"]["containers"][0]["env"] += [
                 # TODO: Remove this when environment variable is changed in JAVA.
                 {
@@ -248,6 +262,8 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
+            if self.enable_spiffe:
+                self.remove_attestation_policy(self.service_name)
             self._reset_state()
         finally:
             self._stop()
