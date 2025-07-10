@@ -19,6 +19,7 @@ from typing import Any, Dict, FrozenSet, Optional
 
 from framework.helpers import retryers
 from framework.infrastructure import gcp
+from framework.infrastructure.gcp.api import _HttpError
 
 logger = logging.getLogger(__name__)
 
@@ -309,6 +310,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
         """Adds attesttion rule to a google cloud resource.
 
         https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
+        https://cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/managed-identities/add-attestation-rule
         """
         resource_name = self.managed_identity_resource_name(
             workload_identity_pool, namespace, managed_identity
@@ -327,6 +329,40 @@ class IamV1(gcp.api.GcpProjectApiResource):
         except gcp.api.ResponseError as error:
             logger.debug(error)
             raise
+
+    def remove_attestation_rule(
+        self, workload_identity_pool, namespace, managed_identity, body
+    ) -> bool:
+        """Remove an attestation rule on a workload identity pool managed identity.
+
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/removeAttestationRule
+        https://cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/managed-identities/remove-attestation-rule
+        """
+        resource_name = self.managed_identity_resource_name(
+            workload_identity_pool, namespace, managed_identity
+        )
+        logger.info(
+            "Removing Attestation Rule on Managed Identity %s:\n%s",
+            resource_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            request: _HttpRequest = (
+                self._managed_identities.removeAttestationRule(
+                    resource=resource_name,
+                    body=body,
+                )
+            )
+            self._execute(request)
+            return True
+        except _HttpError as error:
+            if error.resp and error.resp.status == 404:
+                logger.debug(
+                    "%s not deleted since it doesn't exist", resource_name
+                )
+            else:
+                logger.warning("Failed to delete %s, %r", resource_name, error)
+        return False
 
     @handle_etag_conflict
     def add_service_account_iam_policy_binding(
