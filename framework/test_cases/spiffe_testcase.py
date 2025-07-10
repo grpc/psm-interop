@@ -87,11 +87,11 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             workload_identity_pool=self.workload_identity_pool,
             namespace=self.mwid_namespace_name,
             managed_identity=self.managed_identity_id,
+            enable_spiffe=enable_spiffe,
         )
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
-            enable_spiffe=enable_spiffe,
         )
         return test_client
 

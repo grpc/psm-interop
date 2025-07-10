@@ -173,11 +173,11 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             region=self.region,
             gcp_api_manager=self.gcp_api_manager,
             stats_port=self.client_port,
+            enable_spiffe=enable_spiffe,
         )
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
-            enable_spiffe=enable_spiffe,
         )
         return test_client
 
