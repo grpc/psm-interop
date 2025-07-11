@@ -14,7 +14,6 @@ six~=1.13
 tenacity~=6.2
 typing-extensions~=4.10
 packaging~=23.1
-pylint
 Pygments~=2.9
 python-dateutil~=2.8
 protobuf~=4.24

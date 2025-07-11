@@ -131,8 +131,8 @@ class FallbackTest(absltest.TestCase):
     def assert_ads_connections(
         self,
         client: framework.helpers.docker.Client,
-        primary_status: channelz_pb2.ChannelConnectivityState,
-        fallback_status: channelz_pb2.ChannelConnectivityState,
+        primary_status: channelz_pb2.ChannelConnectivityState.State,
+        fallback_status: channelz_pb2.ChannelConnectivityState.State,
     ):
         self.assertTrue(
             self.ads_connections_status_check_result(
@@ -143,13 +143,12 @@ class FallbackTest(absltest.TestCase):
     def ads_connections_status_check_result(
         self,
         client: framework.helpers.docker.Client,
-        primary_status: channelz_pb2.ChannelConnectivityState,
-        fallback_status: channelz_pb2.ChannelConnectivityState,
+        expected_primary_status: channelz_pb2.ChannelConnectivityState.State,
+        expected_fallback_status: channelz_pb2.ChannelConnectivityState.State,
     ) -> bool:
-        return (
-            client.expect_channel_status(
+        primary_status = client.expect_channel_status(
                 self.bootstrap.primary_port,
-                primary_status,
+                expected_primary_status,
                 timeout=datetime.timedelta(
                     milliseconds=_STATUS_TIMEOUT_MS.value
                 ),
@@ -157,10 +156,9 @@ class FallbackTest(absltest.TestCase):
                     milliseconds=_STATUS_POLL_INTERVAL_MS.value
                 ),
             )
-            == primary_status
-            and client.expect_channel_status(
+        fallback_status = client.expect_channel_status(
                 self.bootstrap.fallback_port,
-                fallback_status,
+                expected_fallback_status,
                 timeout=datetime.timedelta(
                     milliseconds=_STATUS_TIMEOUT_MS.value
                 ),
@@ -168,7 +166,9 @@ class FallbackTest(absltest.TestCase):
                     milliseconds=_STATUS_POLL_INTERVAL_MS.value
                 ),
             )
-            == fallback_status
+        return (
+            primary_status == expected_primary_status
+            and fallback_status == expected_fallback_status
         )
 
     def test_fallback_on_startup(self):
@@ -359,8 +359,8 @@ class FallbackTest(absltest.TestCase):
         retryer(
             self.ads_connections_status_check_result,
             client,
-            primary_status=primary_status,
-            fallback_status=fallback_status,
+            expected_primary_status=primary_status,
+            expected_fallback_status=fallback_status,
         )
 
 
