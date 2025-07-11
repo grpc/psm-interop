@@ -1,7 +1,6 @@
 Mako~=1.1
 PyYAML~=6.0
 absl-py~=2.1
-black
 docker==7.1.0
 google-api-python-client~=1.12
 google-cloud-secret-manager~=2.1
