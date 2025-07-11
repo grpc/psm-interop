@@ -147,25 +147,21 @@ class FallbackTest(absltest.TestCase):
         expected_fallback_status: channelz_pb2.ChannelConnectivityState.State,
     ) -> bool:
         primary_status = client.expect_channel_status(
-                self.bootstrap.primary_port,
-                expected_primary_status,
-                timeout=datetime.timedelta(
-                    milliseconds=_STATUS_TIMEOUT_MS.value
-                ),
-                poll_interval=datetime.timedelta(
-                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
-                ),
-            )
+            self.bootstrap.primary_port,
+            expected_primary_status,
+            timeout=datetime.timedelta(milliseconds=_STATUS_TIMEOUT_MS.value),
+            poll_interval=datetime.timedelta(
+                milliseconds=_STATUS_POLL_INTERVAL_MS.value
+            ),
+        )
         fallback_status = client.expect_channel_status(
-                self.bootstrap.fallback_port,
-                expected_fallback_status,
-                timeout=datetime.timedelta(
-                    milliseconds=_STATUS_TIMEOUT_MS.value
-                ),
-                poll_interval=datetime.timedelta(
-                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
-                ),
-            )
+            self.bootstrap.fallback_port,
+            expected_fallback_status,
+            timeout=datetime.timedelta(milliseconds=_STATUS_TIMEOUT_MS.value),
+            poll_interval=datetime.timedelta(
+                milliseconds=_STATUS_POLL_INTERVAL_MS.value
+            ),
+        )
         return (
             primary_status == expected_primary_status
             and fallback_status == expected_fallback_status
