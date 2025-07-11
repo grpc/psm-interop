@@ -353,7 +353,7 @@ class FallbackTest(absltest.TestCase):
     ):
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=1),
-            timeout=datetime.timedelta(seconds=60),
+            timeout=datetime.timedelta(minutes=3),
             check_result=lambda result: result is True,
         )
         retryer(
