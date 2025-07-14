@@ -260,6 +260,52 @@ psm::dualstack::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- SPIFFE TESTS ------------------
+
+#######################################
+# SPIFFE Test Suite setup.
+# Outputs:
+#   Prints activated cluster names.
+#######################################
+psm::spiffe::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_INTEROP_FLEET
+}
+
+#######################################
+# Prepares the list of tests in PSM SPIFFE test suite.
+# Globals:
+#   TESTS: Populated with tests in PSM SPIFFE test suite.
+#######################################
+psm::spiffe::get_tests() {
+  TESTS=(
+    "spiffe_cloud_run_csm_inbound_test"
+  )
+}
+
+#######################################
+# Executes SPIFFE test case
+# Globals:
+#   PSM_TEST_FLAGS: The array with flags for the test
+#   GRPC_LANGUAGE: The name of gRPC languages under test
+# Arguments:
+#   Test case name
+# Outputs:
+#   Writes the output of test execution to stdout, stderr
+#   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
+#######################################
+psm::spiffe::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+    PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-spiffe.cfg"
+  )
+    # Only java supports extra checks for certificate matches (via channelz socket info).
+  if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
+    PSM_TEST_FLAGS+=("--nocheck_local_certs")
+  fi
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- PSM Light TESTS ------------------
 
 #######################################
@@ -403,7 +449,7 @@ psm::csm::run_test() {
 #   BUILD_SCRIPT_DIR: Absolute path to the directory with lang-specific buildscript
 #     in the source repo.
 # Arguments:
-#   Test suite name, one of (csm, dualstack, light, lb, security, url_map)
+#   Test suite name, one of (csm, dualstack, light, lb, security, url_map, cloud_run, spiffe)
 # Outputs:
 #   Writes the output of test execution to stdout, stderr
 #######################################
@@ -418,7 +464,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | light | lb | security | url_map | cloud_run)
+    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
@@ -824,16 +870,16 @@ activate_gke_cluster() {
       GKE_CLUSTER_NAME="psm-interop-csm-gateway"
       GKE_CLUSTER_REGION="us-central1"
       ;;
-    GKE_CLUSTER_PSM_GAMMA)
-      GKE_CLUSTER_NAME="psm-interop-gamma"
-      GKE_CLUSTER_ZONE="us-central1-a"
-      ;;
     GKE_CLUSTER_PSM_BASIC)
       GKE_CLUSTER_NAME="interop-test-psm-basic"
       GKE_CLUSTER_ZONE="us-central1-c"
       ;;
     GKE_CLUSTER_DUALSTACK)
       GKE_CLUSTER_NAME="psm-interop-dualstack"
+      GKE_CLUSTER_ZONE="us-central1-a"
+      ;;
+    GKE_CLUSTER_PSM_INTEROP_FLEET)
+      GKE_CLUSTER_NAME="psm-interop-fleet-cluster"
       GKE_CLUSTER_ZONE="us-central1-a"
       ;;
     *)

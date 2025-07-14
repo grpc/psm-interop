@@ -19,6 +19,7 @@ from typing import Any, Dict, FrozenSet, Optional
 
 from framework.helpers import retryers
 from framework.infrastructure import gcp
+from framework.infrastructure.gcp.api import _HttpError
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +198,7 @@ class IamV1(gcp.api.GcpProjectApiResource):
     """
 
     _service_accounts: gcp.api.discovery.Resource
+    _managed_identities: gcp.api.discovery.Resource
 
     # Operations that affect conditional role bindings must specify version 3.
     # Otherwise conditions are omitted, and role names returned with a suffix,
@@ -208,6 +210,13 @@ class IamV1(gcp.api.GcpProjectApiResource):
         super().__init__(api_manager.iam("v1"), project)
         # Shortcut to projects/*/serviceAccounts/ endpoints
         self._service_accounts = self.api.projects().serviceAccounts()
+        self._managed_identities = (
+            self.api.projects()
+            .locations()
+            .workloadIdentityPools()
+            .namespaces()
+            .managedIdentities()
+        )
 
     def service_account_resource_name(self, account) -> str:
         """
@@ -223,6 +232,28 @@ class IamV1(gcp.api.GcpProjectApiResource):
             account: The ACCOUNT value
         """
         return f"projects/{self.project}/serviceAccounts/{account}"
+
+    def managed_identity_resource_name(
+        self, workload_identity_pool, namespace, managed_identity
+    ) -> str:
+        """
+        Returns full resource name of the managed identity.
+
+        The resource name of the service account in the following format:
+        projects/{PROJECT_ID}/locations/global/workloadIdentityPools/
+        {WORKLOAD_IDENTITY_POOL}/namespaces/{NAMESPACE}/managedIdentities/{MANAGED_IDENTITY}.
+
+
+        Args:
+            workload_identity_pool: The WORKLOAD_IDENTITY_POOL value
+            namespace: The NAMESPACE value
+            managed_identity: The MANAGED_IDENTITY value
+        """
+        return (
+            f"projects/{self.project}/locations/global/workloadIdentityPools/"
+            f"{workload_identity_pool}/namespaces/{namespace}/managedIdentities/"
+            f"{managed_identity}"
+        )
 
     def get_service_account(self, account: str) -> ServiceAccount:
         resource_name = self.service_account_resource_name(account)
@@ -272,6 +303,66 @@ class IamV1(gcp.api.GcpProjectApiResource):
                 logger.debug(error)
                 raise EtagConflict from error
             raise
+
+    def add_attestation_rule(
+        self, workload_identity_pool, namespace, managed_identity, body
+    ):
+        """Adds attesttion rule to a google cloud resource.
+
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/addAttestationRule
+        https://cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/managed-identities/add-attestation-rule
+        """
+        resource_name = self.managed_identity_resource_name(
+            workload_identity_pool, namespace, managed_identity
+        )
+        logger.info(
+            "Adding Attestation Rule to Managed Identity %s:\n%s",
+            resource_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            request: _HttpRequest = self._managed_identities.addAttestationRule(
+                resource=resource_name,
+                body=body,
+            )
+            self._execute(request)
+        except gcp.api.ResponseError as error:
+            logger.debug(error)
+            raise
+
+    def remove_attestation_rule(
+        self, workload_identity_pool, namespace, managed_identity, body
+    ) -> bool:
+        """Remove an attestation rule on a workload identity pool managed identity.
+
+        https://cloud.google.com/iam/docs/reference/rest/v1/projects.locations.workloadIdentityPools.namespaces.managedIdentities/removeAttestationRule
+        https://cloud.google.com/sdk/gcloud/reference/iam/workload-identity-pools/managed-identities/remove-attestation-rule
+        """
+        resource_name = self.managed_identity_resource_name(
+            workload_identity_pool, namespace, managed_identity
+        )
+        logger.info(
+            "Removing Attestation Rule on Managed Identity %s:\n%s",
+            resource_name,
+            self.resource_pretty_format(body),
+        )
+        try:
+            request: _HttpRequest = (
+                self._managed_identities.removeAttestationRule(
+                    resource=resource_name,
+                    body=body,
+                )
+            )
+            self._execute(request)
+            return True
+        except _HttpError as error:
+            if error.resp and error.resp.status == 404:
+                logger.debug(
+                    "%s not deleted since it doesn't exist", resource_name
+                )
+            else:
+                logger.warning("Failed to delete %s, %r", resource_name, error)
+        return False
 
     @handle_etag_conflict
     def add_service_account_iam_policy_binding(

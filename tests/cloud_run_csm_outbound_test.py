@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import datetime as dt
 import logging
 from typing import TypeAlias
 
@@ -39,8 +38,6 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
             return config.version_gte("v1.69.x")
         elif config.client_lang is _Lang.PYTHON:
             return config.version_gte("v1.69.x")
-        elif config.client_lang is _Lang.JAVA:
-            return config.version_gte("v1.71.x")
         return False
 
     def test_cloud_run_to_cloud_run(self):

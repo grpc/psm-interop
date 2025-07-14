@@ -162,15 +162,18 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         super().setUpClass()
 
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer
+        self, test_server: XdsTestServer, *, enable_spiffe: bool = False
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
+            project_number=self.project_number,
             service_name=self.client_namespace,
             image_name=self.client_image,
             network=self.network,
             region=self.region,
             gcp_api_manager=self.gcp_api_manager,
+            stats_port=self.client_port,
+            enable_spiffe=enable_spiffe,
         )
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
@@ -179,9 +182,9 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         return test_client
 
     def cleanup(self):
+        self.td.cleanup(force=self.force_cleanup)
         self.client_runner.cleanup(force=self.force_cleanup)
         self.server_runner.cleanup(force=self.force_cleanup)
-        self.td.cleanup(force=self.force_cleanup)
 
     def tearDown(self):
         logger.info("----- TestMethod %s teardown -----", self.test_name)
