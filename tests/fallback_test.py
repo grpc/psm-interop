@@ -185,8 +185,8 @@ class FallbackTest(absltest.TestCase):
                 port=self.bootstrap.fallback_port,
                 upstream_port=server2.port,
             ):
-                self.assert_ads_connections(
-                    client=client,
+                self.check_ads_connections_statuses(
+                    client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                     fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
@@ -203,15 +203,19 @@ class FallbackTest(absltest.TestCase):
                     port=self.bootstrap.primary_port,
                     upstream_port=server1.port,
                 ):
-                    self.assert_ads_connections(
-                        client=client,
+                    self.check_ads_connections_statuses(
+                        client,
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    stats = client.get_stats(10)
-                    self.assertEqual(stats.num_failures, 0)
-                    self.assertIn("server1", stats.rpcs_by_peer)
-                    self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+                    retryer = retryers.constant_retryer(
+                        wait_fixed=datetime.timedelta(seconds=1),
+                        timeout=datetime.timedelta(seconds=20),
+                        check_result=lambda stats: stats.num_failures == 0
+                        and "server1" in stats.rpcs_by_peer
+                        and stats.rpcs_by_peer["server1"] > 0,
+                    )
+                    retryer(client.get_stats, 10)
                 self.assert_ads_connections(
                     client=client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
@@ -231,7 +235,7 @@ class FallbackTest(absltest.TestCase):
             self.assertEqual(stats.num_failures, 0)
             self.assertEqual(stats.rpcs_by_peer["server1"], 5)
 
-    def atest_fallback_mid_startup(self):
+    def test_fallback_mid_startup(self):
         # Run the mesh, excluding the client
         with (
             self.start_server(name="server1") as server1,
@@ -280,7 +284,7 @@ class FallbackTest(absltest.TestCase):
                     self.assertIn("server1", stats.rpcs_by_peer)
                     self.assertGreater(stats.rpcs_by_peer["server1"], 0)
 
-    def atest_fallback_mid_update(self):
+    def test_fallback_mid_update(self):
         with (
             self.start_server(name="server1") as server1,
             self.start_server(name="server2") as server2,
