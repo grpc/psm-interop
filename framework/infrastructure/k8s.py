@@ -294,6 +294,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     _name: str
 
     NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
+    MESH_ANNOTATION = "networking.gke.io/meshes"
     # TODO(sergiitk): get rid of _SEC variables, only use timedelta
     # timedelta.seconds: assumes none of the timeouts more than a day.
     DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
@@ -601,6 +602,15 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     ) -> Optional[GammaXRoute]:
         return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
+    def check_gamma_route_has_mesh_annotation(
+        self,
+        name: str,
+        *,
+        kind: RouteKind,
+    ) -> bool:
+        route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
+        return self.MESH_ANNOTATION in route.metadata.annotations
+
     def get_session_affinity_policy(
         self, name
     ) -> Optional[GcpSessionAffinityPolicy]:
@@ -817,6 +827,42 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             check_result=lambda route: route is None,
         )
         retryer(self.get_gamma_route, name, kind=kind)
+
+    def wait_for_mesh_annotation_on_gamma_route(
+        self,
+        name: str,
+        kind: RouteKind,
+        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
+        wait_sec: int = WAIT_SHORT_SLEEP_SEC,
+    ) -> None:
+        logger.info(
+            """Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace
+             %s""",
+            self.MESH_ANNOTATION,
+            name,
+            kind,
+            self.name,
+        )
+        timeout = _timedelta(seconds=timeout_sec)
+        retryer = retryers.constant_retryer(
+            wait_fixed=_timedelta(seconds=wait_sec),
+            timeout=timeout,
+            check_result=self._check_service_neg_status_annotation,
+        )
+        try:
+            retryer(self.check_gamma_route_has_mesh_annotation, name, kind=kind)
+        except retryers.RetryError as retry_err:
+            note = framework.errors.FrameworkError.note_blanket_error_info_below(
+                "The Gamma route wasn't attached a mesh annotation.",
+                info_below=(
+                    f"Timeout {timeout} (h:mm:ss) waiting for route "
+                    f"{name} to report the '{self.MESH_ANNOTATION}' metadata annotation."
+                    f"\nThis indicates GKE Gateway Controller's watch of the cluster"
+                    f" hasn't been successful."
+                ),
+            )
+            retry_err.add_note(note)
+            raise
 
     def wait_for_get_session_affinity_policy_deleted(
         self,
