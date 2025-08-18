@@ -193,7 +193,8 @@ class FallbackTest(absltest.TestCase):
                 retryer = retryers.constant_retryer(
                     wait_fixed=datetime.timedelta(seconds=1),
                     timeout=datetime.timedelta(seconds=20),
-                    check_result=lambda stats: "server1" not in stats.rpcs_by_peer
+                    check_result=lambda stats: "server1"
+                    not in stats.rpcs_by_peer
                     and stats.rpcs_by_peer["server2"] > 0,
                 )
                 retryer(client.get_stats, 5)
