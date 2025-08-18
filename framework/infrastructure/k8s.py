@@ -845,9 +845,10 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             kind,
             self.name,
         )
+        timeout = _timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
-            timeout=_timedelta(seconds=timeout_sec),
+            timeout=timeout,
             check_result=self._check_service_neg_status_annotation,
         )
         try:
