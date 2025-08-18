@@ -185,29 +185,38 @@ class FallbackTest(absltest.TestCase):
                 port=self.bootstrap.fallback_port,
                 upstream_port=server2.port,
             ):
-                self.assert_ads_connections(
-                    client=client,
+                self.check_ads_connections_statuses(
+                    client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                     fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
-                stats = client.get_stats(5)
-                self.assertGreater(stats.rpcs_by_peer["server2"], 0)
-                self.assertNotIn("server1", stats.rpcs_by_peer)
+                retryer = retryers.constant_retryer(
+                    wait_fixed=datetime.timedelta(seconds=1),
+                    timeout=datetime.timedelta(seconds=20),
+                    check_result=lambda stats: "server1"
+                    not in stats.rpcs_by_peer
+                    and stats.rpcs_by_peer["server2"] > 0,
+                )
+                retryer(client.get_stats, 5)
                 # Primary control plane start. Will use it
                 with self.start_control_plane(
                     name="primary_xds_config",
                     port=self.bootstrap.primary_port,
                     upstream_port=server1.port,
                 ):
-                    self.assert_ads_connections(
-                        client=client,
+                    self.check_ads_connections_statuses(
+                        client,
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    stats = client.get_stats(10)
-                    self.assertEqual(stats.num_failures, 0)
-                    self.assertIn("server1", stats.rpcs_by_peer)
-                    self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+                    retryer = retryers.constant_retryer(
+                        wait_fixed=datetime.timedelta(seconds=1),
+                        timeout=datetime.timedelta(seconds=20),
+                        check_result=lambda stats: stats.num_failures == 0
+                        and "server1" in stats.rpcs_by_peer
+                        and stats.rpcs_by_peer["server1"] > 0,
+                    )
+                    retryer(client.get_stats, 10)
                 self.assert_ads_connections(
                     client=client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
