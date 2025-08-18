@@ -236,8 +236,8 @@ class GammaServerRunner(KubernetesServerRunner):
 
         # Wait for GKE controller to attach the mesh annotation to the route.
         self.k8s_namespace.wait_for_mesh_annotation_on_gamma_route(
-            name = self.route_name,
-            kind = k8s.RouteKind.HTTP,
+            name=self.route_name,
+            kind=k8s.RouteKind.HTTP,
             timeout_sec=datetime.timedelta(minutes=20).total_seconds(),
         )
         return servers

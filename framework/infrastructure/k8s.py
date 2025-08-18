@@ -603,11 +603,15 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
     def check_gamma_route_has_mesh_annotation(
-        self, name: str, *, kind: RouteKind, timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC
+        self,
+        name: str,
+        *,
+        kind: RouteKind,
+        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
     ) -> bool:
         route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
         return self.MESH_ANNOTATION in route.metadata.annotations
-        
+
     def get_session_affinity_policy(
         self, name
     ) -> Optional[GcpSessionAffinityPolicy]:
@@ -859,8 +863,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
                 ),
             )
             retry_err.add_note(note)
-            raise        
-        
+            raise
+
     def wait_for_get_session_affinity_policy_deleted(
         self,
         name: str,
