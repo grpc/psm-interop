@@ -609,7 +609,12 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         kind: RouteKind,
     ) -> bool:
         route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
-        return self.MESH_ANNOTATION in route.metadata.annotations
+        print("Route metadata:", flush=True)
+        print(route.metadata, flush=True)
+        return (
+            route.metadata.annotations is not None
+            and self.MESH_ANNOTATION in route.metadata.annotations
+        )
 
     def get_session_affinity_policy(
         self, name
