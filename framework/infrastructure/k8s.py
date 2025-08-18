@@ -836,8 +836,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
         logger.info(
-            "Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace"
-                + " %s",
+            """Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace
+             %s""",
             self.MESH_ANNOTATION,
             name,
             kind,
