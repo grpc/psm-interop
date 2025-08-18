@@ -607,7 +607,6 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         name: str,
         *,
         kind: RouteKind,
-        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
     ) -> bool:
         route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
         return self.MESH_ANNOTATION in route.metadata.annotations
@@ -837,7 +836,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
         logger.info(
-            "Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace %s",
+            "Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace"
+                + " %s",
             self.MESH_ANNOTATION,
             name,
             kind,
@@ -852,7 +852,6 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         try:
             retryer(self.check_gamma_route_has_mesh_annotation, name, kind=kind)
         except retryers.RetryError as retry_err:
-            result = retry_err.result()
             note = framework.errors.FrameworkError.note_blanket_error_info_below(
                 "The Gamma route wasn't attached a mesh annotation.",
                 info_below=(
