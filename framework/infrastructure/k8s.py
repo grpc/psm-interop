@@ -606,12 +606,6 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         self, name: str, *, kind: RouteKind, timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC
     ) -> bool:
         route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
-        print('Gamma route:')
-        print(route)
-        print('Gamma route metadata:')
-        print(route.metadata)
-        print('Gamma route metadata annotations:')
-        print(route.metadata.annotations)
         return self.MESH_ANNOTATION in route.metadata.annotations
         
     def get_session_affinity_policy(
