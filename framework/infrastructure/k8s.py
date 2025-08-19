@@ -833,12 +833,14 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             name,
             kind,
             self.name,
-        )        
+        )
         timeout = _timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
             timeout=timeout,
-            check_result=lambda resource: resource.metadata.annotations is not None and self.MESH_ANNOTATION in route.metadata.annotations,
+            check_result=lambda resource: resource.metadata.annotations
+            is not None
+            and self.MESH_ANNOTATION in route.metadata.annotations,
         )
         try:
             retryer(self._get_dyn_resource, self.api_http_route, name)
