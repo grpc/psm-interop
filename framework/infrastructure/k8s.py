@@ -840,7 +840,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             timeout=timeout,
             check_result=lambda resource: resource.metadata.annotations
             is not None
-            and self.MESH_ANNOTATION in route.metadata.annotations,
+            and self.MESH_ANNOTATION in resource.metadata.annotations,
         )
         try:
             retryer(self._get_dyn_resource, self.api_http_route, name)
