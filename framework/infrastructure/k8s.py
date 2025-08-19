@@ -843,7 +843,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             and self.MESH_ANNOTATION in resource.metadata.annotations,
         )
         try:
-            retryer(self._get_dyn_resource, self.api_http_route, name)
+            retryer(self.get_gamma_route, name, kind)
         except retryers.RetryError as retry_err:
             note = framework.errors.FrameworkError.note_blanket_error_info_below(
                 "The Gamma route wasn't attached a mesh annotation.",
