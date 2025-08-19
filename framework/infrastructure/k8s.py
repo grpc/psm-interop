@@ -441,6 +441,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         self, api: dynamic_res.Resource, name, *args, **kwargs
     ) -> Optional[DynResourceInstance]:
         try:
+            print('_get_dyn_resource called for api Resource' + str(api) + ' and name ' + name, flush=True)
             return api.get(name=name, namespace=self.name, *args, **kwargs)
         except dynamic_exc.NotFoundError:
             # Instead of trowing an error when a resource doesn't exist,
@@ -607,8 +608,10 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         name: str,
         *,
         kind: RouteKind,
-    ) -> bool:
-        route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
+    ) -> bool:        
+        print('check_gamma_route_has_mesh_annotation: calling get_gamma_route for kind' + str(self.gamma_route_apis[kind]), flush=True)
+        #route = self.get_gamma_route(name, self.gamma_route_apis[kind])
+        route = self._get_dyn_resource(self.api_http_route, name)
         print("Route metadata:", flush=True)
         print(route.metadata, flush=True)
         return (
@@ -847,27 +850,9 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             name,
             kind,
             self.name,
-        )
-        timeout = _timedelta(seconds=timeout_sec)
-        retryer = retryers.constant_retryer(
-            wait_fixed=_timedelta(seconds=wait_sec),
-            timeout=timeout,
-            check_result=self._check_service_neg_status_annotation,
-        )
-        try:
-            retryer(self.check_gamma_route_has_mesh_annotation, name, kind=kind)
-        except retryers.RetryError as retry_err:
-            note = framework.errors.FrameworkError.note_blanket_error_info_below(
-                "The Gamma route wasn't attached a mesh annotation.",
-                info_below=(
-                    f"Timeout {timeout} (h:mm:ss) waiting for route "
-                    f"{name} to report the '{self.MESH_ANNOTATION}' metadata annotation."
-                    f"\nThis indicates GKE Gateway Controller's watch of the cluster"
-                    f" hasn't been successful."
-                ),
-            )
-            retry_err.add_note(note)
-            raise
+        )        
+        route = self._get_dyn_resource(self.api_http_route, name)
+        logger.info('Route:' + str(route))
 
     def wait_for_get_session_affinity_policy_deleted(
         self,
