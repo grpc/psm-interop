@@ -602,20 +602,6 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     ) -> Optional[GammaXRoute]:
         return self._get_dyn_resource(self.gamma_route_apis[kind], name)
 
-    def check_gamma_route_has_mesh_annotation(
-        self,
-        name: str,
-        *,
-        kind: RouteKind,
-    ) -> bool:
-        route = self._get_dyn_resource(self.gamma_route_apis[kind], name)
-        print("Route metadata:", flush=True)
-        print(route.metadata, flush=True)
-        return (
-            route.metadata.annotations is not None
-            and self.MESH_ANNOTATION in route.metadata.annotations
-        )
-
     def get_session_affinity_policy(
         self, name
     ) -> Optional[GcpSessionAffinityPolicy]:
@@ -852,10 +838,12 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
             timeout=timeout,
-            check_result=self._check_service_neg_status_annotation,
+            check_result=lambda resource: resource.metadata.annotations
+            is not None
+            and self.MESH_ANNOTATION in resource.metadata.annotations,
         )
         try:
-            retryer(self.check_gamma_route_has_mesh_annotation, name, kind=kind)
+            retryer(self.get_gamma_route, name, kind=kind)
         except retryers.RetryError as retry_err:
             note = framework.errors.FrameworkError.note_blanket_error_info_below(
                 "The Gamma route wasn't attached a mesh annotation.",
