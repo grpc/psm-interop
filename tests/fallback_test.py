@@ -273,7 +273,9 @@ class FallbackTest(absltest.TestCase):
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    self.wait_for_given_server_to_receive_rpcs(client, "server1")
+                    self.wait_for_given_server_to_receive_rpcs(
+                        client, "server1"
+                    )
 
     def test_fallback_mid_update(self):
         with (
