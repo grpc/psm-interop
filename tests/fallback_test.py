@@ -223,14 +223,14 @@ class FallbackTest(absltest.TestCase):
                     fallback_status=None,
                 )
                 # Primary control plane down, cached value is used
-                self.wait_for_given_server_to_receive_rpcs("server1")
+                self.wait_for_given_server_to_receive_rpcs(client, "server1")
             self.check_ads_connections_statuses(
                 client,
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=None,
             )
             # Fallback control plane down, cached value is used
-            self.wait_for_given_server_to_receive_rpcs("server1")
+            self.wait_for_given_server_to_receive_rpcs(client, "server1")
 
     def test_fallback_mid_startup(self):
         # Run the mesh, excluding the client
@@ -261,7 +261,7 @@ class FallbackTest(absltest.TestCase):
                     fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
                 # Secondary xDS config start, send traffic to server2
-                self.wait_for_given_server_to_receive_rpcs("server2")
+                self.wait_for_given_server_to_receive_rpcs(client, "server2")
                 # Rerun primary control plane
                 with self.start_control_plane(
                     "primary_xds_config_run_2",
@@ -273,7 +273,7 @@ class FallbackTest(absltest.TestCase):
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    self.wait_for_given_server_to_receive_rpcs("server1")
+                    self.wait_for_given_server_to_receive_rpcs(client, "server1")
 
     def test_fallback_mid_update(self):
         with (
@@ -298,7 +298,7 @@ class FallbackTest(absltest.TestCase):
                 fallback_status=None,
             )
             # Secondary xDS config start, send traffic to server2
-            self.wait_for_given_server_to_receive_rpcs("server1")
+            self.wait_for_given_server_to_receive_rpcs(client, "server1")
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
                 "test_cluster_2",
@@ -316,7 +316,7 @@ class FallbackTest(absltest.TestCase):
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=channelz_pb2.ChannelConnectivityState.READY,
             )
-            self.wait_for_given_server_to_receive_rpcs("server2")
+            self.wait_for_given_server_to_receive_rpcs(client, "server2")
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
@@ -336,7 +336,7 @@ class FallbackTest(absltest.TestCase):
                 )
                 retryer(client.get_stats, 10)
 
-    def wait_for_given_server_to_receive_rpcs(server_name):
+    def wait_for_given_server_to_receive_rpcs(self, client, server_name):
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=1),
             timeout=datetime.timedelta(seconds=20),
