@@ -1,6 +1,6 @@
 {
   "xds_servers": [
-% for i, server in enumerate(servers or []):
+% for i, server in enumerate(servers):
     {
       "server_uri": "${server}",
       "channel_creds": [
@@ -11,11 +11,11 @@
       "server_features": [
         "xds_v3"
       ]
-    }${','*bool(i < len(servers)-1)}
+    }${'' if loop.last else ','}
 % endfor
   ],
   "authorities": {
-% for i, (name, server) in enumerate((authorities or {}).items()):
+% for i, (name, server) in enumerate((authorities).items()):
     "${name}": {
       "xds_servers": [
         {
@@ -30,7 +30,7 @@
           ]
         }
       ]
-    }${','*bool(i < len(authorities) - 1)}
+    }${'' if loop.last else ','}
 % endfor
   },
 % if server_template:

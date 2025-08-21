@@ -158,21 +158,15 @@ def build_server_listener(
 def build_server_route_config(
     route_config_name: str,
 ) -> route_pb2.RouteConfiguration:
-    route = route_pb2.RouteConfiguration(
-        name=route_config_name,
-        virtual_hosts=[
-            route_components_pb2.VirtualHost(
-                domains=["*"],
-                routes=[
-                    route_components_pb2.Route(
-                        match=route_components_pb2.RouteMatch(prefix=""),
-                        non_forwarding_action=route_components_pb2.NonForwardingAction(),
-                    )
-                ],
-            )
-        ],
+    route = route_components_pb2.Route(
+        match=route_components_pb2.RouteMatch(prefix=""),
+        non_forwarding_action=route_components_pb2.NonForwardingAction(),
     )
-    return route
+    vhost = route_components_pb2.VirtualHost(domains=["*"], routes=[route])
+    return route_pb2.RouteConfiguration(
+        name=route_config_name,
+        virtual_hosts=[vhost],
+    )
 
 
 def _build_resource_to_set(resource: message.Message):

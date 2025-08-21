@@ -63,12 +63,6 @@ _LISTENER = "listener_0"
 absl.flags.adopt_module_key_flags(framework.xds_k8s_testcase)
 
 
-def get_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("localhost", 0))
-        return sock.getsockname()[1]
-
-
 class FallbackTest(absltest.TestCase):
     bootstrap: framework.helpers.docker.Bootstrap = None
     dockerInternalIp: str
@@ -87,8 +81,8 @@ class FallbackTest(absltest.TestCase):
         FallbackTest.dockerInternalIp = socket.gethostbyname(
             socket.gethostname()
         )
-        FallbackTest.primary_port = get_free_port()
-        FallbackTest.fallback_port = get_free_port()
+        FallbackTest.primary_port = framework.helpers.docker.get_free_port()
+        FallbackTest.fallback_port = framework.helpers.docker.get_free_port()
         servers = [
             f"{_HOST_NAME.value}:{FallbackTest.primary_port}",
             f"{_HOST_NAME.value}:{FallbackTest.fallback_port}",

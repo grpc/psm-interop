@@ -49,11 +49,21 @@ def _make_working_dir(base: pathlib.Path) -> str:
     return mount_dir.absolute()
 
 
+def get_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("localhost", 0))
+        return sock.getsockname()[1]
+
+
 class Bootstrap:
     def __init__(self, base: pathlib.Path, **kwargs):
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
+        if 'servers' not in kwargs:
+            kwargs['servers'] = []
+        if 'authorities' not in kwargs:
+            kwargs['authorities'] = {}
         file = template.render(**kwargs)
         destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
@@ -296,7 +306,7 @@ class Client(GrpcProcess):
                     break
             if status == expected_status:
                 break
-            time.sleep(poll_interval.microseconds * 0.000001)
+            time.sleep(poll_interval.total_seconds())
         return status
 
 
@@ -354,5 +364,5 @@ class Server(GrpcProcess):
                     break
             if status == expected_status:
                 break
-            time.sleep(poll_interval.microseconds * 0.000001)
+            time.sleep(poll_interval.total_seconds())
         return status
