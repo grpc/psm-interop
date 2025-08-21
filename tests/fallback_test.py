@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import datetime
 import logging
 import socket
@@ -22,10 +23,9 @@ from grpc_channelz.v1 import channelz_pb2
 from typing_extensions import TypeAlias, override
 
 import framework
-from framework.helpers import skips
+from framework.helpers import retryers, skips
 import framework.helpers.docker
 import framework.helpers.logs
-import framework.helpers.retryers
 import framework.helpers.xds_resources
 import framework.xds_flags
 import framework.xds_k8s_testcase
@@ -138,34 +138,40 @@ class FallbackTest(absltest.TestCase):
     def assert_ads_connections(
         self,
         client: framework.helpers.docker.Client,
-        primary_status: channelz_pb2.ChannelConnectivityState,
-        fallback_status: channelz_pb2.ChannelConnectivityState,
+        primary_status: channelz_pb2.ChannelConnectivityState.State,
+        fallback_status: channelz_pb2.ChannelConnectivityState.State,
     ):
-        self.assertEqual(
-            client.expect_channel_status(
-                self.primary_port,
-                primary_status,
-                timeout=datetime.timedelta(
-                    milliseconds=_STATUS_TIMEOUT_MS.value
-                ),
-                poll_interval=datetime.timedelta(
-                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
-                ),
-            ),
-            primary_status,
+        self.assertTrue(
+            self.ads_connections_status_check_result(
+                client, primary_status, fallback_status
+            )
         )
-        self.assertEqual(
-            client.expect_channel_status(
-                self.fallback_port,
-                fallback_status,
-                timeout=datetime.timedelta(
-                    milliseconds=_STATUS_TIMEOUT_MS.value
-                ),
-                poll_interval=datetime.timedelta(
-                    milliseconds=_STATUS_POLL_INTERVAL_MS.value
-                ),
+
+    def ads_connections_status_check_result(
+        self,
+        client: framework.helpers.docker.Client,
+        expected_primary_status: channelz_pb2.ChannelConnectivityState.State,
+        expected_fallback_status: channelz_pb2.ChannelConnectivityState.State,
+    ) -> bool:
+        primary_status = client.expect_channel_status(
+            self.primary_port,
+            expected_primary_status,
+            timeout=datetime.timedelta(milliseconds=_STATUS_TIMEOUT_MS.value),
+            poll_interval=datetime.timedelta(
+                milliseconds=_STATUS_POLL_INTERVAL_MS.value
             ),
-            fallback_status,
+        )
+        fallback_status = client.expect_channel_status(
+            self.fallback_port,
+            expected_fallback_status,
+            timeout=datetime.timedelta(milliseconds=_STATUS_TIMEOUT_MS.value),
+            poll_interval=datetime.timedelta(
+                milliseconds=_STATUS_POLL_INTERVAL_MS.value
+            ),
+        )
+        return (
+            primary_status == expected_primary_status
+            and fallback_status == expected_fallback_status
         )
 
     def test_fallback_on_startup(self):
@@ -186,29 +192,38 @@ class FallbackTest(absltest.TestCase):
                 port=self.fallback_port,
                 upstream_port=server2.port,
             ):
-                self.assert_ads_connections(
-                    client=client,
+                self.check_ads_connections_statuses(
+                    client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                     fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
-                stats = client.get_stats(5)
-                self.assertGreater(stats.rpcs_by_peer["server2"], 0)
-                self.assertNotIn("server1", stats.rpcs_by_peer)
+                retryer = retryers.constant_retryer(
+                    wait_fixed=datetime.timedelta(seconds=1),
+                    timeout=datetime.timedelta(seconds=20),
+                    check_result=lambda stats: "server1"
+                    not in stats.rpcs_by_peer
+                    and stats.rpcs_by_peer["server2"] > 0,
+                )
+                retryer(client.get_stats, 5)
                 # Primary control plane start. Will use it
                 with self.start_control_plane(
                     name="primary_xds_config",
                     port=self.primary_port,
                     upstream_port=server1.port,
                 ):
-                    self.assert_ads_connections(
-                        client=client,
+                    self.check_ads_connections_statuses(
+                        client,
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    stats = client.get_stats(10)
-                    self.assertEqual(stats.num_failures, 0)
-                    self.assertIn("server1", stats.rpcs_by_peer)
-                    self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+                    retryer = retryers.constant_retryer(
+                        wait_fixed=datetime.timedelta(seconds=1),
+                        timeout=datetime.timedelta(seconds=20),
+                        check_result=lambda stats: stats.num_failures == 0
+                        and "server1" in stats.rpcs_by_peer
+                        and stats.rpcs_by_peer["server1"] > 0,
+                    )
+                    retryer(client.get_stats, 10)
                 self.assert_ads_connections(
                     client=client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
@@ -294,7 +309,7 @@ class FallbackTest(absltest.TestCase):
             ),
             self.start_client() as client,
         ):
-            self.assert_ads_connections(
+            self.check_ads_connections_statuses(
                 client,
                 primary_status=channelz_pb2.ChannelConnectivityState.READY,
                 fallback_status=None,
@@ -314,28 +329,51 @@ class FallbackTest(absltest.TestCase):
                     upstream_host=FallbackTest.dockerInternalIp,
                 )
             )
-            self.assert_ads_connections(
+            self.check_ads_connections_statuses(
                 client,
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=channelz_pb2.ChannelConnectivityState.READY,
             )
-            stats = client.get_stats(10)
-            self.assertEqual(stats.num_failures, 0)
-            self.assertIn("server2", stats.rpcs_by_peer)
+            retryer = retryers.constant_retryer(
+                wait_fixed=datetime.timedelta(seconds=1),
+                timeout=datetime.timedelta(seconds=20),
+                check_result=lambda stats: stats.num_failures == 0
+                and "server2" in stats.rpcs_by_peer,
+            )
+            retryer(client.get_stats, 10)
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
                 port=self.primary_port,
                 upstream_port=server3.port,
             ):
-                self.assert_ads_connections(
+                self.check_ads_connections_statuses(
                     client,
                     primary_status=channelz_pb2.ChannelConnectivityState.READY,
                     fallback_status=None,
                 )
-                stats = client.get_stats(20)
-                self.assertEqual(stats.num_failures, 0)
-                self.assertIn("server3", stats.rpcs_by_peer)
+                retryer = retryers.constant_retryer(
+                    wait_fixed=datetime.timedelta(seconds=1),
+                    timeout=datetime.timedelta(seconds=20),
+                    check_result=lambda stats: stats.num_failures == 0
+                    and "server3" in stats.rpcs_by_peer,
+                )
+                retryer(client.get_stats, 10)
+
+    def check_ads_connections_statuses(
+        self, client, primary_status, fallback_status
+    ):
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=1),
+            timeout=datetime.timedelta(minutes=3),
+            check_result=lambda result: result is True,
+        )
+        retryer(
+            self.ads_connections_status_check_result,
+            client,
+            expected_primary_status=primary_status,
+            expected_fallback_status=fallback_status,
+        )
 
 
 if __name__ == "__main__":

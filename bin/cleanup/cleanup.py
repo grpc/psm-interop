@@ -453,6 +453,7 @@ def cleanup_gamma_server(
     gcp_service_account,
     *,
     suffix: Optional[str] = "",
+    enable_dualstack: bool = False,
 ):
     deployment_name = xds_flags.SERVER_NAME.value
     if suffix:
