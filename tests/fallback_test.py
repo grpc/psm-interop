@@ -101,7 +101,7 @@ class FallbackTest(absltest.TestCase):
         return framework.helpers.docker.Client(
             manager=self.process_manager,
             name=name or framework.xds_flags.CLIENT_NAME.value,
-            port=port or get_free_port(),
+            port=port or framework.helpers.docker.get_free_port(),
             url=f"xds:///{_LISTENER}",
             image=framework.xds_k8s_flags.CLIENT_IMAGE.value,
             stats_request_timeout_s=_STATS_REQUEST_TIMEOUT_S.value,
@@ -125,7 +125,7 @@ class FallbackTest(absltest.TestCase):
 
     def start_server(self, name: str, port: int = None):
         logger.debug('Starting server "%s"', name)
-        port = get_free_port() if port is None else port
+        port = framework.helpers.docker.get_free_port() if port is None else port
         return framework.helpers.docker.GrpcProcess(
             name=name,
             port=port,
