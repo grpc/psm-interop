@@ -849,8 +849,10 @@ psm::tools::log() {
 # Determines the cluster name and zone based on the given cluster identifier.
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
-#   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use. This variable will be unset for regional clusters.
-#   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters). This variable will be unset for zonal clusters.
+#   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
+#       This variable will be unset for regional clusters.
+#   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
+#       This variable will be unset for zonal clusters.
 # Arguments:
 #   The cluster identifier
 # Outputs:
