@@ -849,8 +849,8 @@ psm::tools::log() {
 # Determines the cluster name and zone based on the given cluster identifier.
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
-#   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
-#   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
+#   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use. This variable will be unset for regional clusters.
+#   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters). This variable will be unset for zonal clusters.
 # Arguments:
 #   The cluster identifier
 # Outputs:
@@ -861,6 +861,7 @@ activate_gke_cluster() {
     GKE_CLUSTER_PSM_LB)
       GKE_CLUSTER_NAME="psm-interop-lb-primary"
       GKE_CLUSTER_ZONE="us-central1-a"
+      unset GKE_CLUSTER_REGION
       ;;
     GKE_CLUSTER_PSM_SECURITY)
       GKE_CLUSTER_NAME="psm-interop-security"
@@ -869,18 +870,22 @@ activate_gke_cluster() {
     GKE_CLUSTER_PSM_CSM)
       GKE_CLUSTER_NAME="psm-interop-csm-gateway"
       GKE_CLUSTER_REGION="us-central1"
+      unset GKE_CLUSTER_ZONE
       ;;
     GKE_CLUSTER_PSM_BASIC)
       GKE_CLUSTER_NAME="interop-test-psm-basic"
       GKE_CLUSTER_ZONE="us-central1-c"
+      unset GKE_CLUSTER_REGION
       ;;
     GKE_CLUSTER_DUALSTACK)
       GKE_CLUSTER_NAME="psm-interop-dualstack"
       GKE_CLUSTER_ZONE="us-central1-a"
+      unset GKE_CLUSTER_REGION
       ;;
     GKE_CLUSTER_PSM_INTEROP_FLEET)
       GKE_CLUSTER_NAME="psm-interop-fleet-cluster"
       GKE_CLUSTER_ZONE="us-central1-a"
+      unset GKE_CLUSTER_REGION
       ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
