@@ -23,7 +23,8 @@ from grpc_channelz.v1 import channelz_pb2
 from typing_extensions import TypeAlias, override
 
 import framework
-from framework.helpers import retryers, skips
+from framework.helpers import retryers
+from framework.helpers import skips
 import framework.helpers.docker
 import framework.helpers.logs
 import framework.helpers.xds_resources
@@ -125,7 +126,9 @@ class FallbackTest(absltest.TestCase):
 
     def start_server(self, name: str, port: int = None):
         logger.debug('Starting server "%s"', name)
-        port = framework.helpers.docker.get_free_port() if port is None else port
+        port = (
+            framework.helpers.docker.get_free_port() if port is None else port
+        )
         return framework.helpers.docker.GrpcProcess(
             name=name,
             port=port,

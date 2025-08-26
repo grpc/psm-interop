@@ -60,10 +60,10 @@ class Bootstrap:
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
-        if 'servers' not in kwargs:
-            kwargs['servers'] = []
-        if 'authorities' not in kwargs:
-            kwargs['authorities'] = {}
+        if "servers" not in kwargs:
+            kwargs["servers"] = []
+        if "authorities" not in kwargs:
+            kwargs["authorities"] = {}
         file = template.render(**kwargs)
         destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:

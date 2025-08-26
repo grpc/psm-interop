@@ -14,13 +14,13 @@
 import datetime
 import logging
 import socket
-from typing_extensions import override
 
 import absl
 from absl import flags
 from absl.testing import absltest
 from google.protobuf import message
 from grpc_channelz.v1 import channelz_pb2
+from typing_extensions import override
 
 import framework
 import framework.helpers.docker
@@ -71,9 +71,7 @@ class FederationTest(absltest.TestCase):
     def setUpClass(cls):
         # Use the host IP for when we need to use IP address and not the host
         # name, such as EDS resources
-        cls.dockerInternalIp = socket.gethostbyname(
-            socket.gethostname()
-        )
+        cls.dockerInternalIp = socket.gethostbyname(socket.gethostname())
 
     @override
     def setUp(self):
