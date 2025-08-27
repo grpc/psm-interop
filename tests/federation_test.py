@@ -82,6 +82,7 @@ class FederationTest(absltest.TestCase):
             "authority2": f"{_HOST_NAME.value}:{self.authority2_port}",
         }
         server_template = "xdstp://authority2/envoy.config.listener.v3.Listener/grpc/server/%s"
+        # TODO: find a better location for the bootstrap file
         bootstrap = framework.helpers.docker.Bootstrap(
             framework.helpers.logs.log_dir_mkdir("bootstrap"),
             # Use an invalid domain for the default server, to validate that no
