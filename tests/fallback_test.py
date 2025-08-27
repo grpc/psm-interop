@@ -183,8 +183,8 @@ class FallbackTest(absltest.TestCase):
             self.start_server(name="server2") as server2,
             self.start_client() as client,
         ):
-            self.assert_ads_connections(
-                client=client,
+            self.check_ads_connections_statuses(
+                client,
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
             )
@@ -226,25 +226,21 @@ class FallbackTest(absltest.TestCase):
                         and "server1" in stats.rpcs_by_peer
                         and stats.rpcs_by_peer["server1"] > 0,
                     )
-                    retryer(client.get_stats, 10)
-                self.assert_ads_connections(
-                    client=client,
+                retryer(client.get_stats, 10)
+                self.check_ads_connections_statuses(
+                    client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                     fallback_status=None,
                 )
                 # Primary control plane down, cached value is used
-                stats = client.get_stats(5)
-                self.assertEqual(stats.num_failures, 0)
-                self.assertEqual(stats.rpcs_by_peer["server1"], 5)
-            self.assert_ads_connections(
-                client=client,
+                self.wait_for_given_server_to_receive_rpcs(client, "server1")
+            self.check_ads_connections_statuses(
+                client,
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=None,
             )
             # Fallback control plane down, cached value is used
-            stats = client.get_stats(5)
-            self.assertEqual(stats.num_failures, 0)
-            self.assertEqual(stats.rpcs_by_peer["server1"], 5)
+            self.wait_for_given_server_to_receive_rpcs(client, "server1")
 
     def test_fallback_mid_startup(self):
         # Run the mesh, excluding the client
@@ -269,31 +265,27 @@ class FallbackTest(absltest.TestCase):
             )
             # Run client
             with self.start_client() as client:
-                self.assert_ads_connections(
+                self.check_ads_connections_statuses(
                     client,
                     primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                     fallback_status=channelz_pb2.ChannelConnectivityState.READY,
                 )
                 # Secondary xDS config start, send traffic to server2
-                stats = client.get_stats(5)
-                self.assertEqual(stats.num_failures, 0)
-                self.assertGreater(stats.rpcs_by_peer["server2"], 0)
-                self.assertNotIn("server1", stats.rpcs_by_peer)
+                self.wait_for_given_server_to_receive_rpcs(client, "server2")
                 # Rerun primary control plane
                 with self.start_control_plane(
                     "primary_xds_config_run_2",
                     port=self.primary_port,
                     upstream_port=server1.port,
                 ):
-                    self.assert_ads_connections(
+                    self.check_ads_connections_statuses(
                         client,
                         primary_status=channelz_pb2.ChannelConnectivityState.READY,
                         fallback_status=None,
                     )
-                    stats = client.get_stats(10)
-                    self.assertEqual(stats.num_failures, 0)
-                    self.assertIn("server1", stats.rpcs_by_peer)
-                    self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+                    self.wait_for_given_server_to_receive_rpcs(
+                        client, "server1"
+                    )
 
     def test_fallback_mid_update(self):
         with (
@@ -318,8 +310,7 @@ class FallbackTest(absltest.TestCase):
                 fallback_status=None,
             )
             # Secondary xDS config start, send traffic to server2
-            stats = client.get_stats(5)
-            self.assertGreater(stats.rpcs_by_peer["server1"], 0)
+            self.wait_for_given_server_to_receive_rpcs(client, "server1")
             primary.stop_on_resource_request(
                 "type.googleapis.com/envoy.config.cluster.v3.Cluster",
                 "test_cluster_2",
@@ -337,13 +328,7 @@ class FallbackTest(absltest.TestCase):
                 primary_status=channelz_pb2.ChannelConnectivityState.TRANSIENT_FAILURE,
                 fallback_status=channelz_pb2.ChannelConnectivityState.READY,
             )
-            retryer = retryers.constant_retryer(
-                wait_fixed=datetime.timedelta(seconds=1),
-                timeout=datetime.timedelta(seconds=20),
-                check_result=lambda stats: stats.num_failures == 0
-                and "server2" in stats.rpcs_by_peer,
-            )
-            retryer(client.get_stats, 10)
+            self.wait_for_given_server_to_receive_rpcs(client, "server2")
             # Check that post-recovery uses a new config
             with self.start_control_plane(
                 name="primary_xds_config_run_2",
@@ -362,6 +347,16 @@ class FallbackTest(absltest.TestCase):
                     and "server3" in stats.rpcs_by_peer,
                 )
                 retryer(client.get_stats, 10)
+
+    def wait_for_given_server_to_receive_rpcs(self, client, server_name):
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=1),
+            timeout=datetime.timedelta(seconds=20),
+            check_result=lambda stats: stats.num_failures == 0
+            and server_name in stats.rpcs_by_peer
+            and len(stats) == 1,
+        )
+        retryer(client.get_stats, 10)
 
     def check_ads_connections_statuses(
         self, client, primary_status, fallback_status
