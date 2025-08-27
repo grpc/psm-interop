@@ -15,6 +15,7 @@
 import datetime
 import logging
 import pathlib
+import socket
 import threading
 import time
 
@@ -49,25 +50,22 @@ def _make_working_dir(base: pathlib.Path) -> str:
     return mount_dir.absolute()
 
 
+def get_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("localhost", 0))
+        return sock.getsockname()[1]
+
+
 class Bootstrap:
-    def __init__(
-        self,
-        base: pathlib.Path,
-        primary_port: int,
-        fallback_port: int,
-        host_name: str,
-    ):
-        self.primary_port = primary_port
-        self.fallback_port = fallback_port
+    def __init__(self, base: pathlib.Path, **kwargs):
         self.mount_dir = _make_working_dir(base)
         # Use Mako
         template = mako.template.Template(filename=BOOTSTRAP_JSON_TEMPLATE)
-        file = template.render(
-            servers=[
-                f"{host_name}:{primary_port}",
-                f"{host_name}:{fallback_port}",
-            ]
-        )
+        if "servers" not in kwargs:
+            kwargs["servers"] = []
+        if "authorities" not in kwargs:
+            kwargs["authorities"] = {}
+        file = template.render(**kwargs)
         destination = self.mount_dir / "bootstrap.json"
         with open(destination, "w", encoding="utf-8") as f:
             f.write(file)
@@ -107,6 +105,7 @@ def Configure(config, image: str, name: str):
     config["detach"] = True
     config["environment"] = {
         "GRPC_EXPERIMENTAL_XDS_FALLBACK": "true",
+        "GRPC_EXPERIMENTAL_XDS_FEDERATION": "true",
         "GRPC_TRACE": "xds_client",
         "GRPC_VERBOSITY": "info",
         "GRPC_XDS_BOOTSTRAP": "/grpc/bootstrap.json",
@@ -308,5 +307,63 @@ class Client(GrpcProcess):
                     break
             if status == expected_status:
                 break
-            time.sleep(poll_interval.microseconds * 0.000001)
+            time.sleep(poll_interval.total_seconds())
+        return status
+
+
+class Server(GrpcProcess):
+    def __init__(
+        self,
+        manager: ProcessManager,
+        port: int,
+        maintenance_port: int,
+        name: str,
+        image: str,
+    ):
+        super().__init__(
+            manager=manager,
+            port=port,
+            image=image,
+            name=name,
+            command=[
+                f"--port={port}",
+                f"--maintenance_port={maintenance_port}",
+                "--secure_mode=true",
+            ],
+            ports={port: port, maintenance_port: maintenance_port},
+            volumes={
+                manager.bootstrap.mount_dir: {
+                    "bind": "/grpc",
+                    "mode": "ro",
+                }
+            },
+        )
+        self.maintenance_port = maintenance_port
+
+    def management_channel(self) -> grpc.Channel:
+        if self.grpc_channel is None:
+            self.grpc_channel = grpc.insecure_channel(
+                f"localhost:{self.maintenance_port}"
+            )
+        return self.grpc_channel
+
+    def expect_channel_status(
+        self,
+        port: int,
+        expected_status: channelz_pb2.ChannelConnectivityState,
+        timeout: datetime.timedelta,
+        poll_interval: datetime.timedelta,
+    ) -> channelz_pb2.ChannelConnectivityState:
+        deadline = datetime.datetime.now() + timeout
+        channelz = ChannelzServiceClient(self.management_channel())
+        status = None
+        while datetime.datetime.now() < deadline:
+            status = None
+            for ch in channelz.list_channels():
+                if ch.data.target.endswith(str(port)):
+                    status = ch.data.state.state
+                    break
+            if status == expected_status:
+                break
+            time.sleep(poll_interval.total_seconds())
         return status

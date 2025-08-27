@@ -1,6 +1,6 @@
 {
   "xds_servers": [
-% for i, server in enumerate(servers):
+% for i, server in list(enumerate(servers)):
     {
       "server_uri": "${server}",
       "channel_creds": [
@@ -11,9 +11,31 @@
       "server_features": [
         "xds_v3"
       ]
-    }${','*bool(i < len(servers)-1)}
+    }${'' if loop.last else ','}
 % endfor
   ],
+  "authorities": {
+% for i, (name, server) in list(enumerate((authorities).items())):
+    "${name}": {
+      "xds_servers": [
+        {
+          "server_uri": "${server}",
+          "channel_creds": [
+            {
+              "type": "insecure"
+            }
+          ],
+          "server_features": [
+            "xds_v3"
+          ]
+        }
+      ]
+    }${'' if loop.last else ','}
+% endfor
+  },
+% if server_template:
+  "server_listener_resource_name_template": "${server_template}",
+% endif
   "node": {
     "id": "test-id",
     "cluster": "cluster",
