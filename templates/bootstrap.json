@@ -1,6 +1,6 @@
 {
   "xds_servers": [
-% for i, server in enumerate(servers):
+% for i, server in list(enumerate(servers)):
     {
       "server_uri": "${server}",
       "channel_creds": [
@@ -15,7 +15,7 @@
 % endfor
   ],
   "authorities": {
-% for i, (name, server) in enumerate((authorities).items()):
+% for i, (name, server) in list(enumerate((authorities).items())):
     "${name}": {
       "xds_servers": [
         {
