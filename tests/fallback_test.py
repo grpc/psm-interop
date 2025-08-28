@@ -351,7 +351,7 @@ class FallbackTest(absltest.TestCase):
             and len(stats.rpcs_by_peer) == 1,
         )
         retryer(client.get_stats, 10)
-        
+
     def check_ads_connections_statuses(
         self, client, primary_status, fallback_status
     ):
