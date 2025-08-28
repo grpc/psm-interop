@@ -341,7 +341,6 @@ class FallbackTest(absltest.TestCase):
                     fallback_status=None,
                 )
                 self.wait_for_given_server_to_receive_rpcs(client, "server3")
-                retryer(client.get_stats, 10)
 
     def wait_for_given_server_to_receive_rpcs(self, client, server_name):
         retryer = retryers.constant_retryer(
