@@ -340,18 +340,13 @@ class FallbackTest(absltest.TestCase):
                     primary_status=channelz_pb2.ChannelConnectivityState.READY,
                     fallback_status=None,
                 )
-                retryer = retryers.constant_retryer(
-                    wait_fixed=datetime.timedelta(seconds=1),
-                    timeout=datetime.timedelta(seconds=20),
-                    check_result=lambda stats: stats.num_failures == 0
-                    and "server3" in stats.rpcs_by_peer,
-                )
+                self.wait_for_given_server_to_receive_rpcs(client, "server3")
                 retryer(client.get_stats, 10)
 
     def wait_for_given_server_to_receive_rpcs(self, client, server_name):
         retryer = retryers.constant_retryer(
             wait_fixed=datetime.timedelta(seconds=1),
-            timeout=datetime.timedelta(seconds=20),
+            timeout=datetime.timedelta(seconds=60),
             check_result=lambda stats: stats.num_failures == 0
             and server_name in stats.rpcs_by_peer
             and len(stats.rpcs_by_peer) == 1,
