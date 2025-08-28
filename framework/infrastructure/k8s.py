@@ -838,8 +838,8 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
             timeout=timeout,
-            check_result=lambda resource: resource.metadata.annotations
-            is not None
+            check_result=lambda resource: resource.metadata is not None
+            and resource.metadata.annotations is not None
             and self.MESH_ANNOTATION in resource.metadata.annotations,
         )
         try:
