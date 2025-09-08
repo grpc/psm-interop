@@ -850,7 +850,7 @@ psm::tools::log() {
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
 #   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
-#       This variable will be unset for regional clusters.
+#       This variable will be empty for regional clusters.
 #   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
 #       This variable will be unset for zonal clusters.
 # Arguments:
