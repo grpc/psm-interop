@@ -860,9 +860,9 @@ psm::tools::log() {
 #######################################
 activate_gke_cluster() {
   # Reset the variables: activate_gke_cluster may be called multiple times.
-  unset GKE_CLUSTER_REGION
-  unset GKE_CLUSTER_ZONE
-  unset GKE_CLUSTER_NAME
+  GKE_CLUSTER_REGION=""
+  GKE_CLUSTER_ZONE=""
+  GKE_CLUSTER_NAME=""
   case $1 in
     GKE_CLUSTER_PSM_LB)
       GKE_CLUSTER_NAME="psm-interop-lb-primary"
