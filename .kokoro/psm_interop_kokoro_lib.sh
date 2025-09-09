@@ -851,13 +851,19 @@ psm::tools::log() {
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
 #   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
+#       This variable will be empty for regional clusters.
 #   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
+#       This variable will be empty for zonal clusters.
 # Arguments:
 #   The cluster identifier
 # Outputs:
 #   Writes the output to stdout, stderr
 #######################################
 activate_gke_cluster() {
+  # Reset the variables: activate_gke_cluster may be called multiple times.
+  GKE_CLUSTER_REGION=""
+  GKE_CLUSTER_ZONE=""
+  GKE_CLUSTER_NAME=""
   case $1 in
     GKE_CLUSTER_PSM_LB)
       GKE_CLUSTER_NAME="psm-interop-lb-primary"
