@@ -1286,7 +1286,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             and deployment.status.available_replicas is not None
             and deployment.status.available_replicas >= count
         )
-    
+
     @classmethod
     def _namespace_active(cls, namespace: V1Namespace) -> bool:
         return (
