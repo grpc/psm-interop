@@ -270,7 +270,7 @@ class RetryError(tenacity.RetryError):
 
         if last_attempt.failed:
             err = last_attempt.exception()
-            message += f" Last Retry Attempt Error: {type(err).__name__}"
+            message += f" Last Retry Attempt Error: {type(err).__name__}({err})"
         elif check_result:
             message += " Check result callback returned False."
 
@@ -281,16 +281,19 @@ class RetryError(tenacity.RetryError):
 
     @property
     def message(self):
-        message = ""
-
         # TODO(sergiitk): consider if we want to have print-by-default
         # and/or ignore-by-default exception lists.
-        if cause := self.exception() and self._print_last_trace:
-            cause_trace = framework.errors.format_error_with_trace(cause)
-            message += f"Last Retry Attempt Traceback:\n{cause_trace}\n\n"
+        tb_out = ""
+        if self._print_last_trace and (cause := self.exception()):
+            try:
+                if last_tb := framework.errors.format_error_with_trace(
+                    cause, only_if_tb_present=True
+                ):
+                    tb_out = f"^\nLast Retry Attempt Error {last_tb.rstrip()}"
+            except Exception as err_tb_format:
+                tb_out = f"<Error printing the traceback: {err_tb_format!r}>"
 
-        message += self._message
-        return message
+        return f"{self._message}\n{tb_out}" if tb_out else self._message
 
     def result(self, *, default=None):
         return (
