@@ -1311,7 +1311,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             result = retry_err.result()
             note = framework.errors.FrameworkError.note_blanket_error_info_below(
                 "The namespace did not become active within the expected timeout.",
-                info_below= (
+                info_below = (
                     f"Timeout {timeout} (h:mm:ss) waiting for namespace"
                     f" {self.name} to become active. Namespace status:\n"
                     f"{self.pretty_format_status(result, highlight=False)}"
