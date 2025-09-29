@@ -94,17 +94,22 @@ class RemoveNegTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("09_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("10_remove_neg"):
-            self.assertRpcsEventuallyGoToGivenServers(
-                test_client, default_test_servers + same_zone_test_servers
-            )
+        with self.subTest("10_remove_neg_alternate"):
             self.removeServerBackends(
                 server_runner=self.alternate_server_runner
             )
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, default_test_servers
             )
+            # Bring up backend for next step
+            self.setupServerBackends(server_runner=self.alternate_server_runner)
 
+        with self.subTest("11_remove_neg_main"):
+            self.removeServerBackends()
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client, same_zone_test_servers
+            )
+ 
 
 if __name__ == "__main__":
     absltest.main(failfast=True)
