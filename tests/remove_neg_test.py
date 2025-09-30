@@ -109,7 +109,7 @@ class RemoveNegTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, same_zone_test_servers
             )
- 
+
 
 if __name__ == "__main__":
     absltest.main(failfast=True)
