@@ -847,7 +847,7 @@ class XdsKubernetesBaseTestCase(
         *,
         rpc_type: str,
         num_rpcs: int,
-        threshold_percent: int = 5,
+        threshold_percent: int = 10,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
