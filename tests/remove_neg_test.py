@@ -105,8 +105,8 @@ class RemoveNegTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("11_remove_neg_main"):
             # Bring up alternate backend and remove the main one
             # This extra step is done so we verify both backends were running fine.
-            # This is replacing a check before step 10 where we were asserting RPC reach both server,
-            # that fails sometime as both servers might end up in diffrent priority.
+            # Note: We do it this way instead of asserting that RPCs reach both server (before step 10)
+            # Because that fails sometime as both servers might end up in diffrent priorities.
             self.setupServerBackends(server_runner=self.alternate_server_runner)
             self.removeServerBackends()
             self.assertRpcsEventuallyGoToGivenServers(
