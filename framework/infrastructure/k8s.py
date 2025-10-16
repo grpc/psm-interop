@@ -308,7 +308,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     WAIT_MEDIUM_SLEEP_SEC: int = 10
     WAIT_LONG_TIMEOUT_SEC: int = 10 * 60
     WAIT_LONG_SLEEP_SEC: int = 30
-    WAIT_POD_START_TIMEOUT_SEC: int = 3 * 60
+    WAIT_POD_START_TIMEOUT_SEC: int = 5 * 60
 
     # TODO(sergiitk): Find a better way. Maybe like in framework.rpc.grpc?
     wait_for_namespace_deleted_timeout_sec = None
