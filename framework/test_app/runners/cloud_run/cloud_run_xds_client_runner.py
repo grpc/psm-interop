@@ -216,6 +216,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                                 "name": "GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER",
                                 "value": "true",
                             },
+                            {
+                                "name": "GRPC_EXPERIMENTAL_XDS_SNI",
+                                "value": "true",
+                            },
                         ],
                     }
                 ],
