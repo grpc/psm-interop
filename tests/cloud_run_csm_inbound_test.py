@@ -42,7 +42,7 @@ class CloudRunCsmInboundTest(cloud_run_testcase.CloudRunXdsKubernetesTestCase):
         elif config.client_lang is _Lang.PYTHON:
             return config.version_gte("v1.69.x")
         elif config.client_lang is _Lang.JAVA:
-            return config.version_gte("v1.77.x")               
+            return config.version_gte("v1.77.x")
         return False
 
     @override
