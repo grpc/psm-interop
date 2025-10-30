@@ -86,6 +86,13 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("06_add_server_backends_to_backend_services"):
             self.setupServerBackends()
 
+        with self.subTest("06a_wait_for_endpoints_propagation"):
+            # Start a temporary client to verify all endpoints are reported by TD.
+            # This is to address flakiness where the main client starts with
+            # a partial list of endpoints.
+            temp_client = self.startTestClient(test_servers[0])
+            self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
+
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
             test_client = self.startTestClient(
@@ -174,7 +181,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             finally:
                 logging.info("Client received CSDS response: %s", parsed)
 
-        with self.subTest("12_next_100_affinity_rpcs_pick_different_backend"):
+        with self.subTest("13_next_100_affinity_rpcs_pick_different_backend"):
             rpc_stats = self.getClientRpcStats(test_client, _RPC_COUNT)
             rpc_distribution = grpc_testing.RpcDistributionStats.from_message(
                 rpc_stats
