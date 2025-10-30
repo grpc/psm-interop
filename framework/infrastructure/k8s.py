@@ -1286,3 +1286,32 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             and deployment.status.available_replicas is not None
             and deployment.status.available_replicas >= count
         )
+
+    @classmethod
+    def _namespace_active(cls, namespace: V1Namespace) -> bool:
+        return (
+            isinstance(namespace, V1Namespace)
+            and namespace.status.phase == "Active"
+        )
+
+    def wait_for_namespace_active(
+        self,
+        timeout: _timedelta = WAIT_SHORT_TIMEOUT_SEC,
+        retry_wait: _timedelta = WAIT_SHORT_SLEEP_SEC,
+    ) -> None:
+        logger.info("Waiting for namespace %s to become active", self.name)
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=timeout,
+            check_result=self._namespace_active,
+        )
+        try:
+            retryer(self.get)
+        except retryers.RetryError as retry_err:
+            result = retry_err.result()
+            retry_err.add_note(
+                f"Timeout {timeout} (h:mm:ss) waiting for namespace"
+                f" {self.name} to become active. Namespace status:\n"
+                f"{self.pretty_format_status(result, highlight=False)}"
+            )
+            raise
