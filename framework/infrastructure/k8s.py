@@ -1296,13 +1296,12 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def wait_for_namespace_active(
         self,
-        timeout_sec: _timedelta = WAIT_SHORT_TIMEOUT_SEC,
-        wait_sec: _timedelta = WAIT_SHORT_SLEEP_SEC,
+        timeout: _timedelta = WAIT_SHORT_TIMEOUT_SEC,
+        retry_wait: _timedelta = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
         logger.info("Waiting for namespace %s to become active", self.name) 
-        timeout = _timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
-            wait_fixed=_timedelta(seconds=wait_sec),
+            wait_fixed=retry_wait,
             timeout=timeout,
             check_result=self._namespace_active,
         )
