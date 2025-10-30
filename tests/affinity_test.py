@@ -91,10 +91,8 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             # This is to address flakiness where the main client starts with
             # a partial list of endpoints.
             temp_client = self.startTestClient(test_servers[0])
-            try:
-                self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
-            finally:
-                self.client_runner.cleanup()
+            self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
+            self.client_runner.cleanup()
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
