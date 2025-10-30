@@ -1296,9 +1296,10 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
 
     def wait_for_namespace_active(
         self,
-        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
-        wait_sec: int = WAIT_SHORT_SLEEP_SEC,
+        timeout_sec: _timedelta = WAIT_SHORT_TIMEOUT_SEC,
+        wait_sec: _timedelta = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
+        logger.info("Waiting for namespace %s to become active", self.name) 
         timeout = _timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
@@ -1309,13 +1310,9 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             retryer(self.get)
         except retryers.RetryError as retry_err:
             result = retry_err.result()
-            note = framework.errors.FrameworkError.note_blanket_error_info_below(
-                "The namespace did not become active within the expected timeout.",
-                info_below=(
-                    f"Timeout {timeout} (h:mm:ss) waiting for namespace"
-                    f" {self.name} to become active. Namespace status:\n"
-                    f"{self.pretty_format_status(result, highlight=False)}"
-                ),
+            retry_err.add_note(  
+                f"Timeout {timeout} (h:mm:ss) waiting for namespace"  
+                f" {self.name} to become active. Namespace status:\n"  
+                f"{self.pretty_format_status(result, highlight=False)}"  
             )
-            retry_err.add_note(note)
             raise
