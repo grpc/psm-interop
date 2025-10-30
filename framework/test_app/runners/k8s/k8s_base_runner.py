@@ -196,7 +196,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             self.namespace = self._create_namespace(
                 self.namespace_template, namespace_name=self.k8s_namespace.name
             )
-            if not self.k8s_namespace._namespace_active(self.namespace):  
+            if not self.k8s_namespace._namespace_active(self.namespace):
                 self.k8s_namespace.wait_for_namespace_active()
 
     def _start_completed(self):
