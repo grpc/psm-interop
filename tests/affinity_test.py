@@ -94,7 +94,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             try:
                 self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
             finally:
-                temp_client.close()
+                self.client_runner.cleanup()
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
