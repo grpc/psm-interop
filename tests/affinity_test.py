@@ -23,6 +23,7 @@ from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_testing
+from framework.test_app.runners.k8s import k8s_xds_client_runner
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -31,6 +32,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _ChannelzChannelState = grpc_channelz.ChannelState
+KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _Lang = skips.Lang
 
 # Testing consts
@@ -61,6 +63,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.10.x")
         return True
 
+    @classmethod
     @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
         return super.initKubernetesClientRunner(reuse_namespace=True)
