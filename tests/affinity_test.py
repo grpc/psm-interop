@@ -61,6 +61,10 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.10.x")
         return True
 
+    @override
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super.initKubernetesClientRunner(reuse_namespace=True)
+
     def test_affinity(self) -> None:  # pylint: disable=too-many-statements
         with self.subTest("00_create_health_check"):
             self.td.create_health_check()
@@ -92,7 +96,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             # a partial list of endpoints.
             temp_client = self.startTestClient(test_servers[0])
             self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
-            self.client_runner.cleanup()
+            self.client_runner.cleanup(force_namespace=False)
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):

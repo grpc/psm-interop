@@ -1116,6 +1116,9 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        reuse_namespace = kwargs.pop("reuse_namespace", False) or (
+            self.server_namespace == self.client_namespace
+        )
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -1131,7 +1134,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
             stats_port=self.client_port,
-            reuse_namespace=self.server_namespace == self.client_namespace,
+            reuse_namespace=reuse_namespace,
             **kwargs,
         )
 
