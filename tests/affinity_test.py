@@ -14,6 +14,7 @@
 import logging
 import time
 from typing import List
+from typing_extensions import override
 
 from absl import flags
 from absl.testing import absltest
@@ -63,10 +64,9 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.10.x")
         return True
 
-    @classmethod
     @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super.initKubernetesClientRunner(reuse_namespace=True)
+        return super().initKubernetesClientRunner(reuse_namespace=True)
 
     def test_affinity(self) -> None:  # pylint: disable=too-many-statements
         with self.subTest("00_create_health_check"):
