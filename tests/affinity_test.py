@@ -17,12 +17,14 @@ from typing import List
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import override
 
 from framework import xds_k8s_flags
 from framework import xds_k8s_testcase
 from framework.helpers import skips
 from framework.rpc import grpc_channelz
 from framework.rpc import grpc_testing
+from framework.test_app.runners.k8s import k8s_xds_client_runner
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -31,6 +33,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _ChannelzChannelState = grpc_channelz.ChannelState
+KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _Lang = skips.Lang
 
 # Testing consts
@@ -61,6 +64,10 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.10.x")
         return True
 
+    @override
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(reuse_namespace=True)
+
     def test_affinity(self) -> None:  # pylint: disable=too-many-statements
         with self.subTest("00_create_health_check"):
             self.td.create_health_check()
@@ -85,6 +92,14 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         with self.subTest("06_add_server_backends_to_backend_services"):
             self.setupServerBackends()
+
+        with self.subTest("06a_wait_for_endpoints_propagation"):
+            # Start a temporary client to verify all endpoints are reported by TD.
+            # This is to address flakiness where the main client starts with
+            # a partial list of endpoints.
+            temp_client = self.startTestClient(test_servers[0])
+            self.assertHealthyEndpointsCount(temp_client, _REPLICA_COUNT)
+            self.client_runner.cleanup(force_namespace=False)
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
@@ -174,7 +189,7 @@ class AffinityTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             finally:
                 logging.info("Client received CSDS response: %s", parsed)
 
-        with self.subTest("12_next_100_affinity_rpcs_pick_different_backend"):
+        with self.subTest("13_next_100_affinity_rpcs_pick_different_backend"):
             rpc_stats = self.getClientRpcStats(test_client, _RPC_COUNT)
             rpc_distribution = grpc_testing.RpcDistributionStats.from_message(
                 rpc_stats
