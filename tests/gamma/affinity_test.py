@@ -42,6 +42,7 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     @override
     def is_supported(config: skips.TestConfig) -> bool:
         # When re-enabling, for Cpp and Python, use minimum version as v1.62.x
+        # and return False for other languages
         return False
 
     @override
