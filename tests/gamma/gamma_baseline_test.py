@@ -31,7 +31,7 @@ class GammaBaselineTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     @override
     def is_supported(config: skips.TestConfig) -> bool:
         return False
-        
+
     def test_ping_pong(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
