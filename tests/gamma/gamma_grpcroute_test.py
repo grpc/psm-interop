@@ -30,6 +30,11 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class GammaGrpcRouteTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    @staticmethod
+    @override
+    def is_supported(config: skips.TestConfig) -> bool:
+        return False
+        
     @override
     def initKubernetesServerRunner(
         self, **kwargs

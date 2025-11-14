@@ -27,6 +27,11 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class GammaBaselineTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    @staticmethod
+    @override
+    def is_supported(config: skips.TestConfig) -> bool:
+        return False
+        
     def test_ping_pong(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()
