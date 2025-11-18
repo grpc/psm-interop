@@ -169,7 +169,7 @@ class PrometheusLogger:
         self.log_stream.close()
 
 
-class CsmObservabilityTestWithInjection(
+class CsmObservabilityTestWithInjectionTest(
     xds_gamma_testcase.GammaXdsKubernetesTestCase
 ):
     metric_client: monitoring_v3.MetricServiceClient
