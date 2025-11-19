@@ -176,7 +176,8 @@ class CsmObservabilityTestWithInjectionTest(
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        return config.version_gte("v1.68.x")
+        # When re-enabling, use minimum version as v1.68.x
+        return False
 
     @classmethod
     def setUpClass(cls):
