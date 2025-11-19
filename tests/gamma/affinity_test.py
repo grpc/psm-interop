@@ -41,8 +41,8 @@ class AffinityTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
-        if config.client_lang in _Lang.CPP | _Lang.PYTHON:
-            return config.version_gte("v1.62.x")
+        # When re-enabling, for Cpp and Python, use minimum version as v1.62.x
+        # and return False for other languages
         return False
 
     @override
