@@ -79,7 +79,7 @@ class SpiffeCloudRunCsmInboundTest(
             },
         ]
 
-    def test_spiffe_mtls_gke_to_cloud_run(self):
+    def test_spiffe_mtls_cloud_run_to_gke(self):
         with self.subTest("1_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
 
