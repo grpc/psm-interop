@@ -33,6 +33,7 @@ class ClientDeploymentArgs:
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
     is_trusted_xds_server_experimental: bool = False
+    disable_xds_federation: bool = False
 
     def as_dict(self):
         return dataclasses.asdict(self)
