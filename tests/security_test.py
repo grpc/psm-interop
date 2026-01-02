@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import dataclasses
 import logging
 
 from absl import flags
@@ -43,17 +42,6 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         elif config.client_lang == _Lang.NODE:
             return config.version_gte("v1.13.x")
         return True
-
-    def initKubernetesClientRunner(self, **kwargs) -> xds_k8s_testcase.KubernetesClientRunner:
-        deployment_args = kwargs.get("deployment_args")
-        if not deployment_args:
-            deployment_args = xds_k8s_testcase.ClientDeploymentArgs()
-
-        new_deployment_args = dataclasses.replace(
-            deployment_args, disable_xds_federation=True
-        )
-        kwargs["deployment_args"] = new_deployment_args
-        return super().initKubernetesClientRunner(**kwargs)
 
     def test_mtls(self):
         """mTLS test.
