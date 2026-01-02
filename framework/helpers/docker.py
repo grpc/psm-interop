@@ -105,7 +105,7 @@ def Configure(config, image: str, name: str):
     config["detach"] = True
     config["environment"] = {
         "GRPC_EXPERIMENTAL_XDS_FALLBACK": "true",
-        "GRPC_EXPERIMENTAL_XDS_FEDERATION": "true",
+        "GRPC_EXPERIMENTAL_XDS_FEDERATION": "false",
         "GRPC_TRACE": "xds_client",
         "GRPC_VERBOSITY": "info",
         "GRPC_XDS_BOOTSTRAP": "/grpc/bootstrap.json",
