@@ -25,6 +25,7 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
+KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 _Lang = skips.Lang
 
 _TD_CONFIG_RETRY_WAIT_SEC = 2

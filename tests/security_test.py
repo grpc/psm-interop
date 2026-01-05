@@ -27,6 +27,8 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
 _SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
+KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
+
 _Lang = skips.Lang
 
 
