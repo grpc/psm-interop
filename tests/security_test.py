@@ -42,6 +42,10 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         elif config.client_lang == _Lang.NODE:
             return config.version_gte("v1.13.x")
         return True
+    
+    @override
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(disable_xds_federation=True)
 
     def test_mtls(self):
         """mTLS test.

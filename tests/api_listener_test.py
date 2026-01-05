@@ -39,6 +39,9 @@ class ApiListenerTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.43.x")
         return True
 
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(disable_xds_federation=True)
+
     def test_api_listener(self) -> None:
         with self.subTest("00_create_health_check"):
             self.td.create_health_check()

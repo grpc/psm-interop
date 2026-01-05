@@ -28,6 +28,9 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
+    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        return super().initKubernetesClientRunner(disable_xds_federation=True)
+
     def test_round_robin(self) -> None:
         REPLICA_COUNT = 2
 
