@@ -18,6 +18,8 @@ from absl.testing import absltest
 
 from framework import xds_k8s_testcase
 from framework.helpers import skips
+from framework.test_app.runners.k8s import k8s_xds_client_runner
+from typing_extensions import override
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -40,8 +42,10 @@ class ApiListenerTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             return config.version_gte("v1.43.x")
         return True
 
+    # b/459985396 - Disable xds federation for now
+    @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super().initKubernetesClientRunner(disable_xds_federation=True)
+        return super().initKubernetesClientRunner(enable_xds_federation=False)
 
     def test_api_listener(self) -> None:
         with self.subTest("00_create_health_check"):

@@ -18,6 +18,8 @@ from absl import flags
 from absl.testing import absltest
 
 from framework import xds_k8s_testcase
+from framework.test_app.runners.k8s import k8s_xds_client_runner
+from typing_extensions import override
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -28,8 +30,10 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 
 class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
+    # b/459985396 - Disable xds federation for now
+    @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super().initKubernetesClientRunner(disable_xds_federation=True)
+        return super().initKubernetesClientRunner(enable_xds_federation=False)
 
     def test_round_robin(self) -> None:
         REPLICA_COUNT = 2
