@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dataclasses
 import logging
 
 from absl import flags
@@ -45,9 +46,16 @@ class ApiListenerTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     # b/459985396 - Disable xds federation for now
     @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        clientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
-        clientDeploymentArgs.enable_xds_federation = False
-        return super().initKubernetesClientRunner(deployment_args=clientDeploymentArgs, **kwargs)
+        deployment_args = kwargs.pop("deployment_args", None)
+        if deployment_args is None:
+            deployment_args = k8s_xds_client_runner.ClientDeploymentArgs()
+
+        deployment_args = dataclasses.replace(
+            deployment_args, enable_xds_federation=False
+        )
+        return super().initKubernetesClientRunner(
+            deployment_args=deployment_args, **kwargs
+        )
 
     def test_api_listener(self) -> None:
         with self.subTest("00_create_health_check"):
