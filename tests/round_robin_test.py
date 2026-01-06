@@ -33,7 +33,9 @@ class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
     # b/459985396 - Disable xds federation for now
     @override
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        return super().initKubernetesClientRunner(enable_xds_federation=False)
+        clientDeploymentArgs = k8s_xds_client_runner.ClientDeploymentArgs
+        clientDeploymentArgs.enable_xds_federation = False
+        return super().initKubernetesClientRunner(deployment_args=clientDeploymentArgs, **kwargs)
 
     def test_round_robin(self) -> None:
         REPLICA_COUNT = 2
