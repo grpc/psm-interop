@@ -1058,6 +1058,11 @@ test_driver_get_source() {
   else
     psm::tools::log "Cloning driver to ${TEST_DRIVER_REPO_URL} branch ${TEST_DRIVER_BRANCH} to ${TEST_DRIVER_REPO_DIR}"
     git clone -b "${TEST_DRIVER_BRANCH}" --depth=1 "${TEST_DRIVER_REPO_URL}" "${TEST_DRIVER_REPO_DIR}"
+
+    local test_driver_git_rev="PSM_DRIVER_REV_PARSE_ERR"
+    test_driver_git_rev="$(git -C "${TEST_DRIVER_REPO_DIR}" rev-parse HEAD)"
+    psm::tools::log "Test driver git rev: ${test_driver_git_rev}"
+    kokoro_append_sponge_property "GIT_COMMIT_TEST_DRIVER" "${test_driver_git_rev}"
   fi
 }
 
@@ -1199,6 +1204,31 @@ GIT_COMMIT_SHORT,${GIT_COMMIT_SHORT:?GIT_COMMIT_SHORT must be set}
 EOF
   psm::tools::log "Sponge properties:"
   cat "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv"
+}
+
+#######################################
+# Appends extra information about the job to sponge properties.
+# Globals:
+#   KOKORO_ARTIFACTS_DIR
+# Arguments:
+#   property_name
+#   property_value
+# Outputs:
+#   Writes the output to stdout
+#   Appends job property to $KOKORO_ARTIFACTS_DIR/custom_sponge_config.csv
+#######################################
+kokoro_append_sponge_property() {
+  local property_name="${1:?${FUNCNAME[0]} missing the property_name argument}"
+  local property_value="${2:?${FUNCNAME[0]} missing the property_value argument}"
+
+  if [[ -z "${KOKORO_ARTIFACTS_DIR}" && ! -w "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv" ]]; then
+    psm::tools::log "Error appending sponge property: ${property_name},${property_value}"
+    # This error is not important enough to stop the driver.
+    return
+  fi
+
+  echo "${property_name},${property_value}" >> "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv"
+  psm::tools::log "Sponge property appended: ${property_name},${property_value}"
 }
 
 #######################################
