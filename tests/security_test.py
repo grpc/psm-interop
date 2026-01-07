@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import dataclasses
 import logging
 
 from absl import flags
@@ -55,9 +54,8 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         if deployment_args is None:
             deployment_args = k8s_xds_client_runner.ClientDeploymentArgs()
 
-        deployment_args = dataclasses.replace(
-            deployment_args, enable_xds_federation=False
-        )
+        deployment_args.enable_xds_federation = False
+
         return super().initKubernetesClientRunner(
             deployment_args=deployment_args, **kwargs
         )
