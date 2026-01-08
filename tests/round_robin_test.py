@@ -39,11 +39,13 @@ class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         if deployment_args is None:
             deployment_args = k8s_xds_client_runner.ClientDeploymentArgs()
 
-        deployment_args = dataclasses.replace(
-            deployment_args, enable_xds_federation=False
-        )  # pylint: disable=too-many-function-args
         # Disabling due to a known Pylint issue in Python 3.12 where the
         # positional-only signature of 'dataclasses.replace' is incorrectly flagged.
+        deployment_args = (
+            dataclasses.replace(  # pylint: disable=too-many-function-args
+                deployment_args, enable_xds_federation=False
+            )
+        )
         return super().initKubernetesClientRunner(
             deployment_args=deployment_args, **kwargs
         )
