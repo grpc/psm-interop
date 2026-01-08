@@ -57,7 +57,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         deployment_args = dataclasses.replace(
             deployment_args, enable_xds_federation=False
-        )
+        )  # pylint: disable=too-many-function-args
+        # Disabling due to a known Pylint issue in Python 3.12 where the
+        # positional-only signature of 'dataclasses.replace' is incorrectly flagged.
         return super().initKubernetesClientRunner(
             deployment_args=deployment_args, **kwargs
         )
