@@ -77,10 +77,7 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
-            % if enable_xds_federation:
-            - name: GRPC_EXPERIMENTAL_XDS_FEDERATION
-              value: "true"
-            % else:
+            % if not enable_xds_federation:
             - name: GRPC_EXPERIMENTAL_XDS_FEDERATION
               value: "false"
             % endif
