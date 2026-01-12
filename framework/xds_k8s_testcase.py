@@ -847,7 +847,7 @@ class XdsKubernetesBaseTestCase(
         *,
         rpc_type: str,
         num_rpcs: int,
-        threshold_percent: int = 10,
+        threshold_percent: int = 5,
         qps: int = 100,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
@@ -859,19 +859,14 @@ class XdsKubernetesBaseTestCase(
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
                 f"report {num_rpcs} pending calls in range "
-                f"[{num_rpcs * (1 - threshold_percent / 100)}, {num_rpcs}]"
+                f"[{max(0, num_rpcs - qps)}, {num_rpcs}]"
             ),
         )
-        # 1. In the first check, verify RPCs are within [threshold - 5%, threshold].
-        # Even 1% may work. Notice that there is no +5% because circuit breaking
-        # must not allow RPCs more than the threshold.
-        # We use the threshold_percent passed in (default 10) but make it strict upper bound.
         first_min = int(num_rpcs * (1 - threshold_percent / 100))
-        first_max = num_rpcs
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
-                    test_client, rpc_type, num_rpcs, first_min, first_max
+                    test_client, rpc_type, first_min, num_rpcs
                 )
         logging.info(
             "Will check again in %d seconds to verify that RPC count is steady",
@@ -879,20 +874,15 @@ class XdsKubernetesBaseTestCase(
         )
         time.sleep(steady_state_delay.total_seconds())
         # 2. In the second check, verify RPCs are within [threshold - QPS, threshold].
-        second_min = int(num_rpcs - qps)
-        # Ensure min is not negative
-        if second_min < 0:
-            second_min = 0
-            
+        second_min = int(max(num_rpcs - qps, 0))
         self._checkRpcsInFlight(
-            test_client, rpc_type, num_rpcs, second_min, num_rpcs
+            test_client, rpc_type, second_min, num_rpcs
         )
 
     def _checkRpcsInFlight(
         self,
         test_client: XdsTestClient,
         rpc_type: str,
-        expected_rpcs: int,
         min_v: int,
         max_v: int,
     ):
