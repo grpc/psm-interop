@@ -848,6 +848,7 @@ class XdsKubernetesBaseTestCase(
         rpc_type: str,
         num_rpcs: int,
         threshold_percent: int = 10,
+        qps: int = 100,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
@@ -857,35 +858,44 @@ class XdsKubernetesBaseTestCase(
             timeout=retry_timeout,
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
-                f"report {num_rpcs} pending calls ±{threshold_percent}%"
+                f"report {num_rpcs} pending calls in range "
+                f"[{num_rpcs * (1 - threshold_percent / 100)}, {num_rpcs}]"
             ),
         )
+        # 1. In the first check, verify RPCs are within [threshold - 5%, threshold].
+        # Even 1% may work. Notice that there is no +5% because circuit breaking
+        # must not allow RPCs more than the threshold.
+        # We use the threshold_percent passed in (default 10) but make it strict upper bound.
+        first_min = int(num_rpcs * (1 - threshold_percent / 100))
+        first_max = num_rpcs
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
-                    test_client, rpc_type, num_rpcs, threshold_percent
+                    test_client, rpc_type, num_rpcs, first_min, first_max
                 )
         logging.info(
             "Will check again in %d seconds to verify that RPC count is steady",
             steady_state_delay.total_seconds(),
         )
         time.sleep(steady_state_delay.total_seconds())
+        # 2. In the second check, verify RPCs are within [threshold - QPS, threshold].
+        second_min = int(num_rpcs - qps)
+        # Ensure min is not negative
+        if second_min < 0:
+            second_min = 0
+            
         self._checkRpcsInFlight(
-            test_client, rpc_type, num_rpcs, threshold_percent
+            test_client, rpc_type, num_rpcs, second_min, num_rpcs
         )
 
     def _checkRpcsInFlight(
         self,
         test_client: XdsTestClient,
         rpc_type: str,
-        num_rpcs: int,
-        threshold_percent: int,
+        expected_rpcs: int,
+        min_v: int,
+        max_v: int,
     ):
-        if not 0 <= threshold_percent <= 100:
-            raise ValueError(
-                "Value error: Threshold should be between 0 to 100"
-            )
-        threshold_fraction = threshold_percent / 100.0
         stats = test_client.get_load_balancer_accumulated_stats()
         logging.info(
             "[%s] << Received LoadBalancerAccumulatedStatsResponse:\n%s",
@@ -897,20 +907,20 @@ class XdsKubernetesBaseTestCase(
         rpcs_failed = stats.num_rpcs_failed_by_method[rpc_type]
         rpcs_in_flight = rpcs_started - rpcs_succeeded - rpcs_failed
         logging.info(
-            "[%s] << %s RPCs in flight: %d, expected %d ±%d%%",
+            "[%s] << %s RPCs in flight: %d, expected [%d, %d]",
             test_client.hostname,
             rpc_type,
             rpcs_in_flight,
-            num_rpcs,
-            threshold_percent,
+            min_v,
+            max_v,
         )
         self.assertBetween(
             rpcs_in_flight,
-            minv=int(num_rpcs * (1 - threshold_fraction)),
-            maxv=int(num_rpcs * (1 + threshold_fraction)),
+            minv=min_v,
+            maxv=max_v,
             msg=(
                 f"Found wrong number of RPCs in flight: actual({rpcs_in_flight}"
-                f"), expected({num_rpcs} ± {threshold_percent}%)"
+                f"), expected [{min_v}, {max_v}]"
             ),
         )
 
