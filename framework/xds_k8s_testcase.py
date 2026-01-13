@@ -676,20 +676,22 @@ class XdsKubernetesBaseTestCase(
         )
         self.assertSameElements(want, seen)
 
-    def assertXdsConfigUpdated(self, test_client, expected_cluster_name: str):
+    def assertXdsConfigUpdated(
+            self, test_client: XdsTestClient, expected_cluster_name: str,
+            resource_type: str = "RDS",
+        ) -> None:
 
-        def _check_config():
+        def _check_config() -> bool:
             config = test_client.csds.fetch_client_status()
-            # Find the RDS resource in the config dump
             for xds_config in config.get("xds_config", []):
-                if "route_config" in xds_config:
-                    # Extract clusters from the RDS config
-                    dynamic_route = xds_config["route_config"]["dynamic_route_configs"][0]
-                    virtual_hosts = dynamic_route["route_config"]["virtual_hosts"]
-                    for vh in virtual_hosts:
-                        for route in vh.get("routes", []):
-                            if route.get("route", {}).get("cluster") == expected_cluster_name:
-                                return True
+                if resource_type == "RDS" and "route_config" in xds_config:
+                    dynamic_routes = xds_config["route_config"].get("dynamic_route_configs", [])
+                    for dynamic_route in dynamic_routes:
+                        vh_list = dynamic_route.get("route_config", {}).get("virtual_hosts", [])
+                        for vh in vh_list:
+                            for route in vh.get("routes", []):
+                                if route.get("route", {}).get("cluster") == expected_cluster_name:
+                                    return True
             return False
 
         retryer = retryers.constant_retryer(

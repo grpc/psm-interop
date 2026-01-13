@@ -113,8 +113,8 @@ class ChangeBackendServiceTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             )
             self.assertXdsConfigUpdated(
                 test_client,
+                expected_cluster_name=self.td.alternative_backend_service.name,
                 resource_type="RDS",
-                expected_cluster_name=self.td.alternative_backend_service.name
             )
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, same_zone_test_servers
