@@ -679,7 +679,8 @@ class XdsKubernetesBaseTestCase(
     def assertXdsConfigUpdated(
             self, test_client: XdsTestClient, expected_cluster_name: str,
             resource_type: str = "RDS",
-        ) -> None:
+    ) -> None:
+        logger.info("Waiting for %s update to cluster %s", resource_type, expected_cluster_name)
 
         def _check_config() -> bool:
             config = test_client.csds.fetch_client_status()
@@ -701,7 +702,9 @@ class XdsKubernetesBaseTestCase(
         try:
             retryer(_check_config)
         except retryers.RetryError:
-            self.fail(f"Timeout waiting for RDS to update to cluster {expected_cluster_name}")
+            self.fail(
+                f"Timeout waiting for RDS to update to cluster {expected_cluster_name}"
+            )
 
     def assertRouteConfigUpdateTrafficHandoff(
         self,
