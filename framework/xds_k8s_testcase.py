@@ -683,7 +683,9 @@ class XdsKubernetesBaseTestCase(
         resource_type: str = "RDS",
     ) -> None:
         logger.info(
-            "Waiting for %s update to cluster %s", resource_type, expected_cluster_name
+            "Waiting for %s update to cluster %s",
+            resource_type,
+            expected_cluster_name,
         )
 
         def _check_config() -> bool:
@@ -694,9 +696,8 @@ class XdsKubernetesBaseTestCase(
                         "dynamic_route_configs", []
                     )
                     for dynamic_route in dynamic_routes:
-                        vh_list = (
-                            dynamic_route.get("route_config", {})
-                            .get("virtual_hosts", [])
+                        vh_list = dynamic_route.get("route_config", {}).get(
+                            "virtual_hosts", []
                         )
                         for vh in vh_list:
                             for route in vh.get("routes", []):
