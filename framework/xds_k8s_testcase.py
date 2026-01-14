@@ -862,8 +862,10 @@ class XdsKubernetesBaseTestCase(
                 f"[{max(0, num_rpcs - qps)}, {num_rpcs}]"
             ),
         )
-        # we don't define the max value as int(num_rpcs * (1 + threshold_percent / 100)) mainly because
-        # circuit_breaking (the only consumer) requires that the RPC count strictly not exceed the provided QPS.
+        # we don't define the max value as
+        # int(num_rpcs * (1 + threshold_percent / 100)) mainly because
+        # circuit_breaking (the only consumer) requires that the RPC
+        # count strictly not exceed the provided QPS.
         first_min = int(num_rpcs * (1 - threshold_percent / 100))
         for attempt in retryer:
             with attempt:
@@ -875,9 +877,11 @@ class XdsKubernetesBaseTestCase(
             steady_state_delay.total_seconds(),
         )
         time.sleep(steady_state_delay.total_seconds())
-        # In the second check, verify RPCs are within [threshold - QPS, threshold] as there can be a scenario where QPS
-        # number of RPCs had been processed at the server but the client had not yet started requesting the current
-        # batch thereby resulting in a shortfall of QPS number RPCs inflight.
+        # In the second check, verify RPCs are within
+        # [threshold - QPS, threshold] as there can be a scenario where QPS
+        # number of RPCs had been processed at the server but the client
+        # had not yet started requesting the current batch thereby resulting
+        # in a shortfall of QPS number RPCs inflight.
         second_min = int(max(num_rpcs - qps, 0))
         self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs)
 
