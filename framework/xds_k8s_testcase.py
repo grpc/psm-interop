@@ -873,11 +873,9 @@ class XdsKubernetesBaseTestCase(
             steady_state_delay.total_seconds(),
         )
         time.sleep(steady_state_delay.total_seconds())
-        # 2. In the second check, verify RPCs are within [threshold - QPS, threshold].
+        # In the second check, verify RPCs are within [threshold - QPS, threshold].
         second_min = int(max(num_rpcs - qps, 0))
-        self._checkRpcsInFlight(
-            test_client, rpc_type, second_min, num_rpcs
-        )
+        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs)
 
     def _checkRpcsInFlight(
         self,
