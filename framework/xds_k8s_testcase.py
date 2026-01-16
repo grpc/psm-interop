@@ -690,7 +690,7 @@ class XdsKubernetesBaseTestCase(
             config = test_client.csds.fetch_client_status_parsed()
             if not config or not config.rds:
                 return False
-            
+
             vh_list = config.rds.get("virtualHosts", [])
             for vh in vh_list:
                 for route in vh.get("routes", []):
