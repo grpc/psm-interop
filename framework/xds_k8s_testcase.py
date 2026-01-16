@@ -694,9 +694,10 @@ class XdsKubernetesBaseTestCase(
                         "dynamic_route_configs", []
                     )
                     for dynamic_route in dynamic_routes:
-                        vh_list = dynamic_route.get("route_config", {}).get(
-                            "virtual_hosts", []
-                        )
+                        route_config = dynamic_route.get("route_config")
+                        if not route_config:
+                            continue
+                        vh_list = route_config.get("virtual_hosts", [])
                         for vh in vh_list:
                             for route in vh.get("routes", []):
                                 if (
