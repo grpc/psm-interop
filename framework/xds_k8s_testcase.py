@@ -676,48 +676,6 @@ class XdsKubernetesBaseTestCase(
         )
         self.assertSameElements(want, seen)
 
-    def assertRdsConfigUpdated(
-        self,
-        test_client: XdsTestClient,
-        expected_cluster_name: str,
-    ) -> None:
-        logger.info(
-            "Waiting for RDS update to cluster %s",
-            expected_cluster_name,
-        )
-
-        def _check_config() -> bool:
-            config = test_client.csds.fetch_client_status()
-            for xds_config in config.get("xds_config", []):
-                if "route_config" in xds_config:
-                    dynamic_routes = xds_config["route_config"].get(
-                        "dynamic_route_configs", []
-                    )
-                    for dynamic_route in dynamic_routes:
-                        vh_list = dynamic_route.get("route_config", {}).get(
-                            "virtual_hosts", []
-                        )
-                        for vh in vh_list:
-                            for route in vh.get("routes", []):
-                                if (
-                                    route.get("route", {}).get("cluster")
-                                    == expected_cluster_name
-                                ):
-                                    return True
-            return False
-
-        retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=2),
-            timeout=datetime.timedelta(minutes=5),
-        )
-
-        try:
-            retryer(_check_config)
-        except retryers.RetryError:
-            self.fail(
-                f"Timeout waiting for RDS to update to cluster {expected_cluster_name}"
-            )
-
     def assertRouteConfigUpdateTrafficHandoff(
         self,
         test_client: XdsTestClient,
