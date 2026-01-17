@@ -30,6 +30,9 @@ from tenacity import compat as tenacity_compat
 from tenacity import stop
 from tenacity import wait
 from tenacity.retry import retry_base
+from typing_extensions import Self
+
+import framework.errors
 
 retryers_logger = logging.getLogger(__name__)
 # Type aliases
@@ -229,6 +232,8 @@ class RetryError(tenacity.RetryError):
 
     last_attempt: tenacity.Future
     note: str = ""
+    _message: str = ""
+    _print_last_trace: bool = True
 
     def __init__(
         self,
@@ -238,34 +243,57 @@ class RetryError(tenacity.RetryError):
         attempts: int = 0,
         check_result: Optional[CheckResultFn] = None,
         note: str = "",
+        print_last_trace: bool = True,
     ):
         last_attempt: tenacity.Future = retry_state.outcome
         super().__init__(last_attempt)
+        self._print_last_trace = print_last_trace
 
-        self.message = f"Retry error"
+        message = f"Retry error"
+
         if retry_state.fn is None:
             # Context manager
-            self.message += f":"
+            message += f":"
         else:
             callback_name = tenacity_utils.get_callback_name(retry_state.fn)
-            self.message += f" calling {callback_name}:"
-        if timeout:
-            self.message += f" timeout {timeout} (h:mm:ss) exceeded"
-            if attempts:
-                self.message += " or"
-        if attempts:
-            self.message += f" {attempts} attempts exhausted"
+            message += f" calling {callback_name}:"
 
-        self.message += "."
+        if timeout:
+            message += f" timeout {timeout} (h:mm:ss) exceeded"
+            if attempts:
+                message += " or"
+
+        if attempts:
+            message += f" {attempts} attempts exhausted"
+
+        message += "."
 
         if last_attempt.failed:
             err = last_attempt.exception()
-            self.message += f" Last exception: {type(err).__name__}: {err}"
+            message += f" Last Retry Attempt Error: {type(err).__name__}({err})"
         elif check_result:
-            self.message += " Check result callback returned False."
+            message += " Check result callback returned False."
+
+        self._message = message
 
         if note:
             self.add_note(note)
+
+    @property
+    def message(self):
+        # TODO(sergiitk): consider if we want to have print-by-default
+        # and/or ignore-by-default exception lists.
+        tb_out = ""
+        if self._print_last_trace and (cause := self.exception()):
+            try:
+                if last_tb := framework.errors.format_error_with_trace(
+                    cause, only_if_tb_present=True
+                ):
+                    tb_out = f"^\nLast Retry Attempt Error {last_tb.rstrip()}"
+            except Exception as err_tb_format:
+                tb_out = f"<Error printing the traceback: {err_tb_format!r}>"
+
+        return f"{self._message}\n{tb_out}" if tb_out else self._message
 
     def result(self, *, default=None):
         return (
@@ -294,6 +322,10 @@ class RetryError(tenacity.RetryError):
     @classmethod
     def _exception_str(cls, err: Optional[BaseException]) -> str:
         return f"{type(err).__name__}: {err}" if err else "???"
+
+    def with_last_trace(self, enabled: bool = True) -> Self:
+        self._print_last_trace = enabled
+        return self
 
     # TODO(sergiitk): Remove in py3.11, this will be built-in. See PEP 678.
     def add_note(self, note: str):
