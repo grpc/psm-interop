@@ -198,13 +198,15 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_INITIAL_UNARY_MAX_REQUESTS,
-                qps=_QPS,
+                # circuit_breaking_test requires that the RPC count strictly
+                # not exceed the provided tolerance.
+                min_tolerance_delta_after_steady_state=_QPS,
             )
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_EMPTY_CALL,
                 num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS,
-                qps=_QPS,
+                min_tolerance_delta_after_steady_state=_QPS,
             )
 
         with self.subTest("13_increase_backend_max_requests"):
@@ -217,7 +219,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_UPDATED_UNARY_MAX_REQUESTS,
-                qps=_QPS,
+                min_tolerance_delta_after_steady_state=_QPS,
             )
 
 
