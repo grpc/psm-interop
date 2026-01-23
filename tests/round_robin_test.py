@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import dataclasses
+import datetime
 import logging
 from typing import List
 
@@ -77,7 +78,12 @@ class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
-            test_client = self.startTestClient(test_servers[0])
+            test_client = self.startTestClient(
+                test_servers[0],
+                wait_for_server_channel_ready_timeout=datetime.timedelta(
+                    minutes=10
+                ),
+            )
 
         with self.subTest("08_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)
