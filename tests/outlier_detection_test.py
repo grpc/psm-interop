@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import datetime
 import logging
 from typing import List
 
@@ -118,13 +117,7 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
-            test_client = self.startTestClient(
-                test_servers[0],
-                qps=_QPS,
-                wait_for_server_channel_ready_timeout=datetime.timedelta(
-                    minutes=10
-                ),
-            )
+            test_client = self.startTestClient(test_servers[0], qps=_QPS)
 
         with self.subTest("08_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)
