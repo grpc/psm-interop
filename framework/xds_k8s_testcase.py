@@ -902,9 +902,6 @@ class XdsKubernetesBaseTestCase(
                 f"[{first_min}, {num_rpcs}]"
             ),
         )
-        first_min = int(
-            num_rpcs * (1 - steady_state_allowed_shortfall_percent / 100)
-        )
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
