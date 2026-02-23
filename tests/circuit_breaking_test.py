@@ -192,17 +192,24 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 },
                 timeout_sec=20,
             )
+        # In the steady state, verify RPCs are within [threshold - QPS, threshold]
+        # as there can be a scenario where QPS number of RPCs have been processed
+        # at the server but the client has not started requesting the current
+        # batch thereby resulting in a shortfall of QPS number of RPCs inflight.
+        after_steady_state_shortfall = _QPS
 
         with self.subTest("12_client_reaches_target_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_INITIAL_UNARY_MAX_REQUESTS,
+                after_steady_state_allowed_shortfall_count=after_steady_state_shortfall,
             )
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_EMPTY_CALL,
                 num_rpcs=_INITIAL_EMPTY_MAX_REQUESTS,
+                after_steady_state_allowed_shortfall_count=after_steady_state_shortfall,
             )
 
         with self.subTest("13_increase_backend_max_requests"):
@@ -215,6 +222,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
                 num_rpcs=_UPDATED_UNARY_MAX_REQUESTS,
+                after_steady_state_allowed_shortfall_count=after_steady_state_shortfall,
             )
 
 
