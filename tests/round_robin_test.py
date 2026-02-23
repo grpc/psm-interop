@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import dataclasses
+import datetime
 import logging
 from typing import List
 
 from absl import flags
 from absl.testing import absltest
-from typing_extensions import override
 
 from framework import xds_k8s_testcase
-from framework.test_app.runners.k8s import k8s_xds_client_runner
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -28,28 +27,9 @@ flags.adopt_module_key_flags(xds_k8s_testcase)
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
 _XdsTestClient = xds_k8s_testcase.XdsTestClient
-KubernetesClientRunner = k8s_xds_client_runner.KubernetesClientRunner
 
 
 class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
-    # b/459985396 - Disable xds federation for now
-    @override
-    def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        deployment_args = kwargs.pop("deployment_args", None)
-        if deployment_args is None:
-            deployment_args = k8s_xds_client_runner.ClientDeploymentArgs()
-
-        # Disabling due to a known Pylint issue in Python 3.12 where the
-        # positional-only signature of 'dataclasses.replace' is incorrectly flagged.
-        deployment_args = (
-            dataclasses.replace(  # pylint: disable=too-many-function-args
-                deployment_args, enable_xds_federation=False
-            )
-        )
-        return super().initKubernetesClientRunner(
-            deployment_args=deployment_args, **kwargs
-        )
-
     def test_round_robin(self) -> None:
         REPLICA_COUNT = 2
 
@@ -77,7 +57,12 @@ class RoundRobinTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
 
         test_client: _XdsTestClient
         with self.subTest("07_start_test_client"):
-            test_client = self.startTestClient(test_servers[0])
+            test_client = self.startTestClient(
+                test_servers[0],
+                wait_for_server_channel_ready_timeout=datetime.timedelta(
+                    minutes=10
+                ),
+            )
 
         with self.subTest("08_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)

@@ -53,10 +53,6 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_ENABLE_OVERRIDE_HOST
               value: "true"
-            % if not enable_xds_federation:
-            - name: GRPC_EXPERIMENTAL_XDS_FEDERATION
-              value: "false"
-            % endif
           volumeMounts:
             - mountPath: /tmp/grpc-xds/
               name: grpc-td-conf
