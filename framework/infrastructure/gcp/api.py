@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from absl import flags
 from google.cloud import secretmanager_v1
-from google.cloud import logging
+from google.cloud import logging as gcp_logging
 import google.cloud.monitoring_v3
 from google.longrunning import operations_pb2
 from google.protobuf import json_format
@@ -247,7 +247,7 @@ class GcpApiManager:
 
         https://cloud.google.com/python/docs/reference/logging/latest/google.cloud.logging.client.Client
         """
-        client = logging.Client()
+        client = gcp_logging.Client()
         return client
 
     @functools.lru_cache(None)
