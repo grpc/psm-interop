@@ -115,7 +115,6 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     @override
     def cleanup(self, *, force=False):
-        # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
             self._reset_state()
