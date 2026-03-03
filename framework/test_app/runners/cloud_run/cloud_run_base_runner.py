@@ -239,19 +239,11 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                         # entry.payload can be of different formats, depending
                         # on how it's written.
                         timestamp = entry.timestamp.isoformat()
-                        payload = None
-                        if hasattr(entry, 'text_payload') and entry.text_payload:
-                            payload = entry.text_payload
-                        elif hasattr(entry, 'struct_payload') and entry.struct_payload:
-                            payload = entry.struct_payload
-                        elif hasattr(entry, 'payload') and entry.payload:
-                            payload = entry.payload
-                        else:
-                            payload = "[No payload]"
+                        payload = entry.payload or "[No payload]"
                         f.write(f"{timestamp} {payload}\n")
             except Exception as e:
                 logger.warning(
                     f"Failed to collect logs for {self.service_name}", 
-                    exc_info = e
+                    exc_info = True
                 )
 
