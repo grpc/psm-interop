@@ -209,14 +209,11 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             # If the runner was never stopped, use now as the end time.
             end_time = self.time_stopped or dt.datetime.now()
 
-            # Determine the time range.
             # If the runner was never started, use a 1-hour window ending now.
             start_time = self.time_start_requested or (
                 end_time - dt.timedelta(hours=1)
             )
 
-            # Refer to the cloud logging url creation in the same file to
-            # determine the filter params.
             log_filter = (
                 f'resource.type="cloud_run_revision" AND '
                 f'resource.labels.project_id="{self.project}" AND '
@@ -229,16 +226,12 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             client = self.gcp_api_manager.logging_client()
             try:
                 with open(log_path, "w", encoding="utf-8") as f:
-                    # We specify the project to ensure we're searching in the
-                    # correct one.
                     entries = client.list_entries(
                         resource_names=[f"projects/{self.project}"],
                         filter_=log_filter,
                     )
                     for entry in entries:
                         # entry.timestamp is a datetime object.
-                        # entry.payload can be of different formats, depending
-                        # on how it's written.
                         timestamp = entry.timestamp.isoformat()
                         payload = entry.payload or "[No payload]"
                         f.write(f"{timestamp} {payload}\n")
