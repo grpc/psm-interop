@@ -14,6 +14,7 @@
 """
 Common functionality for running xDS Test Client and Server on CloudRun.
 """
+
 from abc import ABCMeta
 import collections
 import dataclasses
@@ -243,7 +244,6 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                         f.write(f"{timestamp} {payload}\n")
             except Exception as e:
                 logger.warning(
-                    f"Failed to collect logs for {self.service_name}", 
-                    exc_info = True
+                    f"Failed to collect logs for {self.service_name}",
+                    exc_info=True,
                 )
-
