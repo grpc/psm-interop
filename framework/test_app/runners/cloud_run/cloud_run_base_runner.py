@@ -201,7 +201,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             logfile_name = f"{self.service_name}.log"
             log_path = self.logs_subdir / logfile_name
             logger.info(
-                "Collecting logs for service %q at %q",
+                "Collecting logs for service %s at %s",
                 self.service_name,
                 log_path.relative_to(self.logs_subdir.parent.parent),
             )
