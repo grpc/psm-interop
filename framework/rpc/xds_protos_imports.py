@@ -865,6 +865,7 @@ from google.api.serviceusage.v1 import serviceusage_pb2
 from google.api.serviceusage.v1beta1 import resources_pb2
 from google.api.serviceusage.v1beta1 import serviceusage_pb2
 from google.longrunning import operations_pb2
+from google.cloud import logging
 from google.rpc import code_pb2
 from google.rpc import error_details_pb2
 from google.rpc import http_pb2
