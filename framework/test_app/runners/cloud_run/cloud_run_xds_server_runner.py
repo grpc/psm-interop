@@ -99,6 +99,7 @@ class CloudRunServerRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         service_body = {
             "launch_stage": "alpha",
+            "ingress": "INGRESS_TRAFFIC_INTERNAL_ONLY",
             "template": {
                 "containers": [
                     {

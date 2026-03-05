@@ -188,6 +188,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         service_body: dict[str, Any] = {
             "launch_stage": "alpha",
+            "ingress": "INGRESS_TRAFFIC_INTERNAL_ONLY",
             "template": {
                 "containers": [
                     {
@@ -227,6 +228,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                     "mesh": mesh_name,
                     "dataplaneMode": "PROXYLESS_GRPC",
                 },
+                "vpc_access": {
+                    "network_interfaces": {"network": network},
+                    "egress": "ALL_TRAFFIC",
+                },
             },
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
@@ -256,7 +261,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                     f"//{self.workload_identity_pool}.global.{self.project_number}."
                     f"workload.id.goog/ns/{self.namespace}/sa/{self.managed_identity}"
                 ),
-                "vpc_access": {"network_interfaces": {"network": network}},
             }
         self.cloud_run.create_service(service_name, service_body)
         return self.cloud_run.get_service(service_name)
