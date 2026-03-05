@@ -865,6 +865,14 @@ from google.api.serviceusage.v1 import serviceusage_pb2
 from google.api.serviceusage.v1beta1 import resources_pb2
 from google.api.serviceusage.v1beta1 import serviceusage_pb2
 from google.longrunning import operations_pb2
+# The logging package is imported for the following protos to avoid duplicate
+# registration of proto descriptors in the global registry:
+# from google.logging.type import http_request_pb2
+# from google.logging.type import log_severity_pb2
+# from google.logging.v2 import log_entry_pb2
+# from google.logging.v2 import logging_config_pb2
+# from google.logging.v2 import logging_metrics_pb2
+# from google.logging.v2 import logging_pb2
 from google.cloud import logging
 from google.rpc import code_pb2
 from google.rpc import error_details_pb2
