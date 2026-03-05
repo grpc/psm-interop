@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Envoy protos provided by PyPI package xds-protos"""
+
 # pylint: disable=unused-import,ungrouped-imports,reimported
 # isort: off
 
@@ -865,6 +866,7 @@ from google.api.serviceusage.v1 import serviceusage_pb2
 from google.api.serviceusage.v1beta1 import resources_pb2
 from google.api.serviceusage.v1beta1 import serviceusage_pb2
 from google.longrunning import operations_pb2
+
 # The logging package is imported for the following protos to avoid duplicate
 # registration of proto descriptors in the global registry:
 # from google.logging.type import http_request_pb2
