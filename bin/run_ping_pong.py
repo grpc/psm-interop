@@ -135,12 +135,16 @@ def main(argv):
     enable_workload_identity: bool = (
         xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
     )
+    workload_identity_iam_policy_binding: bool = (
+        xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
+    )
 
     # Server.
     server_runner = common.make_server_runner(
         common.make_server_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
+        workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
         mode=_MODE.value,
     )
     # Ensure server pods are running
@@ -151,6 +155,7 @@ def main(argv):
         common.make_client_namespace(),
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
+        workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
         mode=_MODE.value,
     )
     # Find client pod.

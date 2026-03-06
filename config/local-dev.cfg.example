@@ -19,8 +19,8 @@
 ### ------------------------------- App images ---------------------------------
 
 ## Test images, f.e. java v1.57.x.
---server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:v1.63.x
---client_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-client:v1.63.x
+--server_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-server:master
+--client_image=us-docker.pkg.dev/grpc-testing/psm-interop/java-client:master
 
 ### ----------------------------------- App ------------------------------------
 

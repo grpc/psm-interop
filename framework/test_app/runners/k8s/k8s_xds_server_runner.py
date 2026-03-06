@@ -65,6 +65,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
     service_template: str
     reuse_service: bool
     enable_workload_identity: bool
+    workload_identity_iam_policy_binding: bool
     debug_use_port_forwarding: bool
     gcp_neg_name: str
     td_bootstrap_image: str
@@ -112,6 +113,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        workload_identity_iam_policy_binding: bool = True,
         deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         super().__init__(
@@ -132,6 +134,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self.service_template = service_template
         self.reuse_service = reuse_service
         self.enable_workload_identity = enable_workload_identity
+        self.workload_identity_iam_policy_binding = workload_identity_iam_policy_binding
         self.debug_use_port_forwarding = debug_use_port_forwarding
 
         # Server deployment arguments.
@@ -154,9 +157,13 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             # Kubernetes service account.
             self.service_account_name = service_account_name or deployment_name
             self.service_account_template = service_account_template
-            # GCP IAM API used to grant allow workload service accounts
-            # permission to use GCP service account identity.
-            self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
+            if self.workload_identity_iam_policy_binding:
+                print('Creating k8s service account binding for the server')
+                # GCP IAM API used to grant allow workload service accounts
+                # permission to use GCP service account identity.
+                self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
+            else:
+                print('Skipping creating k8s service account binding for the server')
 
         # Mutable state associated with each run.
         self._reset_state()
@@ -236,13 +243,17 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self._wait_service_neg_status_annotation(self.service_name, test_port)
 
         if self.enable_workload_identity:
-            # Allow Kubernetes service account to use the GCP service account
-            # identity.
-            self._grant_workload_identity_user(
-                gcp_iam=self.gcp_iam,
-                gcp_service_account=self.gcp_service_account,
-                service_account_name=self.service_account_name,
-            )
+            if self.workload_identity_iam_policy_binding:
+                # Allow Kubernetes service account to use the GCP service account
+                # identity.
+                self._grant_workload_identity_user(
+                    gcp_iam=self.gcp_iam,
+                    gcp_service_account=self.gcp_service_account,
+                    service_account_name=self.service_account_name,
+                )
+                print('Creating the workload identity binding for the k8s service account in the xDS test client.')
+            else:
+                print("Skipping creating the workload identity binding for the k8s service account in the xDS test client.")            
 
             # Create service account
             self.service_account = self._create_service_account(
@@ -438,11 +449,12 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             if self.enable_workload_identity and (
                 self.service_account or force
             ):
-                self._revoke_workload_identity_user(
-                    gcp_iam=self.gcp_iam,
-                    gcp_service_account=self.gcp_service_account,
-                    service_account_name=self.service_account_name,
-                )
+                if self.workload_identity_iam_policy_binding:
+                    self._revoke_workload_identity_user(
+                        gcp_iam=self.gcp_iam,
+                        gcp_service_account=self.gcp_service_account,
+                        service_account_name=self.service_account_name,
+                    )
                 self._delete_service_account(self.service_account_name)
                 self.service_account = None
             # Pod monitoring name is only set when CSM observability is enabled.
