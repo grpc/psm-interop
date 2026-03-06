@@ -242,7 +242,6 @@ class XdsKubernetesBaseTestCase(
         cls.workload_identity_iam_policy_binding = (
             xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
         )
-        logger.info('nai: cls.enable_workload_identity=' + str(cls.enable_workload_identity) + 'cls.workload_identity_iam_policy_binding in testcase class=' + str(cls.workload_identity_iam_policy_binding))
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
@@ -965,8 +964,7 @@ class IsolatedXdsKubernetesTestCase(
     each test, and destroyed after.
     """
 
-    def setUp(self):        
-        print('IsolatedXdsKubernetesTestCase:self.enable_workload_identity=' + str(self.enable_workload_identity) + ' self.workload_identity_iam_policy_binding=' + str(self.workload_identity_iam_policy_binding), flush = True)
+    def setUp(self):
         """Hook method for setting up the test fixture before exercising it."""
         super().setUp()
 
@@ -1099,8 +1097,6 @@ class IsolatedXdsKubernetesTestCase(
         wait_for_server_channel_ready_timeout: Optional[_timedelta] = None,
         **kwargs,
     ) -> XdsTestClient:
-        print('_start_test_client printing kwargs:')
-        print(kwargs)
         test_client = self.client_runner.run(
             server_target=server_target, **kwargs
         )
@@ -1164,7 +1160,6 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         reuse_namespace = kwargs.pop("reuse_namespace", False) or (
             self.server_namespace == self.client_namespace
         )
-        print('initKubernetesClientRunner: self.enable_workload_identity=' + str(self.enable_workload_identity) + ' and self.workload_identity_iam_policy_binding=' + str(self.workload_identity_iam_policy_binding), flush=True)
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -1188,8 +1183,6 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
     def startTestServers(
         self, replica_count=1, server_runner=None, **kwargs
     ) -> List[XdsTestServer]:
-        print('startTestServers printing kwargs:')
-        print(kwargs)
         if server_runner is None:
             server_runner = self.server_runner
         test_servers = server_runner.run(
@@ -1277,11 +1270,12 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
-        print('initKubernetesClientRunner: self.enable_workload_idetity=' + str(self.enable_workload_identity) + ' self.workload_identity_iam_policy_binding=' + str(self.workload_identity_iam_policy_binding), flush=True)
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -1298,6 +1292,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
