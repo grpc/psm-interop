@@ -65,7 +65,7 @@ DEBUG_USE_PORT_FORWARDING = flags.DEFINE_bool(
 )
 ENABLE_WORKLOAD_IDENTITY = flags.DEFINE_bool(
     "enable_workload_identity",
-    default=False,
+    default=True,
     help="Enable the WorkloadIdentity feature",
 )
 WORKLOAD_IDENTITY_IAM_POLICY_BINDING = flags.DEFINE_bool(
