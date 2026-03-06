@@ -100,7 +100,8 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.deployment_template = deployment_template
         self.enable_workload_identity = enable_workload_identity
         self.workload_identity_iam_policy_binding=workload_identity_iam_policy_binding #nai workload_identity_iam_policy_binding
-        print('KubernetesClientRunner: self.enable_workload_identity = ' + str(enable_workload_identity) + ' self.workload_identity_iam_policy_binding=' + str(workload_identity_iam_policy_binding), flush=True)
+        print('KubernetesClientRunner: self.enable_workload_identity = ' + str(enable_workload_identity) + 
+        ' self.workload_identity_iam_policy_binding=' + str(workload_identity_iam_policy_binding), flush=True)
         self.debug_use_port_forwarding = debug_use_port_forwarding
 
         # Client deployment arguments.
