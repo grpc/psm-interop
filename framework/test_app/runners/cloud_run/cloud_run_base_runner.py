@@ -224,6 +224,9 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             )
 
             client = self.gcp_api_manager.logging_client()
+            # TODO: Use a dedicated thread for streaming logs in real-time,
+            # similar to log collection for k8s. This can be implemented using
+            # the LoggingServiceV2Client.tail_log_entries API.
             try:
                 with open(log_path, "w", encoding="utf-8") as f:
                     entries = client.list_entries(
@@ -235,7 +238,7 @@ class CloudRunBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                         timestamp = entry.timestamp.isoformat()
                         payload = entry.payload or "[No payload]"
                         f.write(f"{timestamp} {payload}\n")
-            except Exception as e:
+            except Exception:
                 logger.warning(
                     f"Failed to collect logs for {self.service_name}",
                     exc_info=True,
