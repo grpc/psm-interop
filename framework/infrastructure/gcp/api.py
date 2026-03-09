@@ -241,8 +241,8 @@ class GcpApiManager:
         self._exit_stack.enter_context(client)
         return client
 
-    @functools.lru_cache(None)
     @staticmethod
+    @functools.lru_cache(None)
     def logging_client():
         """Cloud Logging API client.
 
