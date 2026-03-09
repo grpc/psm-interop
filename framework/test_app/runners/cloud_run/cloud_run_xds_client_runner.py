@@ -15,7 +15,6 @@
 Run xDS Test Client on Cloud Run.
 """
 import logging
-import time
 from typing import Any, Final, Optional
 
 from typing_extensions import override
@@ -114,7 +113,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         self.current_revision = self.service.revision
         client = self._make_client_from_service(server_target, self.service)
         self._start_completed()
-        time.sleep(100)
         return client
 
     def reuse_from_service(
