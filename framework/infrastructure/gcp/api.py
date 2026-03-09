@@ -242,7 +242,8 @@ class GcpApiManager:
         return client
 
     @functools.lru_cache(None)
-    def logging_client(self):
+    @staticmethod
+    def logging_client():
         """Cloud Logging API client.
 
         https://cloud.google.com/python/docs/reference/logging/latest/google.cloud.logging.client.Client
