@@ -341,7 +341,6 @@ class XdsKubernetesBaseTestCase(
             yield super().subTest(msg, **params)
         except Exception as e:
             logger.error("Subtest %s failed with exception: %s", msg, e)
-            raise
         finally:
             if not self._handling_sigint:
                 logger.info(
