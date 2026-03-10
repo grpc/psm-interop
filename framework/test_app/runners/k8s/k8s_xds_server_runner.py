@@ -178,6 +178,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         replica_count: int = 1,
         log_to_stdout: bool = False,
         bootstrap_version: Optional[str] = None,
+        **kwargs,
     ) -> List[XdsTestServer]:
         if not maintenance_port:
             maintenance_port = self._get_default_maintenance_port(secure_mode)
@@ -233,7 +234,7 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
                 enable_dualstack=self.deployment_args.enable_dualstack,
                 enable_spiffe=self.deployment_args.enable_spiffe,
             )
-        self._wait_service_neg_status_annotation(self.service_name, test_port)
+        self._wait_service_neg_status_annotation(self.service_name, test_port, **kwargs)
 
         if self.enable_workload_identity:
             # Allow Kubernetes service account to use the GCP service account
