@@ -140,6 +140,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.startTestServers(
                     server_runner=self.server_runner,
                     address_type="ipv4_ipv6",
+                    timeout_sec=self.server_runner.k8s_namespace.WAIT_SHORT_TIMEOUT_SEC * 10,
                 )[0]
             )
 
@@ -148,6 +149,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.startTestServers(
                     server_runner=self.v4_server_runner,
                     address_type="ipv4",
+                    timeout_sec=self.v4_server_runner.k8s_namespace.WAIT_SHORT_TIMEOUT_SEC * 10,
                 )[0]
             )
 
@@ -156,6 +158,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.startTestServers(
                     server_runner=self.v6_server_runner,
                     address_type="ipv6",
+                    timeout_sec=self.v6_server_runner.k8s_namespace.WAIT_SHORT_TIMEOUT_SEC * 10,
                 )[0]
             )
 
