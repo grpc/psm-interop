@@ -935,7 +935,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     def wait_for_service_neg_status_annotation(
         self,
         name: str,
-        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
+        timeout_sec: int = WAIT_MEDIUM_TIMEOUT_SEC,
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
     ) -> None:
         timeout = _timedelta(seconds=timeout_sec)
