@@ -118,12 +118,7 @@ class CustomLbTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.setupServerBackends()
 
         with self.subTest("7_start_test_client"):
-            test_client: _XdsTestClient = self.startTestClient(
-                test_server,
-                wait_for_server_channel_ready_timeout=datetime.timedelta(
-                    minutes=10
-                ),
-            )
+            test_client: _XdsTestClient = self.startTestClient(test_server)
 
         with self.subTest("8_test_client_xds_config_exists"):
             self.assertXdsConfigExists(test_client)
