@@ -151,6 +151,9 @@ psm::security::get_tests() {
 psm::security::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-security.cfg"
+  )
   # Only java supports extra checks for certificate matches (via channelz socket info).
   if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
     PSM_TEST_FLAGS+=("--nocheck_local_certs")
