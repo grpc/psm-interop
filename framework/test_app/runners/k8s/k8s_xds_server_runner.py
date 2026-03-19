@@ -158,12 +158,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
             self.service_account_name = service_account_name or deployment_name
             self.service_account_template = service_account_template
             if self.workload_identity_iam_policy_binding:
-                print('Creating k8s service account binding for the server')
                 # GCP IAM API used to grant allow workload service accounts
                 # permission to use GCP service account identity.
                 self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, gcp_project)
-            else:
-                print('Skipping creating k8s service account binding for the server')
 
         # Mutable state associated with each run.
         self._reset_state()
@@ -251,9 +248,6 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
                     gcp_service_account=self.gcp_service_account,
                     service_account_name=self.service_account_name,
                 )
-                print('Creating the workload identity binding for the k8s service account in the xDS test client.')
-            else:
-                print("Skipping creating the workload identity binding for the k8s service account in the xDS test client.")            
 
             # Create service account
             self.service_account = self._create_service_account(
