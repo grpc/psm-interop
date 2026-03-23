@@ -257,6 +257,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 raise ValueError("managed_identity cannot be empty or None")
             service_body["template"] |= {
                 "workload_certificates": {"enableWorkloadCertificate": "true"},
+                "identity_type": "workload-identity",
                 "identity": (
                     f"//{self.workload_identity_pool}.global.{self.project_number}."
                     f"workload.id.goog/ns/{self.namespace}/sa/{self.managed_identity}"
