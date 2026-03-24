@@ -233,7 +233,14 @@ class ControlPlane(GrpcProcess):
     def __enter__(self):
         if not super().__enter__():
             return None
-        self.update_resources(self.initial_resources)
+        try:
+            self.update_resources(self.initial_resources)
+        except Exception:
+            # If the gRPC call fails, explicitly clean up the container
+            # before propagating the exception to avoid a leak.
+            self.__exit__(None, None, None)
+            raise
+
         return self
 
     def stop_on_resource_request(self, resource_type: str, resource_name: str):
