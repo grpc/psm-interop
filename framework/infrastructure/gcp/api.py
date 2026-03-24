@@ -19,7 +19,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from absl import flags
-from google.cloud import logging_v2 as gcp_logging
+from google.cloud import logging as gcp_logging
 from google.cloud import secretmanager_v1
 import google.cloud.monitoring_v3
 from google.longrunning import operations_pb2
