@@ -219,9 +219,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         # b/228743575 Python has as race. Give us time to fix it.
         stray_rpc_limit = 1 if self.lang_spec.client_lang == _Lang.PYTHON else 0
 
-        # b/228743575 Traffic director takes time to propagate security policies.
+        # Traffic director takes time to propagate security policies.
         retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=5),
+            wait_fixed=datetime.timedelta(seconds=20),
             timeout=datetime.timedelta(minutes=5),
             retry_on_exceptions=(AssertionError,),
             logger=logger,
@@ -230,8 +230,8 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.assertRpcStatusCodes,
             test_client,
             expected_status=status_code,
-            method=rpc_type,
             duration=_SAMPLE_DURATION,
+            method=rpc_type,
             stray_rpc_limit=stray_rpc_limit,
         )
 
