@@ -19,7 +19,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from absl import flags
-from google.cloud import logging as gcp_logging
 from google.cloud import secretmanager_v1
 import google.cloud.monitoring_v3
 from google.longrunning import operations_pb2
@@ -239,16 +238,6 @@ class GcpApiManager:
             raise NotImplementedError(f"Metric Service {version} not supported")
 
         self._exit_stack.enter_context(client)
-        return client
-
-    @staticmethod
-    @functools.lru_cache(None)
-    def logging_client():
-        """Cloud Logging API client.
-
-        https://cloud.google.com/python/docs/reference/logging/latest/google.cloud.logging.client.Client
-        """
-        client = gcp_logging.Client()
         return client
 
     @functools.lru_cache(None)
