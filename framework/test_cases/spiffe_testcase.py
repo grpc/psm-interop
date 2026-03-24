@@ -94,32 +94,3 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             mesh_name=self.td.mesh.url,
         )
         return test_client
-
-    def assertTestAppSecurityWithRetry(
-        self,
-        mode: _SecurityMode,
-        test_client: XdsTestClient,
-        test_server: XdsTestServer,
-        secure_channel: bool = False,
-        match_only_port: bool = False,
-        *,
-        retry_timeout: dt.timedelta = TD_CONFIG_MAX_WAIT,
-        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
-    ):
-        retryer = retryers.constant_retryer(
-            wait_fixed=retry_wait,
-            timeout=retry_timeout,
-            log_level=logging.INFO,
-            error_note=(
-                f"Could not find correct security"
-                f" before timeout {retry_timeout} (h:mm:ss)"
-            ),
-        )
-        retryer(
-            self.assertTestAppSecurity,
-            mode,
-            test_client,
-            test_server,
-            secure_channel=secure_channel,
-            match_only_port=match_only_port,
-        )
