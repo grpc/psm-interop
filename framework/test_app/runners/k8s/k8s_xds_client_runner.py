@@ -79,7 +79,7 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         reuse_namespace: bool = False,
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
-        enable_workload_identity: bool = True,        
+        enable_workload_identity: bool = True,
         workload_identity_iam_policy_binding: bool = True,
         deployment_args: Optional[ClientDeploymentArgs] = None,
     ):
@@ -99,7 +99,9 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.stats_port = stats_port
         self.deployment_template = deployment_template
         self.enable_workload_identity = enable_workload_identity
-        self.workload_identity_iam_policy_binding = workload_identity_iam_policy_binding
+        self.workload_identity_iam_policy_binding = (
+            workload_identity_iam_policy_binding
+        )
         self.debug_use_port_forwarding = debug_use_port_forwarding
 
         # Client deployment arguments.

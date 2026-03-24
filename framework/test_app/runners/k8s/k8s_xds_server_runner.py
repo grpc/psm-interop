@@ -134,7 +134,9 @@ class KubernetesServerRunner(k8s_base_runner.KubernetesBaseRunner):
         self.service_template = service_template
         self.reuse_service = reuse_service
         self.enable_workload_identity = enable_workload_identity
-        self.workload_identity_iam_policy_binding = workload_identity_iam_policy_binding
+        self.workload_identity_iam_policy_binding = (
+            workload_identity_iam_policy_binding
+        )
         self.debug_use_port_forwarding = debug_use_port_forwarding
 
         # Server deployment arguments.
