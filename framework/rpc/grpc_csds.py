@@ -26,7 +26,6 @@ from typing_extensions import TypeAlias
 
 # Needed to load the descriptors so that Any is parsed
 # TODO(sergiitk): replace with import xds_protos when it works
-# See https://github.com/grpc/grpc/pull/33432
 # isort: off
 # pylint: disable=unused-import,ungrouped-imports
 import framework.rpc.xds_protos_imports
