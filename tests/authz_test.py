@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import logging
 import time
 from typing import Optional
 
@@ -21,9 +22,12 @@ from absl.testing import absltest
 import grpc
 
 from framework import xds_k8s_testcase
+from framework.helpers import retryers
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
+
+logger = logging.getLogger(__name__)
 
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
@@ -214,11 +218,20 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
         # b/228743575 Python has as race. Give us time to fix it.
         stray_rpc_limit = 1 if self.lang_spec.client_lang == _Lang.PYTHON else 0
-        self.assertRpcStatusCodes(
+
+        # b/228743575 Traffic director takes time to propagate security policies.
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=5),
+            timeout=datetime.timedelta(minutes=5),
+            retry_on_exceptions=(AssertionError,),
+            logger=logger,
+        )
+        retryer(
+            self.assertRpcStatusCodes,
             test_client,
             expected_status=status_code,
-            duration=_SAMPLE_DURATION,
             method=rpc_type,
+            duration=_SAMPLE_DURATION,
             stray_rpc_limit=stray_rpc_limit,
         )
 
