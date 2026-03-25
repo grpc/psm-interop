@@ -2,6 +2,9 @@ Mako~=1.1
 PyYAML~=6.0
 absl-py~=2.1
 docker==7.1.0
+# pinned to avoid mTLS issues when connecting to the metadata server. 
+# See b/492457764
+google-auth==2.43.0 
 google-api-python-client~=1.12
 google-cloud-secret-manager~=2.1
 google-cloud-monitoring~=2.18
