@@ -234,9 +234,13 @@ class ControlPlane(GrpcProcess):
         if not super().__enter__():
             return None
         try:
+            channel = self.channel()
+            # check if channel is ready
+            grpc.channel_ready_future(channel).result(timeout=10)
             self.update_resources(self.initial_resources)
         except Exception:
-            # If the gRPC call fails, explicitly clean up the container
+            # If the gRPC call fails or channel don't become ready,
+            # explicitly clean up the container
             # before propagating the exception to avoid a leak.
             self.__exit__(None, None, None)
             raise
