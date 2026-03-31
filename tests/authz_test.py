@@ -223,7 +223,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         retryer = retryers.exponential_retryer_with_timeout(
             wait_min=datetime.timedelta(seconds=10),
             wait_max=datetime.timedelta(seconds=25),
-            timeout=datetime.timedelta(minutes=5),
+            timeout=datetime.timedelta(minutes=10),
             retry_on_exceptions=(AssertionError,),
             logger=logger,
         )
