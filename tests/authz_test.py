@@ -220,8 +220,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         stray_rpc_limit = 1 if self.lang_spec.client_lang == _Lang.PYTHON else 0
 
         # Traffic director takes time to propagate security policies.
-        retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=20),
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=datetime.timedelta(seconds=10),
+            wait_max=datetime.timedelta(seconds=25),
             timeout=datetime.timedelta(minutes=5),
             retry_on_exceptions=(AssertionError,),
             logger=logger,
