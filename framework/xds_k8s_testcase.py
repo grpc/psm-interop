@@ -1380,7 +1380,6 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         secure_channel: bool = False,
         match_only_port: bool = False,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=5),
-        retry_wait: dt.timedelta = dt.timedelta(seconds=10),
     ):
         """Retries assertTestAppSecurity until it passes or timeout expires.
 
@@ -1388,8 +1387,9 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         be periods of time when the config may not be applied. This method
         helps to avoid flakiness in tests by retrying the security assertion.
         """
-        retryer = retryers.constant_retryer(
-            wait_fixed=retry_wait,
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
             timeout=retry_timeout,
             log_level=logging.INFO,
             error_note=(
