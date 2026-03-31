@@ -257,6 +257,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 raise ValueError("managed_identity cannot be empty or None")
             service_body["template"] |= {
                 "workload_certificates": {"enableWorkloadCertificate": "true"},
+                "identity_type": "IDENTITY_TYPE_WORKLOAD_IDENTITY",
                 "identity": (
                     f"//{self.workload_identity_pool}.global.{self.project_number}."
                     f"workload.id.goog/ns/{self.namespace}/sa/{self.managed_identity}"
@@ -267,7 +268,6 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
     @override
     def cleanup(self, *, force=False):
-        # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
             if self.enable_spiffe:
