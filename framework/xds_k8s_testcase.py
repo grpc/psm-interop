@@ -518,6 +518,33 @@ class XdsKubernetesBaseTestCase(
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
 
+    def assertRpcStatusCodesWithRetry(
+        self,
+        test_client: XdsTestClient,
+        *,
+        expected_status: grpc.StatusCode,
+        duration: _timedelta,
+        method: str,
+        stray_rpc_limit: int = 0,
+        retry_timeout: _timedelta = dt.timedelta(minutes=10),
+    ) -> None:
+        """Retries assertRpcStatusCodes until it passes or timeout expires."""
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=retry_timeout,
+            retry_on_exceptions=(AssertionError,),
+            logger=logger,
+        )
+        retryer(
+            self.assertRpcStatusCodes,
+            test_client,
+            expected_status=expected_status,
+            duration=duration,
+            method=method,
+            stray_rpc_limit=stray_rpc_limit,
+        )
+
     def assertRpcsEventuallyReachMinServers(
         self,
         test_client: XdsTestClient,
