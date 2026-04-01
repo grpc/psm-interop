@@ -121,9 +121,6 @@ class OutlierDetectionTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             test_client = self.startTestClient(
                 test_servers[0],
                 qps=_QPS,
-                wait_for_server_channel_ready_timeout=datetime.timedelta(
-                    minutes=10
-                ),
             )
 
         with self.subTest("08_test_client_xds_config_exists"):

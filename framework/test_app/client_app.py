@@ -292,7 +292,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         retryer = retryers.exponential_retryer_with_timeout(
             wait_min=_timedelta(seconds=10),
             wait_max=_timedelta(seconds=25),
-            timeout=_timedelta(minutes=5) if timeout is None else timeout,
+            timeout=_timedelta(minutes=10) if timeout is None else timeout,
         )
 
         logger.info(

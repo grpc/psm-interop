@@ -1372,6 +1372,41 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         else:
             raise TypeError("Incorrect security mode")
 
+    def assertTestAppSecurityWithRetry(
+        self,
+        mode: SecurityMode,
+        test_client: XdsTestClient,
+        test_server: XdsTestServer,
+        *,
+        secure_channel: bool = False,
+        match_only_port: bool = False,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=5),
+    ):
+        """Retries assertTestAppSecurity until it passes or timeout expires.
+
+        Since security config propagation is eventually consistent, there will
+        be periods of time when the config may not be applied. This method
+        helps to avoid flakiness in tests by retrying the security assertion.
+        """
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Could not find correct security"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self.assertTestAppSecurity,
+            mode,
+            test_client,
+            test_server,
+            secure_channel=secure_channel,
+            match_only_port=match_only_port,
+        )
+
     def assertSecurityMtls(
         self,
         client_security: grpc_channelz.Security,

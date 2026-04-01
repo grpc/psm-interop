@@ -188,6 +188,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
 
         service_body: dict[str, Any] = {
             "launch_stage": "alpha",
+            "ingress": "INGRESS_TRAFFIC_INTERNAL_ONLY",
             "template": {
                 "containers": [
                     {
@@ -227,6 +228,10 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                     "mesh": mesh_name,
                     "dataplaneMode": "PROXYLESS_GRPC",
                 },
+                "vpc_access": {
+                    "network_interfaces": {"network": network},
+                    "egress": "ALL_TRAFFIC",
+                },
             },
         }
         logger.info("Deploying Cloud Run service '%s'", service_name)
@@ -252,18 +257,17 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                 raise ValueError("managed_identity cannot be empty or None")
             service_body["template"] |= {
                 "workload_certificates": {"enableWorkloadCertificate": "true"},
+                "identity_type": "IDENTITY_TYPE_WORKLOAD_IDENTITY",
                 "identity": (
                     f"//{self.workload_identity_pool}.global.{self.project_number}."
                     f"workload.id.goog/ns/{self.namespace}/sa/{self.managed_identity}"
                 ),
-                "vpc_access": {"network_interfaces": {"network": network}},
             }
         self.cloud_run.create_service(service_name, service_body)
         return self.cloud_run.get_service(service_name)
 
     @override
     def cleanup(self, *, force=False):
-        # TODO(emchandwani) : Collect service logs in a file.
         try:
             super().cleanup(force=force)
             if self.enable_spiffe:
