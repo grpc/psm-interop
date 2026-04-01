@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import logging
 import time
 from typing import Optional
 
@@ -22,12 +21,9 @@ from absl.testing import absltest
 import grpc
 
 from framework import xds_k8s_testcase
-from framework.helpers import retryers
 from framework.helpers import skips
 
 flags.adopt_module_key_flags(xds_k8s_testcase)
-
-logger = logging.getLogger(__name__)
 
 # Type aliases
 _XdsTestServer = xds_k8s_testcase.XdsTestServer
@@ -220,15 +216,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         stray_rpc_limit = 1 if self.lang_spec.client_lang == _Lang.PYTHON else 0
 
         # Traffic director takes time to propagate security policies.
-        retryer = retryers.exponential_retryer_with_timeout(
-            wait_min=datetime.timedelta(seconds=10),
-            wait_max=datetime.timedelta(seconds=25),
-            timeout=datetime.timedelta(minutes=10),
-            retry_on_exceptions=(AssertionError,),
-            logger=logger,
-        )
-        retryer(
-            self.assertRpcStatusCodes,
+        self.assertRpcStatusCodesWithRetry(
             test_client,
             expected_status=status_code,
             duration=_SAMPLE_DURATION,
