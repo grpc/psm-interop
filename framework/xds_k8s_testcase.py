@@ -918,7 +918,8 @@ class XdsKubernetesBaseTestCase(
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
-        num_rpcs_max = int(num_rpcs * (1 + steady_state_allowed_excess_percent / 100))
+        num_rpcs_max = int(
+            num_rpcs * (1 + steady_state_allowed_excess_percent / 100))
         first_min = int(
             num_rpcs * (1 - steady_state_allowed_shortfall_percent / 100)
         )
