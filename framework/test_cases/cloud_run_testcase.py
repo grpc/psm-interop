@@ -184,7 +184,7 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             mesh_name=self.td.mesh.url,
         )
         if wait_for_server_channel_ready:
-            test_client.wait_for_server_channel_ready()
+            test_client.wait_for_server_channel_ready(secure_channel=True)
         return test_client
 
     def cleanup(self):
