@@ -162,7 +162,11 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         super().setUpClass()
 
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer, *, enable_spiffe: bool = False
+        self,
+        test_server: XdsTestServer,
+        *,
+        enable_spiffe: bool = False,
+        wait_for_server_channel_ready: bool = True,
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
@@ -179,6 +183,8 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
         )
+        if wait_for_server_channel_ready:
+            test_client.wait_for_server_channel_ready(secure_channel=True)
         return test_client
 
     def cleanup(self):

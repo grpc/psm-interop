@@ -14,7 +14,7 @@
 import datetime as dt
 import logging
 
-from typing_extensions import Final
+from typing_extensions import Final, override
 
 from framework import xds_flags
 from framework import xds_k8s_testcase
@@ -60,6 +60,7 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
         cls.mwid_namespace_name = xds_flags.MANAGED_IDENTITY_NAMESPACE.value
         cls.managed_identity_id = xds_flags.MANAGED_IDENTITY.value
 
+    @override
     def initTrafficDirectorManager(self) -> TrafficDirectorManager:
         return SpiffeMeshManager(
             self.gcp_api_manager,
@@ -71,8 +72,13 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             enable_dualstack=self.enable_dualstack,
         )
 
+    @override
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer, *, enable_spiffe: bool = False
+        self,
+        test_server: XdsTestServer,
+        *,
+        enable_spiffe: bool = False,
+        wait_for_server_channel_ready: bool = True,
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
@@ -92,4 +98,6 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
         )
+        if wait_for_server_channel_ready:
+            test_client.wait_for_server_channel_ready(secure_channel=True)
         return test_client
