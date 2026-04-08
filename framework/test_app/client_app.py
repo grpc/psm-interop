@@ -356,7 +356,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         )
         channel = retryer(
             self.find_active_xds_channel,
-            xds_server_uri,
+            xds_server_uri=xds_server_uri,
             rpc_deadline=rpc_deadline,
             secure_channel=secure_channel,
         )
