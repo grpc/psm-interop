@@ -135,6 +135,9 @@ def main(argv):
     enable_workload_identity: bool = (
         xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
     )
+    workload_identity_iam_policy_binding: bool = (
+        xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
+    )
 
     # Setup.
     server_runner = common.make_server_runner(
@@ -144,6 +147,7 @@ def main(argv):
         reuse_service=_REUSE_SERVICE.value,
         port_forwarding=should_port_forward,
         enable_workload_identity=enable_workload_identity,
+        workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
     )
 
     if command == "run":

@@ -239,6 +239,9 @@ class XdsKubernetesBaseTestCase(
         cls.enable_workload_identity = (
             xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
         )
+        cls.workload_identity_iam_policy_binding = (
+            xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
+        )
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
@@ -1181,6 +1184,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1202,6 +1206,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             stats_port=self.client_port,
             reuse_namespace=reuse_namespace,
             **kwargs,
@@ -1297,6 +1302,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1317,6 +1324,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 

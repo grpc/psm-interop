@@ -68,7 +68,12 @@ ENABLE_WORKLOAD_IDENTITY = flags.DEFINE_bool(
     default=True,
     help="Enable the WorkloadIdentity feature",
 )
-
+WORKLOAD_IDENTITY_IAM_POLICY_BINDING = flags.DEFINE_bool(
+    "workload_identity_iam_policy_binding",
+    default=True,
+    help="Create I Am policy binding for workload identity role on the"
+    "k8s service account to impersonate GCP service account",
+)
 flags.mark_flags_as_required(
     [
         "kube_context",

@@ -98,6 +98,7 @@ def make_client_runner(
     port_forwarding: bool = False,
     reuse_namespace: bool = True,
     enable_workload_identity: bool = True,
+    workload_identity_iam_policy_binding: bool = True,
     mode: str = "default",
 ) -> KubernetesClientRunner:
     # KubernetesClientRunner arguments.
@@ -114,6 +115,7 @@ def make_client_runner(
         reuse_namespace=reuse_namespace,
         debug_use_port_forwarding=port_forwarding,
         enable_workload_identity=enable_workload_identity,
+        workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
     )
 
     if mode == "secure":
@@ -139,6 +141,7 @@ def make_server_runner(
     reuse_namespace: bool = True,
     reuse_service: bool = False,
     enable_workload_identity: bool = True,
+    workload_identity_iam_policy_binding: bool = True,
     mode: str = "default",
 ) -> KubernetesServerRunner:
     # KubernetesServerRunner arguments.
@@ -155,6 +158,7 @@ def make_server_runner(
         reuse_service=reuse_service,
         debug_use_port_forwarding=port_forwarding,
         enable_workload_identity=enable_workload_identity,
+        workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
     )
 
     server_runner = KubernetesServerRunner
