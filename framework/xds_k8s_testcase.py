@@ -913,10 +913,14 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         steady_state_allowed_shortfall_percent: int = 5,
         after_steady_state_allowed_shortfall_count: int = 100,
+        steady_state_allowed_excess_percent: int = 1,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
+        num_rpcs_max = int(
+            num_rpcs * (1 + steady_state_allowed_excess_percent / 100)
+        )
         first_min = int(
             num_rpcs * (1 - steady_state_allowed_shortfall_percent / 100)
         )
@@ -926,13 +930,13 @@ class XdsKubernetesBaseTestCase(
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
                 f"report {num_rpcs} pending calls in range "
-                f"[{first_min}, {num_rpcs}]"
+                f"[{first_min}, {num_rpcs_max}]"
             ),
         )
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
-                    test_client, rpc_type, first_min, num_rpcs
+                    test_client, rpc_type, first_min, num_rpcs_max
                 )
         logging.info(
             "Will check again in %d seconds to verify that RPC count is steady",
@@ -942,7 +946,7 @@ class XdsKubernetesBaseTestCase(
         second_min = int(
             max(num_rpcs - after_steady_state_allowed_shortfall_count, 0)
         )
-        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs)
+        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs_max)
 
     def _checkRpcsInFlight(
         self,
