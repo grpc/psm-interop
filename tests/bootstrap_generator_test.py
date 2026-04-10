@@ -48,21 +48,11 @@ GCR_TESTING: Final[
 #
 # Whenever we release a new version of the bootstrap generator, we need to add a
 # corresponding entry here.
-#
-# TODO: Update bootstrap generator release instructions to add an entry here,
-# after the release is published.
 def bootstrap_version_testcases() -> Sequence[dict[str, str]]:
     return (
+        dict(version="v0.19.0", image=f"{GCR_PROD}:0.19.0"),
         dict(version="v0.18.0", image=f"{GCR_PROD}:0.18.0"),
         dict(version="v0.17.0", image=f"{GCR_PROD}:0.17.0"),
-        # v0.10.0 uses v2 xDS transport protocol by default. TD only supports v3
-        # and we can force the bootstrap generator to emit config with v3
-        # support by setting the --include-v3-features-experimental flag to
-        # true.
-        #
-        # TODO: Figure out how to pass flags to the bootstrap generator via the
-        # client and server runners, and uncomment this version.
-        # dict(version="v0.10.0", image=f"{GCR_PROD}:0.10.0"),
     )
 
 
