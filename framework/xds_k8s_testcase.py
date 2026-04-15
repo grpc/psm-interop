@@ -1370,6 +1370,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             client_tls=client_tls,
             client_mtls=client_mtls,
             health_check_port=self.server_maintenance_port,
+            server_port=self.server_port,
         )
 
     def startSecureTestClient(

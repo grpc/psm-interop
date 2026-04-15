@@ -1088,14 +1088,19 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         client_mtls,
         backend_protocol=_BackendGRPC,
         health_check_port=None,
+        server_port=None,
     ):
         # 1. Create policies first
         self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
         self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+
+        if server_port is None:
+            server_port = service_port
+
         self.create_endpoint_policy(
             server_namespace=server_namespace,
             server_name=server_name,
-            server_port=service_port,
+            server_port=server_port,
         )
 
         # 2. Construct security settings for one-shot backend creation
