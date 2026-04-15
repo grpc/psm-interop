@@ -166,8 +166,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.setup_routing_rule_map_for_grpc(service_host, service_port)
 
-
-
     def setup_backend_for_grpc(
         self,
         *,
@@ -1120,6 +1118,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             health_check_port=health_check_port,
             security_settings=security_settings,
         )
+
     def setup_server_security(
         self, *, server_namespace, server_name, server_port, tls=True, mtls=True
     ):
