@@ -47,6 +47,8 @@ class ChangeBackendServiceTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             reuse_namespace=True,
         )
 
@@ -110,6 +112,11 @@ class ChangeBackendServiceTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 self.server_xds_host,
                 self.server_xds_port,
                 self.td.alternative_backend_service,
+            )
+
+            self.assertRdsConfigUpdated(
+                test_client,
+                expected_cluster_name=self.td.alternative_backend_service.name,
             )
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, same_zone_test_servers

@@ -196,6 +196,8 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             self.namespace = self._create_namespace(
                 self.namespace_template, namespace_name=self.k8s_namespace.name
             )
+            if not self.k8s_namespace._namespace_active(self.namespace):
+                self.k8s_namespace.wait_for_namespace_active()
 
     def _start_completed(self):
         self.time_start_completed = _datetime.now()
@@ -313,15 +315,14 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
                 yield manifest
 
     def _render_template(self, template_name: str, **template_vars):
-        template = self._template_lookup.get_template(template_name)
+        template = self._template_lookup().get_template(template_name)
         return template.render(**template_vars)
 
     @classmethod
-    @property
     @functools.cache
     def _template_lookup(cls) -> mako.lookup.TemplateLookup:
         return mako.lookup.TemplateLookup(
-            directories=(str(cls.template_root_path),),
+            directories=(str(cls.template_root_path()),),
             input_encoding="utf-8",
             output_encoding="utf-8",
             encoding_errors="replace",
@@ -329,7 +330,6 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         )
 
     @classmethod
-    @property
     @functools.cache
     def template_root_path(cls) -> pathlib.Path:
         templates_path = (
@@ -344,7 +344,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         custom_object: bool = False,
         **kwargs,
     ) -> object:
-        template_file = self.template_root_path / template_name
+        template_file = self.template_root_path() / template_name
         logger.debug("Loading k8s manifest template: %s", template_file)
 
         yaml_doc = self._render_template(template_name, **kwargs)

@@ -81,6 +81,7 @@ class GammaServerRunner(KubernetesServerRunner):
         namespace_template: Optional[str] = None,
         debug_use_port_forwarding: bool = False,
         enable_workload_identity: bool = True,
+        workload_identity_iam_policy_binding: bool = True,
         deployment_args: Optional[ServerDeploymentArgs] = None,
     ):
         # pylint: disable=too-many-locals
@@ -106,6 +107,7 @@ class GammaServerRunner(KubernetesServerRunner):
             namespace_template=namespace_template,
             debug_use_port_forwarding=debug_use_port_forwarding,
             enable_workload_identity=enable_workload_identity,
+            workload_identity_iam_policy_binding=workload_identity_iam_policy_binding,
             deployment_args=deployment_args,
         )
 
@@ -179,13 +181,14 @@ class GammaServerRunner(KubernetesServerRunner):
         )
 
         if self.enable_workload_identity:
-            # Allow Kubernetes service account to use the GCP service account
-            # identity.
-            self._grant_workload_identity_user(
-                gcp_iam=self.gcp_iam,
-                gcp_service_account=self.gcp_service_account,
-                service_account_name=self.service_account_name,
-            )
+            if self.workload_identity_iam_policy_binding:
+                # Allow Kubernetes service account to use the GCP service account
+                # identity.
+                self._grant_workload_identity_user(
+                    gcp_iam=self.gcp_iam,
+                    gcp_service_account=self.gcp_service_account,
+                    service_account_name=self.service_account_name,
+                )
 
             # Create service account
             self.service_account = self._create_service_account(
@@ -234,6 +237,12 @@ class GammaServerRunner(KubernetesServerRunner):
             timeout_sec=datetime.timedelta(minutes=4).total_seconds(),
         )
 
+        # Wait for GKE controller to attach the mesh annotation to the route.
+        self.k8s_namespace.wait_for_mesh_annotation_on_gamma_route(
+            name=self.route_name,
+            kind=k8s.RouteKind.HTTP,
+            timeout_sec=datetime.timedelta(minutes=1).total_seconds(),
+        )
         return servers
 
     def create_session_affinity_policy(self, template: str, **template_vars):
@@ -318,11 +327,12 @@ class GammaServerRunner(KubernetesServerRunner):
             if self.enable_workload_identity and (
                 self.service_account or force
             ):
-                self._revoke_workload_identity_user(
-                    gcp_iam=self.gcp_iam,
-                    gcp_service_account=self.gcp_service_account,
-                    service_account_name=self.service_account_name,
-                )
+                if self.workload_identity_iam_policy_binding:
+                    self._revoke_workload_identity_user(
+                        gcp_iam=self.gcp_iam,
+                        gcp_service_account=self.gcp_service_account,
+                        service_account_name=self.service_account_name,
+                    )
                 self._delete_service_account(self.service_account_name)
                 self.service_account = None
 

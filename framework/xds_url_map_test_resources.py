@@ -197,6 +197,7 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             xds_server_uri=self.xds_server_uri,
             network=self.network,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
         )
         self.test_server_alternative_runner = _KubernetesServerRunner(
             self.k8s_namespace,
@@ -209,6 +210,7 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             xds_server_uri=self.xds_server_uri,
             network=self.network,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             reuse_namespace=True,
         )
         self.test_server_affinity_runner = _KubernetesServerRunner(
@@ -222,6 +224,7 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             xds_server_uri=self.xds_server_uri,
             network=self.network,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             reuse_namespace=True,
         )
         logging.info("Strategy of GCP resources management: %s", self.strategy)
@@ -253,6 +256,7 @@ class GcpResourceManager(metaclass=_MetaSingletonAndAbslFlags):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             stats_port=self.client_port,
         )
 

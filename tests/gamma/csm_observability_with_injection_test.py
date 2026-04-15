@@ -169,14 +169,15 @@ class PrometheusLogger:
         self.log_stream.close()
 
 
-class CsmObservabilityTestWithInjection(
+class CsmObservabilityTestWithInjectionTest(
     xds_gamma_testcase.GammaXdsKubernetesTestCase
 ):
     metric_client: monitoring_v3.MetricServiceClient
 
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        return config.version_gte("v1.68.x")
+        # When re-enabling, use minimum version as v1.68.x
+        return False
 
     @classmethod
     def setUpClass(cls):

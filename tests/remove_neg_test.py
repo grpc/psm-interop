@@ -46,6 +46,8 @@ class RemoveNegTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             reuse_namespace=True,
         )
 
@@ -94,15 +96,23 @@ class RemoveNegTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         with self.subTest("09_test_server_received_rpcs_from_test_client"):
             self.assertSuccessfulRpcs(test_client)
 
-        with self.subTest("10_remove_neg"):
-            self.assertRpcsEventuallyGoToGivenServers(
-                test_client, default_test_servers + same_zone_test_servers
-            )
+        with self.subTest("10_remove_neg_alternate"):
             self.removeServerBackends(
                 server_runner=self.alternate_server_runner
             )
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, default_test_servers
+            )
+
+        with self.subTest("11_remove_neg_main"):
+            # Bring up alternate backend and remove the main one
+            # This extra step is done so we verify both backends were running fine.
+            # Note: We do it this way instead of asserting that RPCs reach both server (before step 10)
+            # Because that fails sometime as both servers might end up in diffrent priorities.
+            self.setupServerBackends(server_runner=self.alternate_server_runner)
+            self.removeServerBackends()
+            self.assertRpcsEventuallyGoToGivenServers(
+                test_client, same_zone_test_servers
             )
 
 

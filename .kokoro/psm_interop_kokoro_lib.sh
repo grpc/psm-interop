@@ -109,6 +109,9 @@ psm::lb::get_tests() {
 #######################################
 psm::lb::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-lb.cfg"
+  )
   psm::run::finalize_test_flags "${test_name}"
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
@@ -151,6 +154,9 @@ psm::security::get_tests() {
 psm::security::run_test() {
   local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
 
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-security.cfg"
+  )
   # Only java supports extra checks for certificate matches (via channelz socket info).
   if [[ "${GRPC_LANGUAGE}" != "java"  ]]; then
     PSM_TEST_FLAGS+=("--nocheck_local_certs")
@@ -326,6 +332,7 @@ psm::light::setup() {
 psm::light::get_tests() {
   TESTS=(
     "fallback_test"
+    "federation_test"
   )
 }
 
@@ -850,13 +857,19 @@ psm::tools::log() {
 # Globals:
 #   GKE_CLUSTER_NAME: Set to reflect the cluster name to use
 #   GKE_CLUSTER_ZONE: Set to reflect the cluster zone to use.
+#       This variable will be empty for regional clusters.
 #   GKE_CLUSTER_REGION: Set to reflect the cluster region to use (for regional clusters).
+#       This variable will be empty for zonal clusters.
 # Arguments:
 #   The cluster identifier
 # Outputs:
 #   Writes the output to stdout, stderr
 #######################################
 activate_gke_cluster() {
+  # Reset the variables: activate_gke_cluster may be called multiple times.
+  GKE_CLUSTER_REGION=""
+  GKE_CLUSTER_ZONE=""
+  GKE_CLUSTER_NAME=""
   case $1 in
     GKE_CLUSTER_PSM_LB)
       GKE_CLUSTER_NAME="psm-interop-lb-primary"
@@ -1051,6 +1064,11 @@ test_driver_get_source() {
   else
     psm::tools::log "Cloning driver to ${TEST_DRIVER_REPO_URL} branch ${TEST_DRIVER_BRANCH} to ${TEST_DRIVER_REPO_DIR}"
     git clone -b "${TEST_DRIVER_BRANCH}" --depth=1 "${TEST_DRIVER_REPO_URL}" "${TEST_DRIVER_REPO_DIR}"
+
+    local test_driver_git_rev="PSM_DRIVER_REV_PARSE_ERR"
+    test_driver_git_rev="$(git -C "${TEST_DRIVER_REPO_DIR}" rev-parse HEAD)"
+    psm::tools::log "Test driver git rev: ${test_driver_git_rev}"
+    kokoro_append_sponge_property "GIT_COMMIT_TEST_DRIVER" "${test_driver_git_rev}"
   fi
 }
 
@@ -1192,6 +1210,31 @@ GIT_COMMIT_SHORT,${GIT_COMMIT_SHORT:?GIT_COMMIT_SHORT must be set}
 EOF
   psm::tools::log "Sponge properties:"
   cat "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv"
+}
+
+#######################################
+# Appends extra information about the job to sponge properties.
+# Globals:
+#   KOKORO_ARTIFACTS_DIR
+# Arguments:
+#   property_name
+#   property_value
+# Outputs:
+#   Writes the output to stdout
+#   Appends job property to $KOKORO_ARTIFACTS_DIR/custom_sponge_config.csv
+#######################################
+kokoro_append_sponge_property() {
+  local property_name="${1:?${FUNCNAME[0]} missing the property_name argument}"
+  local property_value="${2:?${FUNCNAME[0]} missing the property_value argument}"
+
+  if [[ -z "${KOKORO_ARTIFACTS_DIR}" && ! -w "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv" ]]; then
+    psm::tools::log "Error appending sponge property: ${property_name},${property_value}"
+    # This error is not important enough to stop the driver.
+    return
+  fi
+
+  echo "${property_name},${property_value}" >> "${KOKORO_ARTIFACTS_DIR}/custom_sponge_config.csv"
+  psm::tools::log "Sponge property appended: ${property_name},${property_value}"
 }
 
 #######################################

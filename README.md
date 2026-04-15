@@ -383,7 +383,7 @@ XDS_K8S_CONFIG=./path-to-flagfile.cfg ./run.sh bin/run_td_setup.py --resource_su
 # Add test server to the backend service
 ./run.sh bin/run_td_setup.py --cmd=backends-add
 
-# Start test client in a secure more --mode=secure
+# Start test client in a secure mode --mode=secure
 ./run.sh bin/run_test_client.py --mode=secure
 ```
 

@@ -294,6 +294,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
     _name: str
 
     NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
+    MESH_ANNOTATION = "networking.gke.io/meshes"
     # TODO(sergiitk): get rid of _SEC variables, only use timedelta
     # timedelta.seconds: assumes none of the timeouts more than a day.
     DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
@@ -818,6 +819,44 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         )
         retryer(self.get_gamma_route, name, kind=kind)
 
+    def wait_for_mesh_annotation_on_gamma_route(
+        self,
+        name: str,
+        kind: RouteKind,
+        timeout_sec: int = WAIT_SHORT_TIMEOUT_SEC,
+        wait_sec: int = WAIT_SHORT_SLEEP_SEC,
+    ) -> None:
+        logger.info(
+            """Waiting for '%s' annotation to be assigned to gamma route %s of kind %s in namespace
+             %s""",
+            self.MESH_ANNOTATION,
+            name,
+            kind,
+            self.name,
+        )
+        timeout = _timedelta(seconds=timeout_sec)
+        retryer = retryers.constant_retryer(
+            wait_fixed=_timedelta(seconds=wait_sec),
+            timeout=timeout,
+            check_result=lambda resource: resource.metadata is not None
+            and resource.metadata.annotations is not None
+            and self.MESH_ANNOTATION in resource.metadata.annotations,
+        )
+        try:
+            retryer(self.get_gamma_route, name, kind=kind)
+        except retryers.RetryError as retry_err:
+            note = framework.errors.FrameworkError.note_blanket_error_info_below(
+                "The Gamma route wasn't attached a mesh annotation.",
+                info_below=(
+                    f"Timeout {timeout} (h:mm:ss) waiting for route "
+                    f"{name} to report the '{self.MESH_ANNOTATION}' metadata annotation."
+                    f"\nThis indicates GKE Gateway Controller's watch of the cluster"
+                    f" hasn't been successful."
+                ),
+            )
+            retry_err.add_note(note)
+            raise
+
     def wait_for_get_session_affinity_policy_deleted(
         self,
         name: str,
@@ -1247,3 +1286,32 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             and deployment.status.available_replicas is not None
             and deployment.status.available_replicas >= count
         )
+
+    @classmethod
+    def _namespace_active(cls, namespace: V1Namespace) -> bool:
+        return (
+            isinstance(namespace, V1Namespace)
+            and namespace.status.phase == "Active"
+        )
+
+    def wait_for_namespace_active(
+        self,
+        timeout: _timedelta = WAIT_SHORT_TIMEOUT,
+        retry_wait: _timedelta = WAIT_SHORT_SLEEP,
+    ) -> None:
+        logger.info("Waiting for namespace %s to become active", self.name)
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=timeout,
+            check_result=self._namespace_active,
+        )
+        try:
+            retryer(self.get)
+        except retryers.RetryError as retry_err:
+            result = retry_err.result()
+            retry_err.add_note(
+                f"Timeout {timeout} (h:mm:ss) waiting for namespace"
+                f" {self.name} to become active. Namespace status:\n"
+                f"{self.pretty_format_status(result, highlight=False)}"
+            )
+            raise

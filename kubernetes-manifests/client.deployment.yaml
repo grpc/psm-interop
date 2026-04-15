@@ -65,6 +65,8 @@ spec:
               value: "true"
             - name: GRPC_EXPERIMENTAL_XDS_GCP_AUTHENTICATION_FILTER
               value: "true"
+            - name: GRPC_EXPERIMENTAL_XDS_SNI
+              value: "true"
             - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RING_HASH
               value: "true"
             - name: GRPC_XDS_EXPERIMENTAL_ENABLE_RETRY

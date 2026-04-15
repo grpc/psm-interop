@@ -78,6 +78,7 @@ class CloudRunXdsKubernetesTestCase(
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             deployment_template="client.deployment.yaml",
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
@@ -162,7 +163,11 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
         super().setUpClass()
 
     def startCloudRunTestClient(
-        self, test_server: XdsTestServer, *, enable_spiffe: bool = False
+        self,
+        test_server: XdsTestServer,
+        *,
+        enable_spiffe: bool = False,
+        wait_for_server_channel_ready: bool = True,
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
@@ -179,6 +184,8 @@ class CloudRunXdsTestCase(CloudRunXdsKubernetesTestCase):
             server_target=test_server.xds_uri,
             mesh_name=self.td.mesh.url,
         )
+        if wait_for_server_channel_ready:
+            test_client.wait_for_server_channel_ready(secure_channel=True)
         return test_client
 
     def cleanup(self):

@@ -239,6 +239,9 @@ class XdsKubernetesBaseTestCase(
         cls.enable_workload_identity = (
             xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
         )
+        cls.workload_identity_iam_policy_binding = (
+            xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
+        )
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
@@ -518,6 +521,33 @@ class XdsKubernetesBaseTestCase(
                     f"\nDiff stats:\n{diff_stats_fmt}"
                 )
 
+    def assertRpcStatusCodesWithRetry(
+        self,
+        test_client: XdsTestClient,
+        *,
+        expected_status: grpc.StatusCode,
+        duration: _timedelta,
+        method: str,
+        stray_rpc_limit: int = 0,
+        retry_timeout: _timedelta = dt.timedelta(minutes=10),
+    ) -> None:
+        """Retries assertRpcStatusCodes until it passes or timeout expires."""
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=retry_timeout,
+            retry_on_exceptions=(AssertionError,),
+            logger=logger,
+        )
+        retryer(
+            self.assertRpcStatusCodes,
+            test_client,
+            expected_status=expected_status,
+            duration=duration,
+            method=method,
+            stray_rpc_limit=stray_rpc_limit,
+        )
+
     def assertRpcsEventuallyReachMinServers(
         self,
         test_client: XdsTestClient,
@@ -675,6 +705,43 @@ class XdsKubernetesBaseTestCase(
             json_format.MessageToJson(config, indent=2),
         )
         self.assertSameElements(want, seen)
+
+    def assertRdsConfigUpdated(
+        self,
+        test_client: XdsTestClient,
+        expected_cluster_name: str,
+    ) -> None:
+        logger.info(
+            "Waiting for RDS update to cluster %s",
+            expected_cluster_name,
+        )
+
+        def _check_config() -> bool:
+            config = test_client.csds.fetch_client_status_parsed()
+            if not config or not config.rds:
+                return False
+
+            vh_list = config.rds.get("virtualHosts", [])
+            for vh in vh_list:
+                for route in vh.get("routes", []):
+                    if (
+                        route.get("route", {}).get("cluster")
+                        == expected_cluster_name
+                    ):
+                        return True
+            return False
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=2),
+            timeout=datetime.timedelta(minutes=5),
+        )
+
+        try:
+            retryer(_check_config)
+        except retryers.RetryError:
+            self.fail(
+                f"Timeout waiting for RDS to update to cluster {expected_cluster_name}"
+            )
 
     def assertRouteConfigUpdateTrafficHandoff(
         self,
@@ -847,45 +914,50 @@ class XdsKubernetesBaseTestCase(
         *,
         rpc_type: str,
         num_rpcs: int,
-        threshold_percent: int = 5,
+        steady_state_allowed_shortfall_percent: int = 5,
+        after_steady_state_allowed_shortfall_count: int = 100,
+        steady_state_allowed_excess_percent: int = 1,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
+        num_rpcs_max = int(
+            num_rpcs * (1 + steady_state_allowed_excess_percent / 100)
+        )
+        first_min = int(
+            num_rpcs * (1 - steady_state_allowed_shortfall_percent / 100)
+        )
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
             timeout=retry_timeout,
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
-                f"report {num_rpcs} pending calls ±{threshold_percent}%"
+                f"report {num_rpcs} pending calls in range "
+                f"[{first_min}, {num_rpcs_max}]"
             ),
         )
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
-                    test_client, rpc_type, num_rpcs, threshold_percent
+                    test_client, rpc_type, first_min, num_rpcs_max
                 )
         logging.info(
             "Will check again in %d seconds to verify that RPC count is steady",
             steady_state_delay.total_seconds(),
         )
         time.sleep(steady_state_delay.total_seconds())
-        self._checkRpcsInFlight(
-            test_client, rpc_type, num_rpcs, threshold_percent
+        second_min = int(
+            max(num_rpcs - after_steady_state_allowed_shortfall_count, 0)
         )
+        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs_max)
 
     def _checkRpcsInFlight(
         self,
         test_client: XdsTestClient,
         rpc_type: str,
-        num_rpcs: int,
-        threshold_percent: int,
+        num_rpcs_min: int,
+        num_rpcs_max: int,
     ):
-        if not 0 <= threshold_percent <= 100:
-            raise ValueError(
-                "Value error: Threshold should be between 0 to 100"
-            )
-        threshold_fraction = threshold_percent / 100.0
         stats = test_client.get_load_balancer_accumulated_stats()
         logging.info(
             "[%s] << Received LoadBalancerAccumulatedStatsResponse:\n%s",
@@ -897,20 +969,20 @@ class XdsKubernetesBaseTestCase(
         rpcs_failed = stats.num_rpcs_failed_by_method[rpc_type]
         rpcs_in_flight = rpcs_started - rpcs_succeeded - rpcs_failed
         logging.info(
-            "[%s] << %s RPCs in flight: %d, expected %d ±%d%%",
+            "[%s] << %s RPCs in flight: %d, expected [%d, %d]",
             test_client.hostname,
             rpc_type,
             rpcs_in_flight,
-            num_rpcs,
-            threshold_percent,
+            num_rpcs_min,
+            num_rpcs_max,
         )
         self.assertBetween(
             rpcs_in_flight,
-            minv=int(num_rpcs * (1 - threshold_fraction)),
-            maxv=int(num_rpcs * (1 + threshold_fraction)),
+            minv=num_rpcs_min,
+            maxv=num_rpcs_max,
             msg=(
                 f"Found wrong number of RPCs in flight: actual({rpcs_in_flight}"
-                f"), expected({num_rpcs} ± {threshold_percent}%)"
+                f"), expected [{num_rpcs_min}, {num_rpcs_max}]"
             ),
         )
 
@@ -1112,10 +1184,14 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
     def initKubernetesClientRunner(self, **kwargs) -> KubernetesClientRunner:
+        reuse_namespace = kwargs.pop("reuse_namespace", False) or (
+            self.server_namespace == self.client_namespace
+        )
         return KubernetesClientRunner(
             k8s.KubernetesNamespace(
                 self.k8s_api_manager, self.client_namespace
@@ -1130,8 +1206,9 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             stats_port=self.client_port,
-            reuse_namespace=self.server_namespace == self.client_namespace,
+            reuse_namespace=reuse_namespace,
             **kwargs,
         )
 
@@ -1225,6 +1302,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1245,6 +1324,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1345,6 +1426,41 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             self.assertSecurityPlaintext(client_security, server_security)
         else:
             raise TypeError("Incorrect security mode")
+
+    def assertTestAppSecurityWithRetry(
+        self,
+        mode: SecurityMode,
+        test_client: XdsTestClient,
+        test_server: XdsTestServer,
+        *,
+        secure_channel: bool = False,
+        match_only_port: bool = False,
+        retry_timeout: dt.timedelta = dt.timedelta(minutes=5),
+    ):
+        """Retries assertTestAppSecurity until it passes or timeout expires.
+
+        Since security config propagation is eventually consistent, there will
+        be periods of time when the config may not be applied. This method
+        helps to avoid flakiness in tests by retrying the security assertion.
+        """
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=retry_timeout,
+            log_level=logging.INFO,
+            error_note=(
+                f"Could not find correct security"
+                f" before timeout {retry_timeout} (h:mm:ss)"
+            ),
+        )
+        retryer(
+            self.assertTestAppSecurity,
+            mode,
+            test_client,
+            test_server,
+            secure_channel=secure_channel,
+            match_only_port=match_only_port,
+        )
 
     def assertSecurityMtls(
         self,

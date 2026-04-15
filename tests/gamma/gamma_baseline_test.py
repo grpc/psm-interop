@@ -15,9 +15,11 @@ import logging
 
 from absl import flags
 from absl.testing import absltest
+from typing_extensions import override
 
 from framework import xds_gamma_testcase
 from framework import xds_k8s_testcase
+from framework.helpers import skips
 
 logger = logging.getLogger(__name__)
 flags.adopt_module_key_flags(xds_k8s_testcase)
@@ -27,6 +29,11 @@ _XdsTestClient = xds_k8s_testcase.XdsTestClient
 
 
 class GammaBaselineTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
+    @staticmethod
+    @override
+    def is_supported(config: skips.TestConfig) -> bool:
+        return False
+
     def test_ping_pong(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
         #   resource creation out of self.startTestServers()

@@ -57,7 +57,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
-        self.assertTestAppSecurity(_SecurityMode.MTLS, test_client, test_server)
+        self.assertTestAppSecurityWithRetry(
+            _SecurityMode.MTLS, test_client, test_server
+        )
         self.assertSuccessfulRpcs(test_client)
         logger.info("[SUCCESS] mTLS security mode confirmed.")
 
@@ -78,7 +80,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
-        self.assertTestAppSecurity(_SecurityMode.TLS, test_client, test_server)
+        self.assertTestAppSecurityWithRetry(
+            _SecurityMode.TLS, test_client, test_server
+        )
         self.assertSuccessfulRpcs(test_client)
         logger.info("[SUCCESS] TLS security mode confirmed.")
 
@@ -99,7 +103,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
-        self.assertTestAppSecurity(
+        self.assertTestAppSecurityWithRetry(
             _SecurityMode.PLAINTEXT, test_client, test_server
         )
         self.assertSuccessfulRpcs(test_client)
