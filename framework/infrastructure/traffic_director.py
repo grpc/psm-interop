@@ -166,49 +166,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         )
         self.setup_routing_rule_map_for_grpc(service_host, service_port)
 
-    def setup_for_grpc_with_security(
-        self,
-        service_host,
-        service_port,
-        *,
-        server_namespace,
-        server_name,
-        server_tls,
-        server_mtls,
-        client_tls,
-        client_mtls,
-        backend_protocol=_BackendGRPC,
-        health_check_port=None,
-    ):
-        # 1. Create policies first
-        self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
-        self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
-        self.create_endpoint_policy(
-            server_namespace=server_namespace,
-            server_name=server_name,
-            server_port=service_port,
-        )
 
-        # 2. Construct security settings for one-shot backend creation
-        security_settings = None
-        if self.client_tls_policy:
-            server_spiffe = (
-                f"spiffe://{self.project}.svc.id.goog/"
-                f"ns/{server_namespace}/sa/{server_name}"
-            )
-            security_settings = {
-                "clientTlsPolicy": self.client_tls_policy.url,
-                "subjectAltNames": [server_spiffe],
-            }
-
-        # 3. Call setup_for_grpc with security_settings
-        self.setup_for_grpc(
-            service_host,
-            service_port,
-            backend_protocol=backend_protocol,
-            health_check_port=health_check_port,
-            security_settings=security_settings,
-        )
 
     def setup_backend_for_grpc(
         self,
@@ -1119,6 +1077,49 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         self.authz_policy: Optional[AuthorizationPolicy] = None
         self.endpoint_policy: Optional[EndpointPolicy] = None
 
+    def setup_for_grpc_with_security(
+        self,
+        service_host,
+        service_port,
+        *,
+        server_namespace,
+        server_name,
+        server_tls,
+        server_mtls,
+        client_tls,
+        client_mtls,
+        backend_protocol=_BackendGRPC,
+        health_check_port=None,
+    ):
+        # 1. Create policies first
+        self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
+        self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+        self.create_endpoint_policy(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=service_port,
+        )
+
+        # 2. Construct security settings for one-shot backend creation
+        security_settings = None
+        if self.client_tls_policy:
+            server_spiffe = (
+                f"spiffe://{self.project}.svc.id.goog/"
+                f"ns/{server_namespace}/sa/{server_name}"
+            )
+            security_settings = {
+                "clientTlsPolicy": self.client_tls_policy.url,
+                "subjectAltNames": [server_spiffe],
+            }
+
+        # 3. Call setup_for_grpc with security_settings
+        self.setup_for_grpc(
+            service_host,
+            service_port,
+            backend_protocol=backend_protocol,
+            health_check_port=health_check_port,
+            security_settings=security_settings,
+        )
     def setup_server_security(
         self, *, server_namespace, server_name, server_port, tls=True, mtls=True
     ):
@@ -1137,12 +1138,14 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             server_namespace, server_name
         )
 
+    @staticmethod
     def wait_for_server_tls_ready(
-        self, test_server, server_port: int, timeout_sec: int = 60
+        test_server, server_port: int, timeout_sec: int = 60
     ):
-        from framework.rpc import grpc_csds
-        from framework.helpers import retryers
         import datetime
+
+        from framework.helpers import retryers
+        from framework.rpc import grpc_csds
 
         logger.info(
             "Waiting for server %s to report TLS readiness via CSDS",
@@ -1167,7 +1170,10 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
                 return False
 
             lds_str = str(lds)
-            if "DownstreamTlsContext" in lds_str or "require_tls" in lds_str:
+            # Verify port matches and TLS is enabled
+            if str(server_port) in lds_str and (
+                "DownstreamTlsContext" in lds_str or "require_tls" in lds_str
+            ):
                 logger.info("Server reported TLS readiness")
                 return True
 
@@ -1182,7 +1188,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
 
         try:
             retryer(_check_tls_ready)
-        except retryers.RetryError as e:
+        except retryers.RetryError:
             logger.error("Timeout waiting for server TLS readiness")
             raise
 
