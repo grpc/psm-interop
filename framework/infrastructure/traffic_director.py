@@ -157,20 +157,68 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         *,
         backend_protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
         health_check_port: Optional[int] = None,
+        security_settings: Optional[dict] = None,
     ):
         self.setup_backend_for_grpc(
-            protocol=backend_protocol, health_check_port=health_check_port
+            protocol=backend_protocol,
+            health_check_port=health_check_port,
+            security_settings=security_settings,
         )
         self.setup_routing_rule_map_for_grpc(service_host, service_port)
+
+    def setup_for_grpc_with_security(
+        self,
+        service_host,
+        service_port,
+        *,
+        server_namespace,
+        server_name,
+        server_tls,
+        server_mtls,
+        client_tls,
+        client_mtls,
+        backend_protocol=_BackendGRPC,
+        health_check_port=None,
+    ):
+        # 1. Create policies first
+        self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
+        self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+        self.create_endpoint_policy(
+            server_namespace=server_namespace,
+            server_name=server_name,
+            server_port=service_port,
+        )
+
+        # 2. Construct security settings for one-shot backend creation
+        security_settings = None
+        if self.client_tls_policy:
+            server_spiffe = (
+                f"spiffe://{self.project}.svc.id.goog/"
+                f"ns/{server_namespace}/sa/{server_name}"
+            )
+            security_settings = {
+                "clientTlsPolicy": self.client_tls_policy.url,
+                "subjectAltNames": [server_spiffe],
+            }
+
+        # 3. Call setup_for_grpc with security_settings
+        self.setup_for_grpc(
+            service_host,
+            service_port,
+            backend_protocol=backend_protocol,
+            health_check_port=health_check_port,
+            security_settings=security_settings,
+        )
 
     def setup_backend_for_grpc(
         self,
         *,
         protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
         health_check_port: Optional[int] = None,
+        security_settings: Optional[dict] = None,
     ):
         self.create_health_check(port=health_check_port)
-        self.create_backend_service(protocol)
+        self.create_backend_service(protocol, security_settings=security_settings)
 
     def setup_routing_rule_map_for_grpc(self, service_host, service_port):
         self.create_url_map(service_host, service_port)
@@ -245,6 +293,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         affinity_header: Optional[str] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
+        security_settings: Optional[dict] = None,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -260,6 +309,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             locality_lb_policies=locality_lb_policies,
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
+            security_settings=security_settings,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
@@ -1084,6 +1134,47 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         self.backend_service_apply_client_mtls_policy(
             server_namespace, server_name
         )
+
+    def wait_for_server_tls_ready(self, test_server, server_port: int, timeout_sec: int = 60):
+        from framework.rpc import grpc_csds
+        from framework.helpers import retryers
+        import datetime
+        
+        logger.info("Waiting for server %s to report TLS readiness via CSDS", test_server.hostname)
+        
+        channel = test_server._make_channel(test_server.maintenance_port)
+        csds_client = grpc_csds.CsdsClient(channel, log_target=f"{test_server.hostname}:{test_server.maintenance_port}")
+        
+        def _check_tls_ready():
+            config = csds_client.fetch_client_status_parsed()
+            if not config:
+                logger.debug("CSDS config empty")
+                return False
+            
+            lds = config.lds
+            if not lds:
+                logger.debug("No LDS in CSDS config")
+                return False
+            
+            lds_str = str(lds)
+            if "DownstreamTlsContext" in lds_str or "require_tls" in lds_str:
+                logger.info("Server reported TLS readiness")
+                return True
+                
+            logger.debug("LDS does not contain TLS config yet: %s", lds_str)
+            return False
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=2),
+            timeout=datetime.timedelta(seconds=timeout_sec),
+            check_result=lambda res: res,
+        )
+        
+        try:
+            retryer(_check_tls_ready)
+        except retryers.RetryError as e:
+            logger.error("Timeout waiting for server TLS readiness")
+            raise
 
     def cleanup(self, *, force=False):
         # Cleanup in the reverse order of creation

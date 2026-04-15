@@ -48,12 +48,12 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         Both client and server configured to use TLS and mTLS.
         """
-        self.setupTrafficDirectorGrpc()
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
         )
 
         test_server: _XdsTestServer = self.startSecureTestServer()
+        self.td.wait_for_server_tls_ready(test_server, self.server_xds_port)
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
@@ -66,8 +66,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         Both client and server configured to use TLS and not use mTLS.
         """
-        self.setupTrafficDirectorGrpc()
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=True,
             server_mtls=False,
             client_tls=True,
@@ -75,6 +74,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
         test_server: _XdsTestServer = self.startSecureTestServer()
+        self.td.wait_for_server_tls_ready(test_server, self.server_xds_port)
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
@@ -88,8 +88,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Control plane provides no security config so both client and server
         fallback to plaintext based on fallback-credentials.
         """
-        self.setupTrafficDirectorGrpc()
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=False,
             server_mtls=False,
             client_tls=False,

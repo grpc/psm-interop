@@ -1276,6 +1276,21 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             mtls=server_mtls,
         )
 
+    def setupTrafficDirectorGrpcWithSecurity(
+        self, server_tls, server_mtls, client_tls, client_mtls
+    ):
+        self.td.setup_for_grpc_with_security(
+            self.server_xds_host,
+            self.server_xds_port,
+            server_namespace=self.server_namespace,
+            server_name=self.server_name,
+            server_tls=server_tls,
+            server_mtls=server_mtls,
+            client_tls=client_tls,
+            client_mtls=client_mtls,
+            health_check_port=self.server_maintenance_port,
+        )
+
     def startSecureTestClient(
         self,
         test_server: XdsTestServer,
