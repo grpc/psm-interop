@@ -218,7 +218,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         security_settings: Optional[dict] = None,
     ):
         self.create_health_check(port=health_check_port)
-        self.create_backend_service(protocol, security_settings=security_settings)
+        self.create_backend_service(
+            protocol, security_settings=security_settings
+        )
 
     def setup_routing_rule_map_for_grpc(self, service_host, service_port):
         self.create_url_map(service_host, service_port)
@@ -1135,32 +1137,40 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             server_namespace, server_name
         )
 
-    def wait_for_server_tls_ready(self, test_server, server_port: int, timeout_sec: int = 60):
+    def wait_for_server_tls_ready(
+        self, test_server, server_port: int, timeout_sec: int = 60
+    ):
         from framework.rpc import grpc_csds
         from framework.helpers import retryers
         import datetime
-        
-        logger.info("Waiting for server %s to report TLS readiness via CSDS", test_server.hostname)
-        
+
+        logger.info(
+            "Waiting for server %s to report TLS readiness via CSDS",
+            test_server.hostname,
+        )
+
         channel = test_server._make_channel(test_server.maintenance_port)
-        csds_client = grpc_csds.CsdsClient(channel, log_target=f"{test_server.hostname}:{test_server.maintenance_port}")
-        
+        csds_client = grpc_csds.CsdsClient(
+            channel,
+            log_target=f"{test_server.hostname}:{test_server.maintenance_port}",
+        )
+
         def _check_tls_ready():
             config = csds_client.fetch_client_status_parsed()
             if not config:
                 logger.debug("CSDS config empty")
                 return False
-            
+
             lds = config.lds
             if not lds:
                 logger.debug("No LDS in CSDS config")
                 return False
-            
+
             lds_str = str(lds)
             if "DownstreamTlsContext" in lds_str or "require_tls" in lds_str:
                 logger.info("Server reported TLS readiness")
                 return True
-                
+
             logger.debug("LDS does not contain TLS config yet: %s", lds_str)
             return False
 
@@ -1169,7 +1179,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             timeout=datetime.timedelta(seconds=timeout_sec),
             check_result=lambda res: res,
         )
-        
+
         try:
             retryer(_check_tls_ready)
         except retryers.RetryError as e:
