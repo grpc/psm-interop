@@ -53,7 +53,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
         test_server: _XdsTestServer = self.startSecureTestServer()
-        self.td.wait_for_server_tls_ready(test_server, self.server_xds_port)
+        self.td.wait_for_server_tls_ready(test_server, self.server_port)
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
@@ -76,7 +76,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
         test_server: _XdsTestServer = self.startSecureTestServer()
-        self.td.wait_for_server_tls_ready(test_server, self.server_xds_port)
+        self.td.wait_for_server_tls_ready(test_server, self.server_port)
         self.setupServerBackends()
         test_client: _XdsTestClient = self.startSecureTestClient(test_server)
 
