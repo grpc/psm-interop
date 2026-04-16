@@ -1198,11 +1198,15 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             try:
                 config = csds_client.fetch_client_status_parsed()
                 if config and config.lds:
-                    logger.error("Last received LDS config: %s", str(config.lds))
+                    logger.error(
+                        "Last received LDS config: %s", str(config.lds)
+                    )
                 else:
-                    logger.error("Last received CSDS config was empty or lacked LDS")
-            except Exception as e:
-                 logger.error("Failed to fetch CSDS config for debug: %s", e)
+                    logger.error(
+                        "Last received CSDS config was empty or lacked LDS"
+                    )
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Failed to fetch CSDS config for debug: %s", e)
             raise
 
     def cleanup(self, *, force=False):
