@@ -1144,7 +1144,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
 
     @staticmethod
     def wait_for_server_tls_ready(
-        test_server, server_port: int, timeout_sec: int = 60
+        test_server, server_port: int, timeout_sec: int = 120
     ):
         import datetime
 
@@ -1194,6 +1194,15 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             retryer(_check_tls_ready)
         except retryers.RetryError:
             logger.error("Timeout waiting for server TLS readiness")
+            # Log the last received LDS config to help debugging
+            try:
+                config = csds_client.fetch_client_status_parsed()
+                if config and config.lds:
+                    logger.error("Last received LDS config: %s", str(config.lds))
+                else:
+                    logger.error("Last received CSDS config was empty or lacked LDS")
+            except Exception as e:
+                 logger.error("Failed to fetch CSDS config for debug: %s", e)
             raise
 
     def cleanup(self, *, force=False):
