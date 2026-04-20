@@ -1090,7 +1090,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         health_check_port=None,
         server_port=None,
     ):
-        # 1. Create policies first
+        # Create policies first
         self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
         self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
 
@@ -1103,7 +1103,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             server_port=server_port,
         )
 
-        # 2. Construct security settings for one-shot backend creation
         security_settings = None
         if self.client_tls_policy:
             server_spiffe = (
@@ -1115,7 +1114,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
                 "subjectAltNames": [server_spiffe],
             }
 
-        # 3. Call setup_for_grpc with security_settings
         self.setup_for_grpc(
             service_host,
             service_port,
@@ -1194,7 +1192,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             retryer(_check_tls_ready)
         except retryers.RetryError:
             logger.error("Timeout waiting for server TLS readiness")
-            # Log the last received LDS config to help debugging
             try:
                 config = csds_client.fetch_client_status_parsed()
                 if config and config.lds:
