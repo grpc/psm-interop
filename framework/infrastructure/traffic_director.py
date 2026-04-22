@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import functools
 import logging
 import random
@@ -21,6 +22,8 @@ from typing_extensions import TypeAlias
 
 from framework import xds_flags
 from framework.infrastructure import gcp
+from framework.helpers import retryers
+from framework.rpc import grpc_csds
 
 logger = logging.getLogger(__name__)
 
@@ -1075,52 +1078,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         self.authz_policy: Optional[AuthorizationPolicy] = None
         self.endpoint_policy: Optional[EndpointPolicy] = None
 
-    def setup_for_grpc_with_security(
-        self,
-        service_host,
-        service_port,
-        *,
-        server_namespace,
-        server_name,
-        server_tls,
-        server_mtls,
-        client_tls,
-        client_mtls,
-        backend_protocol=_BackendGRPC,
-        health_check_port=None,
-        server_port=None,
-    ):
-        # Create policies first
-        self.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
-        self.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
 
-        if server_port is None:
-            server_port = service_port
-
-        self.create_endpoint_policy(
-            server_namespace=server_namespace,
-            server_name=server_name,
-            server_port=server_port,
-        )
-
-        security_settings = None
-        if self.client_tls_policy:
-            server_spiffe = (
-                f"spiffe://{self.project}.svc.id.goog/"
-                f"ns/{server_namespace}/sa/{server_name}"
-            )
-            security_settings = {
-                "clientTlsPolicy": self.client_tls_policy.url,
-                "subjectAltNames": [server_spiffe],
-            }
-
-        self.setup_for_grpc(
-            service_host,
-            service_port,
-            backend_protocol=backend_protocol,
-            health_check_port=health_check_port,
-            security_settings=security_settings,
-        )
 
     def setup_server_security(
         self, *, server_namespace, server_name, server_port, tls=True, mtls=True
@@ -1144,10 +1102,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
     def wait_for_server_tls_ready(
         test_server, server_port: int, timeout_sec: int = 120
     ):
-        import datetime
 
-        from framework.helpers import retryers
-        from framework.rpc import grpc_csds
 
         logger.info(
             "Waiting for server %s to report TLS readiness via CSDS",
@@ -1183,7 +1138,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             return False
 
         retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=2),
+            wait_fixed=datetime.timedelta(seconds=10),
             timeout=datetime.timedelta(seconds=timeout_sec),
             check_result=lambda res: res,
         )
@@ -1194,14 +1149,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             logger.error("Timeout waiting for server TLS readiness")
             try:
                 config = csds_client.fetch_client_status_parsed()
-                if config and config.lds:
-                    logger.error(
-                        "Last received LDS config: %s", str(config.lds)
-                    )
-                else:
-                    logger.error(
-                        "Last received CSDS config was empty or lacked LDS"
-                    )
+                logger.error("Last received CSDS config: %s", str(config))
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Failed to fetch CSDS config for debug: %s", e)
             raise

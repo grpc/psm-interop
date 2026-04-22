@@ -1360,17 +1360,32 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
     def setupTrafficDirectorGrpcWithSecurity(
         self, server_tls, server_mtls, client_tls, client_mtls
     ):
-        self.td.setup_for_grpc_with_security(
-            self.server_xds_host,
-            self.server_xds_port,
+        # Create policies first
+        self.td.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
+        self.td.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+
+        self.td.create_endpoint_policy(
             server_namespace=self.server_namespace,
             server_name=self.server_name,
-            server_tls=server_tls,
-            server_mtls=server_mtls,
-            client_tls=client_tls,
-            client_mtls=client_mtls,
-            health_check_port=self.server_maintenance_port,
             server_port=self.server_port,
+        )
+
+        security_settings = None
+        if self.td.client_tls_policy:
+            server_spiffe = (
+                f"spiffe://{self.project}.svc.id.goog/"
+                f"ns/{self.server_namespace}/sa/{self.server_name}"
+            )
+            security_settings = {
+                "clientTlsPolicy": self.td.client_tls_policy.url,
+                "subjectAltNames": [server_spiffe],
+            }
+
+        self.td.setup_for_grpc(
+            self.server_xds_host,
+            self.server_xds_port,
+            health_check_port=self.server_maintenance_port,
+            security_settings=security_settings,
         )
 
     def startSecureTestClient(
