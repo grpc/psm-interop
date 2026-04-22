@@ -21,8 +21,8 @@ import googleapiclient.errors
 from typing_extensions import TypeAlias
 
 from framework import xds_flags
-from framework.infrastructure import gcp
 from framework.helpers import retryers
+from framework.infrastructure import gcp
 from framework.rpc import grpc_csds
 
 logger = logging.getLogger(__name__)
@@ -1078,8 +1078,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         self.authz_policy: Optional[AuthorizationPolicy] = None
         self.endpoint_policy: Optional[EndpointPolicy] = None
 
-
-
     def setup_server_security(
         self, *, server_namespace, server_name, server_port, tls=True, mtls=True
     ):
@@ -1102,8 +1100,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
     def wait_for_server_tls_ready(
         test_server, server_port: int, timeout_sec: int = 120
     ):
-
-
         logger.info(
             "Waiting for server %s to report TLS readiness via CSDS",
             test_server.hostname,
