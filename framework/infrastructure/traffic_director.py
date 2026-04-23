@@ -1096,60 +1096,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             server_namespace, server_name
         )
 
-    @staticmethod
-    def wait_for_server_tls_ready(
-        test_server, server_port: int, timeout_sec: int = 120
-    ):
-        logger.info(
-            "Waiting for server %s to report TLS readiness via CSDS",
-            test_server.hostname,
-        )
-
-        channel = test_server._make_channel(test_server.maintenance_port)
-        csds_client = grpc_csds.CsdsClient(
-            channel,
-            log_target=f"{test_server.hostname}:{test_server.maintenance_port}",
-        )
-
-        def _check_tls_ready():
-            config = csds_client.fetch_client_status_parsed()
-            if not config:
-                logger.debug("CSDS config empty")
-                return False
-
-            lds = config.lds
-            if not lds:
-                logger.debug("No LDS in CSDS config")
-                return False
-
-            lds_str = str(lds)
-            # Verify port matches and TLS is enabled
-            if str(server_port) in lds_str and (
-                "DownstreamTlsContext" in lds_str or "require_tls" in lds_str
-            ):
-                logger.info("Server reported TLS readiness")
-                return True
-
-            logger.debug("LDS does not contain TLS config yet: %s", lds_str)
-            return False
-
-        retryer = retryers.constant_retryer(
-            wait_fixed=datetime.timedelta(seconds=10),
-            timeout=datetime.timedelta(seconds=timeout_sec),
-            check_result=lambda res: res,
-        )
-
-        try:
-            retryer(_check_tls_ready)
-        except retryers.RetryError:
-            logger.error("Timeout waiting for server TLS readiness")
-            try:
-                config = csds_client.fetch_client_status_parsed()
-                logger.error("Last received CSDS config: %s", str(config))
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Failed to fetch CSDS config for debug: %s", e)
-            raise
-
     def cleanup(self, *, force=False):
         # Cleanup in the reverse order of creation
         super().cleanup(force=force)
