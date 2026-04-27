@@ -466,11 +466,18 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         if isinstance(err, urllib3.exceptions.MaxRetryError):
             return self._handle_exception(err.reason) if err.reason else None
 
-        # We consider all `NewConnectionError`s as caused by a k8s
-        # API server restart. `NewConnectionError`s we've seen:
+        # We consider all `NewConnectionError`s and `ConnectTimeoutError`s
+        # as caused by a k8s API server restart.
+        # Errors we've seen:
         #   - [Errno 110] Connection timed out
         #   - [Errno 111] Connection refused
-        if isinstance(err, urllib3.exceptions.NewConnectionError):
+        if isinstance(
+            err,
+            (
+                urllib3.exceptions.NewConnectionError,
+                urllib3.exceptions.ConnectTimeoutError,
+            ),
+        ):
             return _server_restart_retryer()
 
         # We consider all `ProtocolError`s with "Connection aborted" message

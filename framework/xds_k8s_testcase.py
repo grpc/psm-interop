@@ -245,9 +245,21 @@ class XdsKubernetesBaseTestCase(
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
-        cls.k8s_api_manager = k8s.KubernetesApiManager(
-            xds_k8s_flags.KUBE_CONTEXT.value
+        # FIX: Wrap in a retryer to handle transient GKE control plane timeouts.
+        retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=10),
+            attempts=3,
+            log_level=logging.INFO,
         )
+        try:
+            for attempt in retryer:
+                with attempt:
+                    cls.k8s_api_manager = k8s.KubernetesApiManager(
+                        xds_k8s_flags.KUBE_CONTEXT.value
+                    )
+        except retryers.RetryError as e:
+            logger.error("Fatal: Could not establish GKE connectivity.")
+            raise RuntimeError("Fatal: Could not establish GKE connectivity.") from e
 
         if xds_k8s_flags.SECONDARY_KUBE_CONTEXT.value is not None:
             cls.secondary_k8s_api_manager = k8s.KubernetesApiManager(
