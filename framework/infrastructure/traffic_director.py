@@ -157,9 +157,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         *,
         backend_protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
         health_check_port: Optional[int] = None,
+        security_settings: Optional[dict] = None,
     ):
         self.setup_backend_for_grpc(
-            protocol=backend_protocol, health_check_port=health_check_port
+            protocol=backend_protocol,
+            health_check_port=health_check_port,
+            security_settings=security_settings,
         )
         self.setup_routing_rule_map_for_grpc(service_host, service_port)
 
@@ -168,9 +171,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         *,
         protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
         health_check_port: Optional[int] = None,
+        security_settings: Optional[dict] = None,
     ):
         self.create_health_check(port=health_check_port)
-        self.create_backend_service(protocol)
+        self.create_backend_service(
+            protocol, security_settings=security_settings
+        )
 
     def setup_routing_rule_map_for_grpc(self, service_host, service_port):
         self.create_url_map(service_host, service_port)
@@ -245,6 +251,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         affinity_header: Optional[str] = None,
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
+        security_settings: Optional[dict] = None,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -260,6 +267,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             locality_lb_policies=locality_lb_policies,
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
+            security_settings=security_settings,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol

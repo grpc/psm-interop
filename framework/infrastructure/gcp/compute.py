@@ -152,6 +152,7 @@ class ComputeV1(
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         enable_dualstack: bool = False,
+        security_settings: Optional[dict] = None,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
@@ -160,6 +161,9 @@ class ComputeV1(
             "loadBalancingScheme": "INTERNAL_SELF_MANAGED",  # Traffic Director
             "protocol": protocol.name,
         }
+
+        if security_settings:
+            body["securitySettings"] = security_settings
 
         if health_check:
             body["healthChecks"] = [health_check.url]
