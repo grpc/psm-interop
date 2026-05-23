@@ -239,6 +239,9 @@ class XdsKubernetesBaseTestCase(
         cls.enable_workload_identity = (
             xds_k8s_flags.ENABLE_WORKLOAD_IDENTITY.value
         )
+        cls.workload_identity_iam_policy_binding = (
+            xds_k8s_flags.WORKLOAD_IDENTITY_IAM_POLICY_BINDING.value
+        )
         cls.check_local_certs = _CHECK_LOCAL_CERTS.value
 
         # Resource managers
@@ -913,10 +916,14 @@ class XdsKubernetesBaseTestCase(
         num_rpcs: int,
         steady_state_allowed_shortfall_percent: int = 5,
         after_steady_state_allowed_shortfall_count: int = 100,
+        steady_state_allowed_excess_percent: int = 1,
         retry_timeout: dt.timedelta = dt.timedelta(minutes=12),
         retry_wait: dt.timedelta = dt.timedelta(seconds=10),
         steady_state_delay: dt.timedelta = dt.timedelta(seconds=5),
     ):
+        num_rpcs_max = int(
+            num_rpcs * (1 + steady_state_allowed_excess_percent / 100)
+        )
         first_min = int(
             num_rpcs * (1 - steady_state_allowed_shortfall_percent / 100)
         )
@@ -926,13 +933,13 @@ class XdsKubernetesBaseTestCase(
             error_note=(
                 f"Timeout waiting for test client {test_client.hostname} to"
                 f"report {num_rpcs} pending calls in range "
-                f"[{first_min}, {num_rpcs}]"
+                f"[{first_min}, {num_rpcs_max}]"
             ),
         )
         for attempt in retryer:
             with attempt:
                 self._checkRpcsInFlight(
-                    test_client, rpc_type, first_min, num_rpcs
+                    test_client, rpc_type, first_min, num_rpcs_max
                 )
         logging.info(
             "Will check again in %d seconds to verify that RPC count is steady",
@@ -942,7 +949,7 @@ class XdsKubernetesBaseTestCase(
         second_min = int(
             max(num_rpcs - after_steady_state_allowed_shortfall_count, 0)
         )
-        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs)
+        self._checkRpcsInFlight(test_client, rpc_type, second_min, num_rpcs_max)
 
     def _checkRpcsInFlight(
         self,
@@ -1177,6 +1184,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1198,6 +1206,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             stats_port=self.client_port,
             reuse_namespace=reuse_namespace,
             **kwargs,
@@ -1293,6 +1302,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             xds_server_uri=self.xds_server_uri,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1313,6 +1324,8 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
+            enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 
@@ -1342,6 +1355,37 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             server_port=self.server_port,
             tls=server_tls,
             mtls=server_mtls,
+        )
+
+    def setupTrafficDirectorGrpcWithSecurity(
+        self, server_tls, server_mtls, client_tls, client_mtls
+    ):
+        # Create policies first
+        self.td.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
+        self.td.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+
+        self.td.create_endpoint_policy(
+            server_namespace=self.server_namespace,
+            server_name=self.server_name,
+            server_port=self.server_port,
+        )
+
+        security_settings = None
+        if self.td.client_tls_policy:
+            server_spiffe = (
+                f"spiffe://{self.project}.svc.id.goog/"
+                f"ns/{self.server_namespace}/sa/{self.server_name}"
+            )
+            security_settings = {
+                "clientTlsPolicy": self.td.client_tls_policy.url,
+                "subjectAltNames": [server_spiffe],
+            }
+
+        self.td.setup_for_grpc(
+            self.server_xds_host,
+            self.server_xds_port,
+            health_check_port=self.server_maintenance_port,
+            security_settings=security_settings,
         )
 
     def startSecureTestClient(

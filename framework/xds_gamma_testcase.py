@@ -119,6 +119,7 @@ class GammaXdsKubernetesTestCase(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             **kwargs,
         )
 

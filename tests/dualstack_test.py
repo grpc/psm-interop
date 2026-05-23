@@ -77,6 +77,7 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             reuse_namespace=True,
             reuse_service=True,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             deployment_args=ServerDeploymentArgs(enable_dualstack=True),
         )
 

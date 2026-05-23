@@ -143,6 +143,7 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
             network=cls.network,
             debug_use_port_forwarding=cls.debug_use_port_forwarding,
             enable_workload_identity=cls.enable_workload_identity,
+            workload_identity_iam_policy_binding=cls.workload_identity_iam_policy_binding,
         )
 
     @staticmethod
@@ -183,6 +184,7 @@ class BootstrapGeneratorBaseTest(xds_k8s_testcase.XdsKubernetesBaseTestCase):
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
+            workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             stats_port=self.client_port,
             reuse_namespace=self.server_namespace == self.client_namespace,
         )

@@ -142,8 +142,11 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             log_target=f"{self.hostname}:{self.maintenance_port}",
         )
 
-    def get_csds_parsed(self, **kwargs) -> Optional[grpc_csds.DumpedXdsConfig]:
-        return self.csds.fetch_client_status_parsed(**kwargs)
+    def get_csds_parsed(
+        self, secure_channel: bool = False, **kwargs
+    ) -> Optional[grpc_csds.DumpedXdsConfig]:
+        csds: _CsdsClient = self.secure_csds if secure_channel else self.csds
+        return csds.fetch_client_status_parsed(**kwargs)
 
     def get_load_balancer_stats(
         self,
@@ -171,17 +174,22 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         self,
         *,
         timeout_sec: Optional[int] = None,
+        secure_channel: bool = False,
     ) -> grpc_testing.LoadBalancerAccumulatedStatsResponse:
         """Shortcut to LoadBalancerStatsServiceClient.get_client_accumulated_stats()"""
-        return self.load_balancer_stats.get_client_accumulated_stats(
-            timeout_sec=timeout_sec
+        lb_stats: _LoadBalancerStatsServiceClient = (
+            self.secure_load_balancer_stats
+            if secure_channel
+            else self.load_balancer_stats
         )
+        return lb_stats.get_client_accumulated_stats(timeout_sec=timeout_sec)
 
     def wait_for_server_channel_ready(
         self,
         *,
         timeout: Optional[_timedelta] = None,
         rpc_deadline: Optional[_timedelta] = None,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         """Wait for the channel to the server to transition to READY.
 
@@ -193,6 +201,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
                 _ChannelzChannelState.READY,
                 timeout=timeout,
                 rpc_deadline=rpc_deadline,
+                secure_channel=secure_channel,
             )
         except retryers.RetryError as retry_err:
             if cause := retry_err.exception():
@@ -211,6 +220,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         xds_server_uri: Optional[str] = None,
         timeout: Optional[_timedelta] = None,
         rpc_deadline: Optional[_timedelta] = None,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         """Wait until the xds channel is active or timeout.
 
@@ -222,6 +232,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
                 xds_server_uri=xds_server_uri,
                 timeout=timeout,
                 rpc_deadline=rpc_deadline,
+                secure_channel=secure_channel,
             )
         except retryers.RetryError as retry_err:
             if cause := retry_err.exception():
@@ -282,6 +293,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         *,
         timeout: Optional[_timedelta] = None,
         rpc_deadline: Optional[_timedelta] = None,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         # When polling for a state, prefer smaller wait times to avoid
         # exhausting all allowed time on a single long RPC.
@@ -305,6 +317,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             self.find_server_channel_with_state,
             state,
             rpc_deadline=rpc_deadline,
+            secure_channel=secure_channel,
         )
         logger.info(
             "[%s] Channel to %s transitioned to state %s: %s",
@@ -321,6 +334,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         xds_server_uri: Optional[str] = None,
         timeout: Optional[_timedelta] = None,
         rpc_deadline: Optional[_timedelta] = None,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         if not xds_server_uri:
             xds_server_uri = DEFAULT_TD_XDS_URI
@@ -344,6 +358,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
             self.find_active_xds_channel,
             xds_server_uri=xds_server_uri,
             rpc_deadline=rpc_deadline,
+            secure_channel=secure_channel,
         )
         logger.info(
             "[%s] ADS: Detected active calls to xDS control plane %s",
@@ -357,12 +372,15 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         xds_server_uri: str,
         *,
         rpc_deadline: Optional[_timedelta] = None,
+        secure_channel: bool = False,
     ) -> _ChannelzChannel:
         rpc_params = {}
         if rpc_deadline is not None:
             rpc_params["deadline_sec"] = rpc_deadline.total_seconds()
 
-        for channel in self.find_channels(xds_server_uri, **rpc_params):
+        for channel in self.find_channels(
+            xds_server_uri, secure_channel=secure_channel, **rpc_params
+        ):
             logger.info(
                 "[%s] xDS control plane channel: %s",
                 self.hostname,
@@ -371,7 +389,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
 
             try:
                 updated_channel = self.check_channel_in_flight_calls(
-                    channel, **rpc_params
+                    channel, secure_channel=secure_channel, **rpc_params
                 )
                 if updated_channel:
                     logger.info(
@@ -526,6 +544,7 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
         channel: _ChannelzChannel,
         *,
         wait_between_checks: Optional[_timedelta] = None,
+        secure_channel: bool = False,
         **rpc_params,
     ) -> Optional[_ChannelzChannel]:
         """Checks if the channel has calls that started, but didn't complete.
@@ -563,7 +582,10 @@ class XdsTestClient(framework.rpc.grpc.GrpcApp):
 
         # Load the channel second time after the timeout.
         time.sleep(wait_between_checks.total_seconds())
-        channel_upd: _ChannelzChannel = self.channelz.get_channel(
+        channelz: _ChannelzServiceClient = (
+            self.secure_channelz if secure_channel else self.channelz
+        )
+        channel_upd: _ChannelzChannel = channelz.get_channel(
             channel.ref.channel_id, **rpc_params
         )
         if (
