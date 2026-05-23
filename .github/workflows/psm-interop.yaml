@@ -95,4 +95,42 @@ jobs:
          python -m pylint 'bin' 'framework' --rcfile=.pylintrc -rn
       - name: Analysing tests code with pylint
         run: |
-         python -m pylint 'tests' --rcfile=./tests/.pylintrc -rn
+         python -m pylint 'tests' --rcfile=./tests/.pylintrc -rn  
+  
+  check-day:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for weekend bypass label
+        id: check_label
+        run: |
+          # Check if the PR contains the 'weekeend-merge' label
+          LABEL_FOUND=$(echo '${{ toJson(github.event.pull_request.labels.*.name) }}' | jq '. | contains(["weekeend-merge"])')
+          
+          if [ "$LABEL_FOUND" = "true" ]; then
+            echo "BYPASS=true" >> $GITHUB_ENV
+            echo "🚀 'weekeend-merge' label found. Weekend restriction will be bypassed."
+          else
+            echo "BYPASS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Check the day of the week
+        if: env.BYPASS != 'true'
+        run: |
+          # Get the day of the week in UTC (1=Monday, 7=Sunday)
+          DAY=$(date +%u)
+          echo "Current day of the week (UTC): $DAY"
+          
+          # 5 = Friday, 6 = Saturday, 7 = Sunday
+          if [ "$DAY" -eq 5 ] || [ "$DAY" -eq 6 ] || [ "$DAY" -eq 7 ]; then
+            echo "========================================================================="
+            echo "❌ Merges are blocked on Friday, Saturday, and Sunday!"
+            echo "💡 To bypass this for a critical fix, add the 'weekeend-merge' label to this PR."
+            echo "========================================================================="
+            exit 1
+          fi
+          echo "✅ Weekday check passed. Safe to merge."
+
+      - name: Log Bypass Success
+        if: env.BYPASS == 'true'
+        run: |
+          echo "✅ Check passed via 'weekeend-merge' bypass label."
