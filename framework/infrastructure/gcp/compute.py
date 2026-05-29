@@ -661,21 +661,21 @@ class ComputeV1(
         logger.info(
             "Creating compute resource:\n%s", self.resource_pretty_format(body)
         )
-        request_id = uuid.uuid4()
+        request_id = str(uuid.uuid4())
         if region:
             resp = self._execute(
                 collection.insert(
                     project=self.project,
                     region=region,
                     body=body,
-                    request_id=request_id,
+                    requestId=request_id,
                 ),
                 region=region,
             )
         else:
             resp = self._execute(
                 collection.insert(
-                    project=self.project, body=body, request_id=request_id
+                    project=self.project, body=body, requestId=request_id
                 )
             )
         return self.GcpResource(body["name"], resp["targetLink"])
@@ -684,10 +684,10 @@ class ComputeV1(
         logger.info(
             "Patching compute resource:\n%s", self.resource_pretty_format(body)
         )
-        request_id = uuid.uuid4()
+        request_id = str(uuid.uuid4())
         self._execute(
             collection.patch(
-                project=self.project, body=body, request_id=request_id, **kwargs
+                project=self.project, body=body, requestId=request_id, **kwargs
             )
         )
 
