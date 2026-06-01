@@ -102,6 +102,9 @@ spec:
             % if xds_server_uri:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
+            % if xds_server_region:
+            - "--xds-server-region-experimental=${xds_server_region}"
+            % endif
             - "--node-metadata=app=${namespace_name}-${deployment_name}"
             % if generate_mesh_id:
             - "--generate-mesh-id-experimental"

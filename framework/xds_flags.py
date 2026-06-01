@@ -57,6 +57,11 @@ COMPUTE_API_VERSION = flags.DEFINE_string(
 XDS_SERVER_URI = flags.DEFINE_string(
     "xds_server_uri", default=None, help="Override Traffic Director server URI."
 )
+XDS_SERVER_REGION = flags.DEFINE_string(
+    "xds_server_region",
+    default=None,
+    help="Override Traffic Director server region for regional setup.",
+)
 ENSURE_FIREWALL = flags.DEFINE_bool(
     "ensure_firewall",
     default=False,
