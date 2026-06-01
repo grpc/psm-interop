@@ -38,7 +38,9 @@ class RegionalTrafficDirectorTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("04_start_test_servers"):
             test_servers = self.startTestServers()

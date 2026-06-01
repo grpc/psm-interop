@@ -191,7 +191,9 @@ class ComputeV1(
         if outlier_detection:
             body["outlierDetection"] = outlier_detection
         if region:
-            return self._insert_resource(self.api.regionBackendServices(), body, region=region)
+            return self._insert_resource(
+                self.api.regionBackendServices(), body, region=region
+            )
         return self._insert_resource(self.api.backendServices(), body)
 
     def get_backend_service_traffic_director(
@@ -199,13 +201,17 @@ class ComputeV1(
     ) -> "GcpResource":
         if region:
             return self._get_resource(
-                self.api.regionBackendServices(), backendService=name, region=region
+                self.api.regionBackendServices(),
+                backendService=name,
+                region=region,
             )
         return self._get_resource(
             self.api.backendServices(), backendService=name
         )
 
-    def patch_backend_service(self, backend_service, body, region: Optional[str] = None, **kwargs):
+    def patch_backend_service(
+        self, backend_service, body, region: Optional[str] = None, **kwargs
+    ):
         if region:
             self._patch_resource(
                 collection=self.api.regionBackendServices(),
@@ -270,10 +276,15 @@ class ComputeV1(
         ]
 
         self.backend_service_patch_backends_with_body(
-            backend_service, backend_list, circuit_breakers=circuit_breakers, region=region
+            backend_service,
+            backend_list,
+            circuit_breakers=circuit_breakers,
+            region=region,
         )
 
-    def backend_service_remove_all_backends(self, backend_service, region: Optional[str] = None):
+    def backend_service_remove_all_backends(
+        self, backend_service, region: Optional[str] = None
+    ):
         if region:
             self._patch_resource(
                 collection=self.api.regionBackendServices(),
@@ -291,7 +302,10 @@ class ComputeV1(
     def delete_backend_service(self, name, region: Optional[str] = None):
         if region:
             self._delete_resource(
-                self.api.regionBackendServices(), "backendService", name, region=region
+                self.api.regionBackendServices(),
+                "backendService",
+                name,
+                region=region,
             )
         else:
             self._delete_resource(
@@ -326,17 +340,27 @@ class ComputeV1(
             ],
         }
         if region:
-            return self._insert_resource(self.api.regionUrlMaps(), body, region=region)
+            return self._insert_resource(
+                self.api.regionUrlMaps(), body, region=region
+            )
         return self._insert_resource(self.api.urlMaps(), body)
 
     def create_url_map_with_content(
         self, url_map_body: Any, region: Optional[str] = None
     ) -> "GcpResource":
         if region:
-            return self._insert_resource(self.api.regionUrlMaps(), url_map_body, region=region)
+            return self._insert_resource(
+                self.api.regionUrlMaps(), url_map_body, region=region
+            )
         return self._insert_resource(self.api.urlMaps(), url_map_body)
 
-    def patch_url_map(self, url_map: "GcpResource", body, region: Optional[str] = None, **kwargs):
+    def patch_url_map(
+        self,
+        url_map: "GcpResource",
+        body,
+        region: Optional[str] = None,
+        **kwargs,
+    ):
         if region:
             self._patch_resource(
                 collection=self.api.regionUrlMaps(),
@@ -355,7 +379,9 @@ class ComputeV1(
 
     def delete_url_map(self, name, region: Optional[str] = None):
         if region:
-            self._delete_resource(self.api.regionUrlMaps(), "urlMap", name, region=region)
+            self._delete_resource(
+                self.api.regionUrlMaps(), "urlMap", name, region=region
+            )
         else:
             self._delete_resource(self.api.urlMaps(), "urlMap", name)
 
@@ -375,14 +401,15 @@ class ComputeV1(
             return self._insert_resource(
                 self.api.regionTargetGrpcProxies(), body, region=region
             )
-        return self._insert_resource(
-            self.api.targetGrpcProxies(), body
-        )
+        return self._insert_resource(self.api.targetGrpcProxies(), body)
 
     def delete_target_grpc_proxy(self, name, region: Optional[str] = None):
         if region:
             self._delete_resource(
-                self.api.regionTargetGrpcProxies(), "targetGrpcProxy", name, region=region
+                self.api.regionTargetGrpcProxies(),
+                "targetGrpcProxy",
+                name,
+                region=region,
             )
         else:
             self._delete_resource(
@@ -429,11 +456,11 @@ class ComputeV1(
             return self._insert_resource(
                 self.api.forwardingRules(), body, region=region
             )
-        return self._insert_resource(
-            self.api.globalForwardingRules(), body
-        )
+        return self._insert_resource(self.api.globalForwardingRules(), body)
 
-    def exists_forwarding_rule(self, src_port, region: Optional[str] = None) -> bool:
+    def exists_forwarding_rule(
+        self, src_port, region: Optional[str] = None
+    ) -> bool:
         # TODO(sergiitk): Better approach for confirming the port is available.
         #   It's possible a rule allocates actual port range, e.g 8000-9000,
         #   and this wouldn't catch it. For now, we assume there's no
@@ -445,7 +472,9 @@ class ComputeV1(
         )
         if region:
             return self._exists_resource(
-                self.api.forwardingRules(), resource_filter=filter_str, region=region
+                self.api.forwardingRules(),
+                resource_filter=filter_str,
+                region=region,
             )
         return self._exists_resource(
             self.api.globalForwardingRules(), resource_filter=filter_str
@@ -454,7 +483,10 @@ class ComputeV1(
     def delete_forwarding_rule(self, name, region: Optional[str] = None):
         if region:
             self._delete_resource(
-                self.api.forwardingRules(), "forwardingRule", name, region=region
+                self.api.forwardingRules(),
+                "forwardingRule",
+                name,
+                region=region,
             )
         else:
             self._delete_resource(
@@ -740,12 +772,21 @@ class ComputeV1(
         return self.GcpResource(resp["name"], resp["selfLink"])
 
     def _exists_resource(
-        self, collection: discovery.Resource, resource_filter: str, region: Optional[str] = None
+        self,
+        collection: discovery.Resource,
+        resource_filter: str,
+        region: Optional[str] = None,
     ) -> bool:
-        kwargs = {"project": self.project, "filter": resource_filter, "maxResults": 1}
+        kwargs = {
+            "project": self.project,
+            "filter": resource_filter,
+            "maxResults": 1,
+        }
         if region:
             kwargs["region"] = region
-        resp = collection.list(**kwargs).execute(num_retries=self._GCP_API_RETRIES)
+        resp = collection.list(**kwargs).execute(
+            num_retries=self._GCP_API_RETRIES
+        )
         if "kind" not in resp:
             # TODO(sergiitk): better error
             raise ValueError('List response "kind" is missing')
@@ -773,7 +814,9 @@ class ComputeV1(
             )
         return self.GcpResource(body["name"], resp["targetLink"])
 
-    def _patch_resource(self, collection, body, region: Optional[str] = None, **kwargs):
+    def _patch_resource(
+        self, collection, body, region: Optional[str] = None, **kwargs
+    ):
         logger.info(
             "Patching compute resource:\n%s", self.resource_pretty_format(body)
         )

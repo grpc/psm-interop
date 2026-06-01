@@ -572,7 +572,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
 
     def create_url_map_with_content(self, url_map_body: Any) -> GcpResource:
         logger.info("Creating URL map: %s", url_map_body)
-        resource = self.compute.create_url_map_with_content(url_map_body, region=self.region)
+        resource = self.compute.create_url_map_with_content(
+            url_map_body, region=self.region
+        )
         self.url_map = resource
         return resource
 
@@ -736,7 +738,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     ) -> int:
         for _ in range(attempts):
             src_port = random.randint(lo, hi)
-            if not self.compute.exists_forwarding_rule(src_port, region=self.region):
+            if not self.compute.exists_forwarding_rule(
+                src_port, region=self.region
+            ):
                 return src_port
         # TODO(sergiitk): custom exception
         raise RuntimeError("Couldn't find unused forwarding rule port")
@@ -752,7 +756,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.target_proxy.url,
         )
         resource = self.compute.create_forwarding_rule(
-            name, src_port, self.target_proxy, self.network_url, region=self.region
+            name,
+            src_port,
+            self.target_proxy,
+            self.network_url,
+            region=self.region,
         )
         self.forwarding_rule = resource
         return resource
@@ -999,7 +1007,9 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
 
     def load_backend_service(self):
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        resource = self.compute.get_backend_service_traffic_director(name, region=self.region)
+        resource = self.compute.get_backend_service_traffic_director(
+            name, region=self.region
+        )
         self.backend_service = resource
 
     def delete_backend_service(self, force=False):
@@ -1037,7 +1047,9 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             "Removing backends from Backend Service %s",
             self.backend_service.name,
         )
-        self.compute.backend_service_remove_all_backends(self.backend_service, region=self.region)
+        self.compute.backend_service_remove_all_backends(
+            self.backend_service, region=self.region
+        )
 
     def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
@@ -1046,12 +1058,17 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             self.backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.backend_service, self.backends, replica_count=replica_count, region=self.region
+            self.backend_service,
+            self.backends,
+            replica_count=replica_count,
+            region=self.region,
         )
 
     def create_mesh(self) -> Mesh:
         name = self.make_resource_name(self.MESH_NAME)
-        logger.info("Creating Mesh %s in location %s", name, self.region or "global")
+        logger.info(
+            "Creating Mesh %s in location %s", name, self.region or "global"
+        )
         body = {}
         self.netsvc.create_mesh(name, body, location=self.region)
         self.mesh = self.netsvc.get_mesh(name, location=self.region)
@@ -1082,7 +1099,11 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             ],
         }
         name = self.make_resource_name(self.GRPC_ROUTE_NAME)
-        logger.info("Creating GrpcRoute %s in location %s", name, self.region or "global")
+        logger.info(
+            "Creating GrpcRoute %s in location %s",
+            name,
+            self.region or "global",
+        )
         self.netsvc.create_grpc_route(name, body, location=self.region)
         self.grpc_route = self.netsvc.get_grpc_route(name, location=self.region)
         logger.debug("Loaded GrpcRoute: %s", self.grpc_route)
