@@ -644,7 +644,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.url_map.name,
         )
         if self.region and target_proxy_type == "GRPC":
-            self.target_proxy = self.compute.create_target_grpc_proxy(name, self.url_map, region=self.region)
+            self.target_proxy = self.compute.create_target_grpc_proxy(
+                name, self.url_map, region=self.region
+            )
         else:
             self.target_proxy = create_proxy_fn(name, self.url_map)
 
@@ -974,7 +976,12 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             protocol = _BackendGRPC
 
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        logger.info('Creating %s Backend Service "%s" in region %s', protocol.name, name, self.region or "global")
+        logger.info(
+            'Creating %s Backend Service "%s" in region %s',
+            protocol.name,
+            name,
+            self.region or "global",
+        )
         resource = self.compute.create_backend_service_traffic_director(
             name,
             health_check=self.health_check,

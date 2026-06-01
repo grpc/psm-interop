@@ -1142,7 +1142,10 @@ class IsolatedXdsKubernetesTestCase(
             except retryers.RetryError:
                 if getattr(self, "xds_server_region", None):
                     test_client.wait_for_active_xds_channel(
-                        xds_server_uri=f"trafficdirector.{self.xds_server_region}.rep.googleapis.com:443",
+                        xds_server_uri=(
+                            f"trafficdirector.{self.xds_server_region}"
+                            ".rep.googleapis.com:443"
+                        ),
                         timeout=wait_for_active_ads_timeout,
                     )
                 else:

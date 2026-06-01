@@ -194,7 +194,9 @@ class ComputeV1(
             return self._insert_resource(self.api.regionBackendServices(), body, region=region)
         return self._insert_resource(self.api.backendServices(), body)
 
-    def get_backend_service_traffic_director(self, name: str, region: Optional[str] = None) -> "GcpResource":
+    def get_backend_service_traffic_director(
+        self, name: str, region: Optional[str] = None
+    ) -> "GcpResource":
         if region:
             return self._get_resource(
                 self.api.regionBackendServices(), backendService=name, region=region
@@ -327,7 +329,9 @@ class ComputeV1(
             return self._insert_resource(self.api.regionUrlMaps(), body, region=region)
         return self._insert_resource(self.api.urlMaps(), body)
 
-    def create_url_map_with_content(self, url_map_body: Any, region: Optional[str] = None) -> "GcpResource":
+    def create_url_map_with_content(
+        self, url_map_body: Any, region: Optional[str] = None
+    ) -> "GcpResource":
         if region:
             return self._insert_resource(self.api.regionUrlMaps(), url_map_body, region=region)
         return self._insert_resource(self.api.urlMaps(), url_map_body)
@@ -648,7 +652,9 @@ class ComputeV1(
         #   assigned will never be marked as HEALTHY, but this is expected.
         return not pending or len(healthy) >= replica_count
 
-    def get_backend_service_backend_health(self, backend_service, backend, region: Optional[str] = None):
+    def get_backend_service_backend_health(
+        self, backend_service, backend, region: Optional[str] = None
+    ):
         if region:
             return (
                 self.api.regionBackendServices()
