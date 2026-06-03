@@ -16,6 +16,7 @@ import datetime
 import enum
 import logging
 from typing import Any, List, Optional, Set
+import uuid
 
 from googleapiclient import discovery
 import googleapiclient.errors
@@ -801,16 +802,22 @@ class ComputeV1(
         logger.info(
             "Creating compute resource:\n%s", self.resource_pretty_format(body)
         )
+        request_id = str(uuid.uuid4())
         if region:
             resp = self._execute(
                 collection.insert(
-                    project=self.project, region=region, body=body
+                    project=self.project,
+                    region=region,
+                    body=body,
+                    requestId=request_id,
                 ),
                 region=region,
             )
         else:
             resp = self._execute(
-                collection.insert(project=self.project, body=body)
+                collection.insert(
+                    project=self.project, body=body, requestId=request_id
+                )
             )
         return self.GcpResource(body["name"], resp["targetLink"])
 
@@ -820,10 +827,13 @@ class ComputeV1(
         logger.info(
             "Patching compute resource:\n%s", self.resource_pretty_format(body)
         )
+        request_id = str(uuid.uuid4())
         if region:
             kwargs["region"] = region
         self._execute(
-            collection.patch(project=self.project, body=body, **kwargs),
+            collection.patch(
+                project=self.project, body=body, requestId=request_id, **kwargs
+            ),
             region=region,
         )
 
