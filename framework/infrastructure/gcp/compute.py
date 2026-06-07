@@ -191,43 +191,39 @@ class ComputeV1(
             body["localityLbPolicies"] = locality_lb_policies
         if outlier_detection:
             body["outlierDetection"] = outlier_detection
-        if region:
-            return self._insert_resource(
-                self.api.regionBackendServices(), body, region=region
-            )
-        return self._insert_resource(self.api.backendServices(), body)
+        return self._insert_resource(
+            self.api.regionBackendServices()
+            if region
+            else self.api.backendServices(),
+            body,
+            region=region,
+        )
 
     def get_backend_service_traffic_director(
         self, name: str, region: Optional[str] = None
     ) -> "GcpResource":
-        if region:
-            return self._get_resource(
-                self.api.regionBackendServices(),
-                backendService=name,
-                region=region,
-            )
         return self._get_resource(
-            self.api.backendServices(), backendService=name
+            self.api.regionBackendServices()
+            if region
+            else self.api.backendServices(),
+            region=region,
+            backendService=name,
         )
 
     def patch_backend_service(
         self, backend_service, body, region: Optional[str] = None, **kwargs
     ):
-        if region:
-            self._patch_resource(
-                collection=self.api.regionBackendServices(),
-                backendService=backend_service.name,
-                body=body,
-                region=region,
-                **kwargs,
-            )
-        else:
-            self._patch_resource(
-                collection=self.api.backendServices(),
-                backendService=backend_service.name,
-                body=body,
-                **kwargs,
-            )
+        self._patch_resource(
+            collection=(
+                self.api.regionBackendServices()
+                if region
+                else self.api.backendServices()
+            ),
+            backendService=backend_service.name,
+            body=body,
+            region=region,
+            **kwargs,
+        )
 
     def backend_service_patch_backends_with_body(
         self,
@@ -241,19 +237,16 @@ class ComputeV1(
         if circuit_breakers:
             request["circuitBreakers"] = circuit_breakers
 
-        if region:
-            self._patch_resource(
-                collection=self.api.regionBackendServices(),
-                body=request,
-                backendService=backend_service.name,
-                region=region,
-            )
-        else:
-            self._patch_resource(
-                collection=self.api.backendServices(),
-                body=request,
-                backendService=backend_service.name,
-            )
+        self._patch_resource(
+            collection=(
+                self.api.regionBackendServices()
+                if region
+                else self.api.backendServices()
+            ),
+            body=request,
+            backendService=backend_service.name,
+            region=region,
+        )
 
     def backend_service_patch_backends(
         self,
@@ -286,32 +279,26 @@ class ComputeV1(
     def backend_service_remove_all_backends(
         self, backend_service, region: Optional[str] = None
     ):
-        if region:
-            self._patch_resource(
-                collection=self.api.regionBackendServices(),
-                body={"backends": []},
-                backendService=backend_service.name,
-                region=region,
-            )
-        else:
-            self._patch_resource(
-                collection=self.api.backendServices(),
-                body={"backends": []},
-                backendService=backend_service.name,
-            )
+        self._patch_resource(
+            collection=(
+                self.api.regionBackendServices()
+                if region
+                else self.api.backendServices()
+            ),
+            body={"backends": []},
+            backendService=backend_service.name,
+            region=region,
+        )
 
     def delete_backend_service(self, name, region: Optional[str] = None):
-        if region:
-            self._delete_resource(
-                self.api.regionBackendServices(),
-                "backendService",
-                name,
-                region=region,
-            )
-        else:
-            self._delete_resource(
-                self.api.backendServices(), "backendService", name
-            )
+        self._delete_resource(
+            self.api.regionBackendServices()
+            if region
+            else self.api.backendServices(),
+            "backendService",
+            name,
+            region=region,
+        )
 
     def create_url_map(
         self,
@@ -340,20 +327,20 @@ class ComputeV1(
                 }
             ],
         }
-        if region:
-            return self._insert_resource(
-                self.api.regionUrlMaps(), body, region=region
-            )
-        return self._insert_resource(self.api.urlMaps(), body)
+        return self._insert_resource(
+            self.api.regionUrlMaps() if region else self.api.urlMaps(),
+            body,
+            region=region,
+        )
 
     def create_url_map_with_content(
         self, url_map_body: Any, region: Optional[str] = None
     ) -> "GcpResource":
-        if region:
-            return self._insert_resource(
-                self.api.regionUrlMaps(), url_map_body, region=region
-            )
-        return self._insert_resource(self.api.urlMaps(), url_map_body)
+        return self._insert_resource(
+            self.api.regionUrlMaps() if region else self.api.urlMaps(),
+            url_map_body,
+            region=region,
+        )
 
     def patch_url_map(
         self,
@@ -362,29 +349,23 @@ class ComputeV1(
         region: Optional[str] = None,
         **kwargs,
     ):
-        if region:
-            self._patch_resource(
-                collection=self.api.regionUrlMaps(),
-                urlMap=url_map.name,
-                body=body,
-                region=region,
-                **kwargs,
-            )
-        else:
-            self._patch_resource(
-                collection=self.api.urlMaps(),
-                urlMap=url_map.name,
-                body=body,
-                **kwargs,
-            )
+        self._patch_resource(
+            collection=self.api.regionUrlMaps()
+            if region
+            else self.api.urlMaps(),
+            urlMap=url_map.name,
+            body=body,
+            region=region,
+            **kwargs,
+        )
 
     def delete_url_map(self, name, region: Optional[str] = None):
-        if region:
-            self._delete_resource(
-                self.api.regionUrlMaps(), "urlMap", name, region=region
-            )
-        else:
-            self._delete_resource(self.api.urlMaps(), "urlMap", name)
+        self._delete_resource(
+            self.api.regionUrlMaps() if region else self.api.urlMaps(),
+            "urlMap",
+            name,
+            region=region,
+        )
 
     def create_target_grpc_proxy(
         self,
@@ -398,24 +379,23 @@ class ComputeV1(
             "url_map": url_map.url,
             "validate_for_proxyless": validate_for_proxyless,
         }
-        if region:
-            return self._insert_resource(
-                self.api.regionTargetGrpcProxies(), body, region=region
-            )
-        return self._insert_resource(self.api.targetGrpcProxies(), body)
+        return self._insert_resource(
+            self.api.regionTargetGrpcProxies()
+            if region
+            else self.api.targetGrpcProxies(),
+            body,
+            region=region,
+        )
 
     def delete_target_grpc_proxy(self, name, region: Optional[str] = None):
-        if region:
-            self._delete_resource(
-                self.api.regionTargetGrpcProxies(),
-                "targetGrpcProxy",
-                name,
-                region=region,
-            )
-        else:
-            self._delete_resource(
-                self.api.targetGrpcProxies(), "targetGrpcProxy", name
-            )
+        self._delete_resource(
+            self.api.regionTargetGrpcProxies()
+            if region
+            else self.api.targetGrpcProxies(),
+            "targetGrpcProxy",
+            name,
+            region=region,
+        )
 
     def create_target_http_proxy(
         self,
@@ -453,11 +433,13 @@ class ComputeV1(
             "network": network_url,
             "target": target_proxy.url,
         }
-        if region:
-            return self._insert_resource(
-                self.api.forwardingRules(), body, region=region
-            )
-        return self._insert_resource(self.api.globalForwardingRules(), body)
+        return self._insert_resource(
+            self.api.forwardingRules()
+            if region
+            else self.api.globalForwardingRules(),
+            body,
+            region=region,
+        )
 
     def exists_forwarding_rule(
         self, src_port, region: Optional[str] = None
@@ -471,28 +453,23 @@ class ComputeV1(
             '(IPAddress eq "0.0.0.0")'
             '(loadBalancingScheme eq "INTERNAL_SELF_MANAGED")'
         )
-        if region:
-            return self._exists_resource(
-                self.api.forwardingRules(),
-                resource_filter=filter_str,
-                region=region,
-            )
         return self._exists_resource(
-            self.api.globalForwardingRules(), resource_filter=filter_str
+            self.api.forwardingRules()
+            if region
+            else self.api.globalForwardingRules(),
+            resource_filter=filter_str,
+            region=region,
         )
 
     def delete_forwarding_rule(self, name, region: Optional[str] = None):
-        if region:
-            self._delete_resource(
-                self.api.forwardingRules(),
-                "forwardingRule",
-                name,
-                region=region,
-            )
-        else:
-            self._delete_resource(
-                self.api.globalForwardingRules(), "forwardingRule", name
-            )
+        self._delete_resource(
+            self.api.forwardingRules()
+            if region
+            else self.api.globalForwardingRules(),
+            "forwardingRule",
+            name,
+            region=region,
+        )
 
     def wait_for_network_endpoint_group(
         self,
@@ -688,24 +665,20 @@ class ComputeV1(
     def get_backend_service_backend_health(
         self, backend_service, backend, region: Optional[str] = None
     ):
+        kwargs = {
+            "project": self.project,
+            "backendService": backend_service.name,
+            "body": {"group": backend.url},
+        }
         if region:
-            return (
-                self.api.regionBackendServices()
-                .getHealth(
-                    project=self.project,
-                    region=region,
-                    backendService=backend_service.name,
-                    body={"group": backend.url},
-                )
-                .execute()
-            )
+            kwargs["region"] = region
         return (
-            self.api.backendServices()
-            .getHealth(
-                project=self.project,
-                backendService=backend_service.name,
-                body={"group": backend.url},
+            (
+                self.api.regionBackendServices()
+                if region
+                else self.api.backendServices()
             )
+            .getHealth(**kwargs)
             .execute()
         )
 
@@ -764,8 +737,13 @@ class ComputeV1(
         return neg
 
     def _get_resource(
-        self, collection: discovery.Resource, **kwargs
+        self,
+        collection: discovery.Resource,
+        region: Optional[str] = None,
+        **kwargs,
     ) -> "GcpResource":
+        if region:
+            kwargs["region"] = region
         resp = collection.get(project=self.project, **kwargs).execute()
         logger.info(
             "Loaded compute resource:\n%s", self.resource_pretty_format(resp)
@@ -918,14 +896,14 @@ class ComputeV1(
 
         # TODO(sergiitk) try using wait() here
         # https://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.globalOperations.html#wait
+        kwargs = {"project": self.project, "operation": operation_id}
         if region:
-            op_request = self.api.regionOperations().get(
-                project=self.project, operation=operation_id, region=region
-            )
-        else:
-            op_request = self.api.globalOperations().get(
-                project=self.project, operation=operation_id
-            )
+            kwargs["region"] = region
+        op_request = (
+            self.api.regionOperations()
+            if region
+            else self.api.globalOperations()
+        ).get(**kwargs)
         operation = self.wait_for_operation(
             operation_request=op_request,
             test_success_fn=self._operation_status_done,
