@@ -259,7 +259,13 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             protocol = _BackendGRPC
 
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        logger.info('Creating %s Backend Service "%s"', protocol.name, name)
+        region = getattr(self, "region", None)
+        logger.info(
+            'Creating %s Backend Service "%s" in region %s',
+            protocol.name,
+            name,
+            region or "global",
+        )
         resource = self.compute.create_backend_service_traffic_director(
             name,
             health_check=self.health_check,
@@ -270,13 +276,16 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
             security_settings=security_settings,
+            region=region,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
 
     def load_backend_service(self):
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        resource = self.compute.get_backend_service_traffic_director(name)
+        resource = self.compute.get_backend_service_traffic_director(
+            name, region=getattr(self, "region", None)
+        )
         self.backend_service = resource
 
     def delete_backend_service(self, force=False):
@@ -287,7 +296,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Backend Service "%s"', name)
-        self.compute.delete_backend_service(name)
+        self.compute.delete_backend_service(
+            name, region=getattr(self, "region", None)
+        )
         self.backend_service = None
 
     def backend_service_add_neg_backends(
@@ -332,6 +343,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
             max_rate_per_endpoint,
             circuit_breakers=circuit_breakers,
+            region=getattr(self, "region", None),
         )
 
     def backend_service_remove_all_backends(self):
@@ -339,7 +351,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             "Removing backends from Backend Service %s",
             self.backend_service.name,
         )
-        self.compute.backend_service_remove_all_backends(self.backend_service)
+        self.compute.backend_service_remove_all_backends(
+            self.backend_service, region=getattr(self, "region", None)
+        )
 
     def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
@@ -348,7 +362,10 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.backend_service, self.backends, replica_count=replica_count
+            self.backend_service,
+            self.backends,
+            replica_count=replica_count,
+            region=getattr(self, "region", None),
         )
 
     def create_alternative_backend_service(
@@ -970,99 +987,6 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         self.grpc_route: Optional[GrpcRoute] = None
         self.http_route: Optional[HttpRoute] = None
         self.mesh: Optional[Mesh] = None
-
-    def create_backend_service(
-        self,
-        protocol: Optional[BackendServiceProtocol] = _BackendGRPC,
-        subset_size: Optional[int] = None,
-        affinity_header: Optional[str] = None,
-        locality_lb_policies: Optional[List[dict]] = None,
-        outlier_detection: Optional[dict] = None,
-        security_settings: Optional[dict] = None,
-    ):
-        if protocol is None:
-            protocol = _BackendGRPC
-
-        name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        logger.info(
-            'Creating %s Backend Service "%s" in region %s',
-            protocol.name,
-            name,
-            self.region or "global",
-        )
-        resource = self.compute.create_backend_service_traffic_director(
-            name,
-            health_check=self.health_check,
-            protocol=protocol,
-            subset_size=subset_size,
-            affinity_header=affinity_header,
-            locality_lb_policies=locality_lb_policies,
-            outlier_detection=outlier_detection,
-            enable_dualstack=self.enable_dualstack,
-            security_settings=security_settings,
-            region=self.region,
-        )
-        self.backend_service = resource
-        self.backend_service_protocol = protocol
-
-    def load_backend_service(self):
-        name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        resource = self.compute.get_backend_service_traffic_director(
-            name, region=self.region
-        )
-        self.backend_service = resource
-
-    def delete_backend_service(self, force=False):
-        if force:
-            name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        elif self.backend_service:
-            name = self.backend_service.name
-        else:
-            return
-        logger.info('Deleting Backend Service "%s"', name)
-        self.compute.delete_backend_service(name, region=self.region)
-        self.backend_service = None
-
-    def backend_service_patch_backends(
-        self,
-        max_rate_per_endpoint: Optional[int] = None,
-        *,
-        circuit_breakers: Optional[dict[str, int]] = None,
-    ):
-        logging.info(
-            "Adding backends to Backend Service %s: %r",
-            self.backend_service.name,
-            self.backends,
-        )
-        self.compute.backend_service_patch_backends(
-            self.backend_service,
-            self.backends,
-            max_rate_per_endpoint,
-            circuit_breakers=circuit_breakers,
-            region=self.region,
-        )
-
-    def backend_service_remove_all_backends(self):
-        logging.info(
-            "Removing backends from Backend Service %s",
-            self.backend_service.name,
-        )
-        self.compute.backend_service_remove_all_backends(
-            self.backend_service, region=self.region
-        )
-
-    def wait_for_backends_healthy_status(self, replica_count: int = 1):
-        logger.info(
-            "Waiting for Backend Service %s to report backends healthy: %r",
-            self.backend_service.name,
-            self.backends,
-        )
-        self.compute.wait_for_backends_healthy_status(
-            self.backend_service,
-            self.backends,
-            replica_count=replica_count,
-            region=self.region,
-        )
 
     def create_mesh(self) -> Mesh:
         name = self.make_resource_name(self.MESH_NAME)
