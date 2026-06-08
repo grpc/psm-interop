@@ -401,18 +401,27 @@ class ComputeV1(
         self,
         name: str,
         url_map: "GcpResource",
+        region: Optional[str] = None,
     ) -> "GcpResource":
         return self._insert_resource(
-            self.api.targetHttpProxies(),
+            self.api.regionTargetHttpProxies()
+            if region
+            else self.api.targetHttpProxies(),
             {
                 "name": name,
                 "url_map": url_map.url,
             },
+            region=region,
         )
 
-    def delete_target_http_proxy(self, name):
+    def delete_target_http_proxy(self, name, region: Optional[str] = None):
         self._delete_resource(
-            self.api.targetHttpProxies(), "targetHttpProxy", name
+            self.api.regionTargetHttpProxies()
+            if region
+            else self.api.targetHttpProxies(),
+            "targetHttpProxy",
+            name,
+            region=region,
         )
 
     def create_forwarding_rule(

@@ -662,12 +662,9 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             target_proxy_type,
             self.url_map.name,
         )
-        if self.region and target_proxy_type == "GRPC":
-            self.target_proxy = self.compute.create_target_grpc_proxy(
-                name, self.url_map, region=self.region
-            )
-        else:
-            self.target_proxy = create_proxy_fn(name, self.url_map)
+        self.target_proxy = create_proxy_fn(
+            name, self.url_map, region=getattr(self, "region", None)
+        )
 
     def create_target_proxy_ipv6(self):
         name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
@@ -703,7 +700,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting HTTP Target proxy "%s"', name)
-        self.compute.delete_target_http_proxy(name)
+        self.compute.delete_target_http_proxy(name, region=self.region)
         self.target_proxy = None
         self.target_proxy_is_http = False
 
