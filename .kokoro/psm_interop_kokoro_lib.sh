@@ -452,7 +452,7 @@ psm::regional_td::setup() {
 
 psm::regional_td::get_tests() {
   TESTS=(
-    "regional_traffic_director_test"
+    "app_net_test"
   )
 }
 

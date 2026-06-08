@@ -1244,7 +1244,14 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
-        return self._start_test_client(test_server.xds_uri, **kwargs)
+        if getattr(self, "xds_server_region", None):
+            server_target = (
+                f"xds://traffic-director.{self.xds_server_region}"
+                f".xds.googleapis.com/{test_server.xds_address}"
+            )
+        else:
+            server_target = test_server.xds_uri
+        return self._start_test_client(server_target, **kwargs)
 
 
 class AppNetXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
