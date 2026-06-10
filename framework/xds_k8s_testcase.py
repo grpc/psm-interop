@@ -1134,7 +1134,7 @@ class IsolatedXdsKubernetesTestCase(
             server_target=server_target, **kwargs
         )
         if wait_for_active_ads:
-            if getattr(self, "xds_server_region", None):
+            if self.xds_server_region:
                 expected_uri = (
                     f"trafficdirector.{self.xds_server_region}"
                     ".rep.googleapis.com:443"
@@ -1244,7 +1244,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
-        if getattr(self, "xds_server_region", None):
+        if self.xds_server_region:
             server_target = (
                 f"xds://traffic-director.{self.xds_server_region}"
                 f".xds.googleapis.com/{test_server.xds_address}"
