@@ -259,7 +259,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             protocol = _BackendGRPC
 
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        region = getattr(self, "region", None)
+        region = self.region
         logger.info(
             'Creating %s Backend Service "%s" in region %s',
             protocol.name,
@@ -284,7 +284,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     def load_backend_service(self):
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
         resource = self.compute.get_backend_service_traffic_director(
-            name, region=getattr(self, "region", None)
+            name, region=self.region
         )
         self.backend_service = resource
 
@@ -297,7 +297,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             return
         logger.info('Deleting Backend Service "%s"', name)
         self.compute.delete_backend_service(
-            name, region=getattr(self, "region", None)
+            name, region=self.region
         )
         self.backend_service = None
 
@@ -343,7 +343,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
             max_rate_per_endpoint,
             circuit_breakers=circuit_breakers,
-            region=getattr(self, "region", None),
+            region=self.region,
         )
 
     def backend_service_remove_all_backends(self):
@@ -352,7 +352,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backend_service.name,
         )
         self.compute.backend_service_remove_all_backends(
-            self.backend_service, region=getattr(self, "region", None)
+            self.backend_service, region=self.region
         )
 
     def wait_for_backends_healthy_status(self, replica_count: int = 1):
@@ -365,7 +365,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backend_service,
             self.backends,
             replica_count=replica_count,
-            region=getattr(self, "region", None),
+            region=self.region,
         )
 
     def create_alternative_backend_service(
@@ -663,7 +663,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.url_map.name,
         )
         self.target_proxy = create_proxy_fn(
-            name, self.url_map, region=getattr(self, "region", None)
+            name, self.url_map, region=self.region
         )
 
     def create_target_proxy_ipv6(self):
