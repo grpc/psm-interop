@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest import mock
+
 from absl.testing import absltest
 
 # Since we want to test formatting logic residing in the test case base class:
 from framework.xds_k8s_testcase import RegularXdsKubernetesTestCase
+
 
 class RegionalUriTest(absltest.TestCase):
     """Unit tests for regional target and expected URI construction logic."""
@@ -23,7 +25,9 @@ class RegionalUriTest(absltest.TestCase):
     def test_regional_server_target_uri_construction(self):
         """Verifies server target construction with a region vs global."""
         # Create a mock test case instance with a mock client runner
-        test_case = mock.create_autospec(RegularXdsKubernetesTestCase, instance=True)
+        test_case = mock.create_autospec(
+            RegularXdsKubernetesTestCase, instance=True
+        )
         test_case.client_runner = mock.Mock()
         test_case._start_test_client = mock.Mock()
 
@@ -47,11 +51,15 @@ class RegionalUriTest(absltest.TestCase):
         RegularXdsKubernetesTestCase.startTestClient(test_case, mock_server)
 
         # Verify it falls back to the standard global target
-        test_case._start_test_client.assert_called_with("xds:///my-test-service:8070")
+        test_case._start_test_client.assert_called_with(
+            "xds:///my-test-service:8070"
+        )
 
     def test_expected_control_plane_uri_selection(self):
         """Verifies wait-for-ADS control plane expected URI logic in _start_test_client."""
-        test_case = mock.create_autospec(RegularXdsKubernetesTestCase, instance=True)
+        test_case = mock.create_autospec(
+            RegularXdsKubernetesTestCase, instance=True
+        )
         test_case.client_runner = mock.Mock()
 
         # Scenario 1: Region is set -> expected_uri is regional public TD endpoint
@@ -63,13 +71,13 @@ class RegionalUriTest(absltest.TestCase):
             test_case,
             server_target="xds:///dummy",
             wait_for_active_ads=True,
-            wait_for_server_channel_ready=False
+            wait_for_server_channel_ready=False,
         )
 
         # Assert that the client waits for the regional .rep endpoint
         test_case.client_runner.run.return_value.wait_for_active_xds_channel.assert_called_with(
             xds_server_uri="trafficdirector.us-west1.rep.googleapis.com:443",
-            timeout=mock.ANY
+            timeout=mock.ANY,
         )
 
         # Scenario 2: Region is NOT set -> expected_uri is the custom xds_server_uri
@@ -81,15 +89,13 @@ class RegionalUriTest(absltest.TestCase):
             test_case,
             server_target="xds:///dummy",
             wait_for_active_ads=True,
-            wait_for_server_channel_ready=False
+            wait_for_server_channel_ready=False,
         )
 
         test_case.client_runner.run.return_value.wait_for_active_xds_channel.assert_called_with(
-            xds_server_uri="custom.xds.endpoint:443",
-            timeout=mock.ANY
+            xds_server_uri="custom.xds.endpoint:443", timeout=mock.ANY
         )
 
 
 if __name__ == "__main__":
     absltest.main()
-    
