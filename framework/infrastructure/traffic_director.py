@@ -296,9 +296,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Backend Service "%s"', name)
-        self.compute.delete_backend_service(
-            name, region=self.region
-        )
+        self.compute.delete_backend_service(name, region=self.region)
         self.backend_service = None
 
     def backend_service_add_neg_backends(
