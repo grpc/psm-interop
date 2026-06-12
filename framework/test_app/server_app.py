@@ -51,6 +51,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         secure_mode: Optional[bool] = False,
         xds_host: Optional[str] = None,
         xds_port: Optional[int] = None,
+        xds_authority: Optional[str] = None,
         rpc_host: Optional[str] = None,
         monitoring_port: Optional[str] = None,
     ):
@@ -61,6 +62,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         self.maintenance_port = maintenance_port or rpc_port
         self.secure_mode = secure_mode
         self.xds_host, self.xds_port = xds_host, xds_port
+        self.xds_authority = xds_authority
         self.monitoring_port = monitoring_port
 
     def __repr__(self):
