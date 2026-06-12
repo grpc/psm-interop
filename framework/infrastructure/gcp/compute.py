@@ -922,7 +922,7 @@ class ComputeV1(
         self,
         operation_id: str,
         timeout_sec: int = _WAIT_FOR_OPERATION_SEC,
-        region: str = None,
+        region: Optional[str] = None,
     ) -> dict:
         logger.info(
             "Waiting %s sec for compute operation id: %s",
@@ -930,16 +930,18 @@ class ComputeV1(
             operation_id,
         )
 
-        # TODO(sergiitk) try using wait() here
-        # https://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.globalOperations.html#wait
-        kwargs = {"project": self.project, "operation": operation_id}
+        request_args = {"project": self.project, "operation": operation_id}
         if region:
-            kwargs["region"] = region
-        op_request = (
+            request_args["region"] = region
+
+        collection = (
             self.api.regionOperations()
             if region
             else self.api.globalOperations()
-        ).get(**kwargs)
+        )
+        # TODO(sergiitk) try using wait() here
+        # https://googleapis.github.io/google-api-python-client/docs/dyn/compute_v1.globalOperations.html#wait
+        op_request = collection.get(**request_args)
         operation = self.wait_for_operation(
             operation_request=op_request,
             test_success_fn=self._operation_status_done,

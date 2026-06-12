@@ -40,6 +40,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     # Server implementation must return this in the SimpleResponse.hostname,
     # which client uses as the key in rpcs_by_peer map.
     hostname: str
+    xds_authority: Optional[str] = None
 
     def __init__(
         self,
@@ -150,7 +151,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     def xds_uri(self) -> str:
         if not self.xds_host:
             return ""
-        if hasattr(self, "xds_authority") and self.xds_authority:
+        if self.xds_authority:
             return f"xds://{self.xds_authority}/{self.xds_address}"
         return f"xds:///{self.xds_address}"
 
