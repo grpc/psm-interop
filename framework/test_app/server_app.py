@@ -127,8 +127,14 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         )
         self.hook_service_client.set_return_status(**kwargs)
 
-    def set_xds_address(self, xds_host, xds_port: Optional[int] = None):
+    def set_xds_address(
+        self,
+        xds_host,
+        xds_port: Optional[int] = None,
+        xds_authority: Optional[str] = None,
+    ):
         self.xds_host, self.xds_port = xds_host, xds_port
+        self.xds_authority = xds_authority
 
     @property
     def xds_address(self) -> str:
@@ -142,6 +148,8 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     def xds_uri(self) -> str:
         if not self.xds_host:
             return ""
+        if hasattr(self, "xds_authority") and self.xds_authority:
+            return f"xds://{self.xds_authority}/{self.xds_address}"
         return f"xds:///{self.xds_address}"
 
     def get_test_server(self) -> grpc_channelz.Server:

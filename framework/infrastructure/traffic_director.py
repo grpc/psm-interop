@@ -259,12 +259,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             protocol = _BackendGRPC
 
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        region = self.region
         logger.info(
             'Creating %s Backend Service "%s" in region %s',
             protocol.name,
             name,
-            region or "global",
+            self.region or "global",
         )
         resource = self.compute.create_backend_service_traffic_director(
             name,
@@ -276,7 +275,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
             security_settings=security_settings,
-            region=region,
+            region=self.region,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol

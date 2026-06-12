@@ -225,6 +225,7 @@ class XdsKubernetesBaseTestCase(
         cls.server_maintenance_port = xds_flags.SERVER_MAINTENANCE_PORT.value
         cls.server_xds_host = xds_flags.SERVER_NAME.value
         cls.server_xds_port = xds_flags.SERVER_XDS_PORT.value
+        cls.server_xds_authority = xds_flags.SERVER_XDS_AUTHORITY.value
 
         # Test client
         cls.client_image = xds_k8s_flags.CLIENT_IMAGE.value
@@ -1134,16 +1135,8 @@ class IsolatedXdsKubernetesTestCase(
             server_target=server_target, **kwargs
         )
         if wait_for_active_ads:
-            if self.xds_server_region:
-                expected_uri = (
-                    f"trafficdirector.{self.xds_server_region}"
-                    ".rep.googleapis.com:443"
-                )
-            else:
-                expected_uri = self.xds_server_uri
-
             test_client.wait_for_active_xds_channel(
-                xds_server_uri=expected_uri,
+                xds_server_uri=self.xds_server_uri,
                 timeout=wait_for_active_ads_timeout,
             )
         if wait_for_server_channel_ready:
@@ -1237,20 +1230,16 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
         for test_server in test_servers:
             test_server.set_xds_address(
-                self.server_xds_host, self.server_xds_port
+                self.server_xds_host,
+                self.server_xds_port,
+                self.server_xds_authority,
             )
         return test_servers
 
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
-        if self.xds_server_region:
-            server_target = (
-                f"xds://traffic-director.{self.xds_server_region}"
-                f".xds.googleapis.com/{test_server.xds_address}"
-            )
-        else:
-            server_target = test_server.xds_uri
+        server_target = test_server.xds_uri
         return self._start_test_client(server_target, **kwargs)
 
 
@@ -1359,7 +1348,11 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             secure_mode=True,
             **kwargs,
         )[0]
-        test_server.set_xds_address(self.server_xds_host, self.server_xds_port)
+        test_server.set_xds_address(
+            self.server_xds_host,
+            self.server_xds_port,
+            self.server_xds_authority,
+        )
         return test_server
 
     def setupSecurityPolicies(

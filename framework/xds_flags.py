@@ -134,6 +134,15 @@ SERVER_XDS_PORT = flags.DEFINE_integer(
         "Set to 0 to select any unused port."
     ),
 )
+SERVER_XDS_AUTHORITY = flags.DEFINE_string(
+    "server_xds_authority",
+    default=None,
+    help=(
+        "The xDS authority of the test server.\n"
+        "Together with `server_xds_host` and `server_xds_port` makes test server target URI, "
+        "xds://authority/hostname:port\n"
+    ),
+)
 
 # Test client
 CLIENT_NAME = flags.DEFINE_string(
