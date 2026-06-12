@@ -432,7 +432,7 @@ class ComputeV1(
         neg = (
             self.api.networkEndpointGroups()
             .get(project=self.project, networkEndpointGroup=name, zone=zone)
-            .execute()
+            .execute(num_retries=self._GCP_API_RETRIES)
         )
         # TODO(sergiitk): dataclass
         return neg
@@ -575,7 +575,7 @@ class ComputeV1(
                 backendService=backend_service.name,
                 body={"group": backend.url},
             )
-            .execute()
+            .execute(num_retries=self._GCP_API_RETRIES)
         )
 
     def create_neg_serverless(self, name: str, region: str, service_name: str):
@@ -635,7 +635,9 @@ class ComputeV1(
     def _get_resource(
         self, collection: discovery.Resource, **kwargs
     ) -> "GcpResource":
-        resp = collection.get(project=self.project, **kwargs).execute()
+        resp = collection.get(project=self.project, **kwargs).execute(
+            num_retries=self._GCP_API_RETRIES
+        )
         logger.info(
             "Loaded compute resource:\n%s", self.resource_pretty_format(resp)
         )

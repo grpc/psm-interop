@@ -572,7 +572,9 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def _get_resource(self, collection: discovery.Resource, full_name):
-        resource = collection.get(name=full_name).execute()
+        resource = collection.get(name=full_name).execute(
+            num_retries=self._GCP_API_RETRIES
+        )
         logger.info(
             "Loaded %s:\n%s", full_name, self.resource_pretty_format(resource)
         )
