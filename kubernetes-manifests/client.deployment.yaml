@@ -124,6 +124,9 @@ spec:
             % if xds_server_uri:
             - "--xds-server-uri=${xds_server_uri}"
             % endif
+            % if xds_server_region:
+            - "--xds-server-region-experimental=${xds_server_region}"
+            % endif
             % if config_mesh:
             - "--config-mesh-experimental=${config_mesh}"
             % endif

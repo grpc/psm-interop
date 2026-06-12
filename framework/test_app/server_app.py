@@ -40,6 +40,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     # Server implementation must return this in the SimpleResponse.hostname,
     # which client uses as the key in rpcs_by_peer map.
     hostname: str
+    xds_authority: Optional[str] = None
 
     def __init__(
         self,
@@ -51,6 +52,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         secure_mode: Optional[bool] = False,
         xds_host: Optional[str] = None,
         xds_port: Optional[int] = None,
+        xds_authority: Optional[str] = None,
         rpc_host: Optional[str] = None,
         monitoring_port: Optional[str] = None,
     ):
@@ -61,6 +63,7 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         self.maintenance_port = maintenance_port or rpc_port
         self.secure_mode = secure_mode
         self.xds_host, self.xds_port = xds_host, xds_port
+        self.xds_authority = xds_authority
         self.monitoring_port = monitoring_port
 
     def __repr__(self):
@@ -127,8 +130,14 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
         )
         self.hook_service_client.set_return_status(**kwargs)
 
-    def set_xds_address(self, xds_host, xds_port: Optional[int] = None):
+    def set_xds_address(
+        self,
+        xds_host,
+        xds_port: Optional[int] = None,
+        xds_authority: Optional[str] = None,
+    ):
         self.xds_host, self.xds_port = xds_host, xds_port
+        self.xds_authority = xds_authority
 
     @property
     def xds_address(self) -> str:
@@ -142,6 +151,8 @@ class XdsTestServer(framework.rpc.grpc.GrpcApp):
     def xds_uri(self) -> str:
         if not self.xds_host:
             return ""
+        if self.xds_authority:
+            return f"xds://{self.xds_authority}/{self.xds_address}"
         return f"xds:///{self.xds_address}"
 
     def get_test_server(self) -> grpc_channelz.Server:
