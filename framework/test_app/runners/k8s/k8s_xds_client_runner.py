@@ -69,7 +69,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         app_label: str = "",
         network="default",
         xds_server_uri: Optional[str] = None,
-        xds_server_region: Optional[str] = None,
         gcp_api_manager: gcp.api.GcpApiManager,
         gcp_project: str,
         gcp_service_account: str,
@@ -114,7 +113,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
         self.td_bootstrap_image = td_bootstrap_image
         self.network = network
         self.xds_server_uri = xds_server_uri
-        self.xds_server_region = xds_server_region
 
         # Workload identity settings:
         if self.enable_workload_identity:
@@ -189,7 +187,6 @@ class KubernetesClientRunner(k8s_base_runner.KubernetesBaseRunner):
             service_account_name=self.service_account_name,
             td_bootstrap_image=self.td_bootstrap_image,
             xds_server_uri=self.xds_server_uri,
-            xds_server_region=self.xds_server_region,
             network=self.network,
             stats_port=self.stats_port,
             server_target=server_target,

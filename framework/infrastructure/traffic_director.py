@@ -110,7 +110,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
-        xds_server_region: Optional[str] = None,
     ):
         # API
         self.compute = _ComputeV1(
@@ -126,7 +125,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         self.resource_prefix: str = resource_prefix
         self.resource_suffix: str = resource_suffix
         self.enable_dualstack: bool = enable_dualstack
-        self.region: Optional[str] = xds_server_region
 
         # Managed resources
         self.health_check: Optional[GcpResource] = None
@@ -259,12 +257,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             protocol = _BackendGRPC
 
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        logger.info(
-            'Creating %s Backend Service "%s" in region %s',
-            protocol.name,
-            name,
-            self.region or "global",
-        )
+        logger.info('Creating %s Backend Service "%s"', protocol.name, name)
         resource = self.compute.create_backend_service_traffic_director(
             name,
             health_check=self.health_check,
@@ -275,16 +268,13 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             outlier_detection=outlier_detection,
             enable_dualstack=self.enable_dualstack,
             security_settings=security_settings,
-            region=self.region,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
 
     def load_backend_service(self):
         name = self.make_resource_name(self.BACKEND_SERVICE_NAME)
-        resource = self.compute.get_backend_service_traffic_director(
-            name, region=self.region
-        )
+        resource = self.compute.get_backend_service_traffic_director(name)
         self.backend_service = resource
 
     def delete_backend_service(self, force=False):
@@ -295,7 +285,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Backend Service "%s"', name)
-        self.compute.delete_backend_service(name, region=self.region)
+        self.compute.delete_backend_service(name)
         self.backend_service = None
 
     def backend_service_add_neg_backends(
@@ -340,7 +330,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
             max_rate_per_endpoint,
             circuit_breakers=circuit_breakers,
-            region=self.region,
         )
 
     def backend_service_remove_all_backends(self):
@@ -348,9 +337,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             "Removing backends from Backend Service %s",
             self.backend_service.name,
         )
-        self.compute.backend_service_remove_all_backends(
-            self.backend_service, region=self.region
-        )
+        self.compute.backend_service_remove_all_backends(self.backend_service)
 
     def wait_for_backends_healthy_status(self, replica_count: int = 1):
         logger.info(
@@ -359,10 +346,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.backends,
         )
         self.compute.wait_for_backends_healthy_status(
-            self.backend_service,
-            self.backends,
-            replica_count=replica_count,
-            region=self.region,
+            self.backend_service, self.backends, replica_count=replica_count
         )
 
     def create_alternative_backend_service(
@@ -558,8 +542,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         resource = self.compute.create_url_map_with_content(
             self._generate_url_map_body(
                 name, matcher_name, [src_address], self.backend_service
-            ),
-            region=self.region,
+            )
         )
         self.url_map = resource
         return resource
@@ -581,14 +564,11 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self._generate_url_map_body(
                 name, matcher_name, [src_address], backend_service
             ),
-            region=self.region,
         )
 
     def create_url_map_with_content(self, url_map_body: Any) -> GcpResource:
         logger.info("Creating URL map: %s", url_map_body)
-        resource = self.compute.create_url_map_with_content(
-            url_map_body, region=self.region
-        )
+        resource = self.compute.create_url_map_with_content(url_map_body)
         self.url_map = resource
         return resource
 
@@ -600,7 +580,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting URL Map "%s"', name)
-        self.compute.delete_url_map(name, region=self.region)
+        self.compute.delete_url_map(name)
         self.url_map = None
 
     def create_alternative_url_map(
@@ -623,8 +603,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         resource = self.compute.create_url_map_with_content(
             self._generate_url_map_body(
                 name, matcher_name, [src_address], backend_service
-            ),
-            region=self.region,
+            )
         )
         self.alternative_url_map = resource
         return resource
@@ -637,7 +616,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting alternative URL Map "%s"', name)
-        self.compute.delete_url_map(name, region=self.region)
+        self.compute.delete_url_map(name)
         self.url_map = None
 
     def create_target_proxy(self):
@@ -659,9 +638,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             target_proxy_type,
             self.url_map.name,
         )
-        self.target_proxy = create_proxy_fn(
-            name, self.url_map, region=self.region
-        )
+        self.target_proxy = create_proxy_fn(name, self.url_map)
 
     def create_target_proxy_ipv6(self):
         name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
@@ -685,7 +662,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Target GRPC proxy "%s"', name)
-        self.compute.delete_target_grpc_proxy(name, region=self.region)
+        self.compute.delete_target_grpc_proxy(name)
         self.target_proxy = None
         self.target_proxy_is_http = False
 
@@ -697,7 +674,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting HTTP Target proxy "%s"', name)
-        self.compute.delete_target_http_proxy(name, region=self.region)
+        self.compute.delete_target_http_proxy(name)
         self.target_proxy = None
         self.target_proxy_is_http = False
 
@@ -723,7 +700,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             )
             self.alternative_target_proxy = (
                 self.compute.create_target_grpc_proxy(
-                    name, self.alternative_url_map, False, region=self.region
+                    name, self.alternative_url_map, False
                 )
             )
         else:
@@ -737,7 +714,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting alternative Target GRPC proxy "%s"', name)
-        self.compute.delete_target_grpc_proxy(name, region=self.region)
+        self.compute.delete_target_grpc_proxy(name)
         self.alternative_target_proxy = None
 
     def find_unused_forwarding_rule_port(
@@ -749,9 +726,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
     ) -> int:
         for _ in range(attempts):
             src_port = random.randint(lo, hi)
-            if not self.compute.exists_forwarding_rule(
-                src_port, region=self.region
-            ):
+            if not self.compute.exists_forwarding_rule(src_port):
                 return src_port
         # TODO(sergiitk): custom exception
         raise RuntimeError("Couldn't find unused forwarding rule port")
@@ -767,11 +742,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.target_proxy.url,
         )
         resource = self.compute.create_forwarding_rule(
-            name,
-            src_port,
-            self.target_proxy,
-            self.network_url,
-            region=self.region,
+            name, src_port, self.target_proxy, self.network_url
         )
         self.forwarding_rule = resource
         return resource
@@ -791,7 +762,6 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             self.target_proxy_ipv6,
             self.network_url,
             ip_address="::",
-            region=self.region,
         )
         self.forwarding_rule_ipv6 = resource
         return resource
@@ -804,7 +774,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Forwarding rule "%s"', name)
-        self.compute.delete_forwarding_rule(name, region=self.region)
+        self.compute.delete_forwarding_rule(name)
         self.forwarding_rule = None
 
     def delete_forwarding_rule_ipv6(self, force=False):
@@ -958,7 +928,6 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
-        xds_server_region: Optional[str] = None,
     ):
         super().__init__(
             gcp_api_manager,
@@ -968,7 +937,6 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             network=network,
             compute_api_version=compute_api_version,
             enable_dualstack=enable_dualstack,
-            xds_server_region=xds_server_region,
         )
 
         # API
@@ -984,12 +952,10 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
 
     def create_mesh(self) -> Mesh:
         name = self.make_resource_name(self.MESH_NAME)
-        logger.info(
-            "Creating Mesh %s in location %s", name, self.region or "global"
-        )
+        logger.info("Creating Mesh %s", name)
         body = {}
-        self.netsvc.create_mesh(name, body, location=self.region)
-        self.mesh = self.netsvc.get_mesh(name, location=self.region)
+        self.netsvc.create_mesh(name, body)
+        self.mesh = self.netsvc.get_mesh(name)
         logger.debug("Loaded Mesh: %s", self.mesh)
         return self.mesh
 
@@ -1001,13 +967,13 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         else:
             return
         logger.info("Deleting Mesh %s", name)
-        self.netsvc.delete_mesh(name, location=self.region)
+        self.netsvc.delete_mesh(name)
         self.mesh = None
 
     def create_grpc_route(self, src_host: str, src_port: int) -> GrpcRoute:
         host = f"{src_host}:{src_port}"
         service_name = self.netsvc.resource_full_name(
-            self.backend_service.name, "backendServices", location=self.region
+            self.backend_service.name, "backendServices"
         )
         body = {
             "meshes": [self.mesh.url],
@@ -1017,29 +983,25 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
             ],
         }
         name = self.make_resource_name(self.GRPC_ROUTE_NAME)
-        logger.info(
-            "Creating GrpcRoute %s in location %s",
-            name,
-            self.region or "global",
-        )
-        self.netsvc.create_grpc_route(name, body, location=self.region)
-        self.grpc_route = self.netsvc.get_grpc_route(name, location=self.region)
+        logger.info("Creating GrpcRoute %s", name)
+        self.netsvc.create_grpc_route(name, body)
+        self.grpc_route = self.netsvc.get_grpc_route(name)
         logger.debug("Loaded GrpcRoute: %s", self.grpc_route)
         return self.grpc_route
 
     def create_grpc_route_with_content(self, body: Any) -> GrpcRoute:
         name = self.make_resource_name(self.GRPC_ROUTE_NAME)
         logger.info("Creating GrpcRoute %s", name)
-        self.netsvc.create_grpc_route(name, body, location=self.region)
-        self.grpc_route = self.netsvc.get_grpc_route(name, location=self.region)
+        self.netsvc.create_grpc_route(name, body)
+        self.grpc_route = self.netsvc.get_grpc_route(name)
         logger.debug("Loaded GrpcRoute: %s", self.grpc_route)
         return self.grpc_route
 
     def create_http_route_with_content(self, body: Any) -> HttpRoute:
         name = self.make_resource_name(self.HTTP_ROUTE_NAME)
         logger.info("Creating HttpRoute %s", name)
-        self.netsvc.create_http_route(name, body, location=self.region)
-        self.http_route = self.netsvc.get_http_route(name, location=self.region)
+        self.netsvc.create_http_route(name, body)
+        self.http_route = self.netsvc.get_http_route(name)
         logger.debug("Loaded HttpRoute: %s", self.http_route)
         return self.http_route
 
@@ -1051,7 +1013,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         else:
             return
         logger.info("Deleting GrpcRoute %s", name)
-        self.netsvc.delete_grpc_route(name, location=self.region)
+        self.netsvc.delete_grpc_route(name)
         self.grpc_route = None
 
     def delete_http_route(self, force=False):
@@ -1062,7 +1024,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         else:
             return
         logger.info("Deleting HttpRoute %s", name)
-        self.netsvc.delete_http_route(name, location=self.region)
+        self.netsvc.delete_http_route(name)
         self.http_route = None
 
     def cleanup(self, *, force=False):

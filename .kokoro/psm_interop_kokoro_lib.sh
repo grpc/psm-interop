@@ -22,7 +22,6 @@ PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
 readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
-readonly GKE_CLUSTER_PSM_REGIONAL_TD="psm-regional"
 # TODO(sergiitk): 'if' can be removed when DOCKER_REGISTRY removed from buildscripts.
 if [[ -z "${DOCKER_REGISTRY}" ]] ; then
   readonly DOCKER_REGISTRY="us-docker.pkg.dev"
@@ -444,27 +443,6 @@ psm::csm::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
-# --- Regional TD TESTS -----------------
-
-psm::regional_td::setup() {
-  activate_gke_cluster GKE_CLUSTER_PSM_REGIONAL_TD
-}
-
-psm::regional_td::get_tests() {
-  TESTS=(
-    "app_net_test"
-  )
-}
-
-psm::regional_td::run_test() {
-  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
-  PSM_TEST_FLAGS+=(
-    "--flagfile=config/common-regional_td.cfg"
-  )
-  psm::run::finalize_test_flags "${test_name}"
-  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
-}
-
 # --- Common test run logic -----------
 
 #######################################
@@ -493,7 +471,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe | regional_td)
+    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
@@ -916,10 +894,6 @@ activate_gke_cluster() {
     GKE_CLUSTER_PSM_INTEROP_FLEET)
       GKE_CLUSTER_NAME="psm-interop-fleet-cluster"
       GKE_CLUSTER_ZONE="us-central1-a"
-      ;;
-    GKE_CLUSTER_PSM_REGIONAL_TD)
-      GKE_CLUSTER_NAME="psm-interop-lb-secondary"
-      GKE_CLUSTER_ZONE="us-west1-b"
       ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
