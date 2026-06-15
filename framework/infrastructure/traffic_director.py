@@ -659,9 +659,12 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             target_proxy_type,
             self.url_map.name,
         )
-        self.target_proxy = create_proxy_fn(
-            name, self.url_map, region=self.region
-        )
+        if self.target_proxy_is_http:
+            self.target_proxy = create_proxy_fn(
+                name, self.url_map, region=self.region
+            )
+        else:
+            self.target_proxy = create_proxy_fn(name, self.url_map)
 
     def create_target_proxy_ipv6(self):
         name = self.make_resource_name(self.TARGET_PROXY_NAME_IPV6)
@@ -685,7 +688,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting Target GRPC proxy "%s"', name)
-        self.compute.delete_target_grpc_proxy(name, region=self.region)
+        self.compute.delete_target_grpc_proxy(name)
         self.target_proxy = None
         self.target_proxy_is_http = False
 
@@ -723,7 +726,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             )
             self.alternative_target_proxy = (
                 self.compute.create_target_grpc_proxy(
-                    name, self.alternative_url_map, False, region=self.region
+                    name, self.alternative_url_map, False
                 )
             )
         else:
@@ -737,7 +740,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         else:
             return
         logger.info('Deleting alternative Target GRPC proxy "%s"', name)
-        self.compute.delete_target_grpc_proxy(name, region=self.region)
+        self.compute.delete_target_grpc_proxy(name)
         self.alternative_target_proxy = None
 
     def find_unused_forwarding_rule_port(

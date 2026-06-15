@@ -387,8 +387,6 @@ class ComputeV1(
         name: str,
         url_map: "GcpResource",
         validate_for_proxyless: bool = True,
-        *,
-        region: Optional[str] = None,
     ) -> "GcpResource":
         body = {
             "name": name,
@@ -400,9 +398,7 @@ class ComputeV1(
             body,
         )
 
-    def delete_target_grpc_proxy(
-        self, name, *, region: Optional[str] = None
-    ):
+    def delete_target_grpc_proxy(self, name):
         self._delete_resource(
             self.api.targetGrpcProxies(),
             "targetGrpcProxy",
