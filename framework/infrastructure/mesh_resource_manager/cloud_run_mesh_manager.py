@@ -50,7 +50,7 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         )
 
         # Settings
-        self.region = region
+        self.serverless_region = region
 
         # Managed resources
         self.neg: Optional[GcpResource] = None
@@ -90,10 +90,10 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         name = self.make_resource_name(self.NEG_NAME)
         logger.info("Creating serverless NEG %s", name)
         neg = self.compute.create_neg_serverless(
-            name, self.region, service_name
+            name, self.serverless_region, service_name
         )
         logger.info("Loading NEG %s", neg)
-        self.neg = self.compute.get_neg_serverless(name, self.region)
+        self.neg = self.compute.get_neg_serverless(name, self.serverless_region)
         return neg
 
     def delete_neg_serverless(self, force=False):
@@ -104,7 +104,7 @@ class CloudRunMeshManager(td_base.TrafficDirectorAppNetManager):
         else:
             return
         logger.info("Deleting serverless NEG %s", name)
-        self.compute.delete_neg_serverless(name, self.region)
+        self.compute.delete_neg_serverless(name, self.serverless_region)
         self.neg = None
 
     def cleanup(self, *, force=False):

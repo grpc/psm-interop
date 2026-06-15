@@ -395,28 +395,18 @@ class ComputeV1(
             "url_map": url_map.url,
             "validate_for_proxyless": validate_for_proxyless,
         }
-        collection = (
-            self.api.regionTargetGrpcProxies()
-            if region
-            else self.api.targetGrpcProxies()
-        )
         return self._insert_resource(
-            collection,
+            self.api.targetGrpcProxies(),
             body,
-            region=region,
         )
 
-    def delete_target_grpc_proxy(self, name, *, region: Optional[str] = None):
-        collection = (
-            self.api.regionTargetGrpcProxies()
-            if region
-            else self.api.targetGrpcProxies()
-        )
+    def delete_target_grpc_proxy(
+        self, name, *, region: Optional[str] = None
+    ):
         self._delete_resource(
-            collection,
+            self.api.targetGrpcProxies(),
             "targetGrpcProxy",
             name,
-            region=region,
         )
 
     def create_target_http_proxy(
