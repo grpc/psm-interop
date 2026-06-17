@@ -39,6 +39,8 @@ class ServerDeploymentArgs:
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
     enable_spiffe: bool = False
+    memory_limit: str = "512Mi"
+    memory_request: str = "512Mi"
 
     def as_dict(self):
         return {
@@ -51,6 +53,8 @@ class ServerDeploymentArgs:
             "csm_canonical_service_name": self.csm_canonical_service_name,
             "enable_dualstack": self.enable_dualstack,
             "enable_spiffe": self.enable_spiffe,
+            "memory_limit": self.memory_limit,
+            "memory_request": self.memory_request,
         }
 
 
