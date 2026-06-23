@@ -33,6 +33,8 @@ class ClientDeploymentArgs:
     csm_canonical_service_name: str = ""
     enable_dualstack: bool = False
     is_trusted_xds_server_experimental: bool = False
+    memory_limit: str = "512Mi"
+    memory_request: str = "512Mi"
 
     def as_dict(self):
         return dataclasses.asdict(self)
