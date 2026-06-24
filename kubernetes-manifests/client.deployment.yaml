@@ -112,10 +112,10 @@ spec:
           resources:
             limits:
               cpu: 800m
-              memory: 512Mi
+              memory: ${memory_limit}
             requests:
               cpu: 100m
-              memory: 512Mi
+              memory: ${memory_request}
       initContainers:
         - name: grpc-td-init
           image: ${td_bootstrap_image}
