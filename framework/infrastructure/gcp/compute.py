@@ -713,8 +713,8 @@ class ComputeV1(
         Args:
             name: The name of the NEG.
             region: The region in which to create the NEG.
-            service_name: The name of the Cloud Run service.
-            service_name format is "namespaces/{namespace}/services/{service}"
+            service_name: The name of the Cloud Run service. service_name format
+              is "namespaces/{namespace}/services/{service}"
 
         Returns:
             The NEG selfLink URL
@@ -770,7 +770,11 @@ class ComputeV1(
     ) -> "GcpResource":
         if region:
             kwargs["region"] = region
-        resp = collection.get(project=self.project, **kwargs).execute()
+        retryer = self._get_api_retryer()
+        resp = retryer(
+            collection.get(project=self.project, **kwargs).execute,
+            num_retries=0,
+        )
         logger.info(
             "Loaded compute resource:\n%s", self.resource_pretty_format(resp)
         )
@@ -790,9 +794,8 @@ class ComputeV1(
         }
         if region:
             kwargs["region"] = region
-        resp = collection.list(**kwargs).execute(
-            num_retries=self._GCP_API_RETRIES
-        )
+        retryer = self._get_api_retryer()
+        resp = retryer(collection.list(**kwargs).execute, num_retries=0)
         if "kind" not in resp:
             # TODO(sergiitk): better error
             raise ValueError('List response "kind" is missing')
@@ -838,8 +841,10 @@ class ComputeV1(
         )
 
     def _list_resource(self, collection: discovery.Resource):
-        return collection.list(project=self.project).execute(
-            num_retries=self._GCP_API_RETRIES
+        retryer = self._get_api_retryer()
+        return retryer(
+            collection.list(project=self.project).execute,
+            num_retries=0,
         )
 
     def _delete_resource(
@@ -900,7 +905,9 @@ class ComputeV1(
             )
             request.headers[DEBUG_HEADER_KEY] = self.gfe_debug_header
             request.add_response_callback(self._log_debug_header)
-        operation = request.execute(num_retries=self._GCP_API_RETRIES)
+
+        retryer = self._get_api_retryer()
+        operation = retryer(request.execute, num_retries=0)
         logger.debug("Operation %s", operation)
         return self._wait(operation["name"], timeout_sec, region)
 
@@ -937,7 +944,5 @@ class ComputeV1(
         logger.debug("Completed operation: %s", operation)
         if "error" in operation:
             # This shouldn't normally happen: gcp library raises on errors.
-            raise Exception(
-                f"Compute operation {operation_id} failed: {operation}"
-            )
+            raise gcp.api.OperationError("compute", operation)
         return operation
