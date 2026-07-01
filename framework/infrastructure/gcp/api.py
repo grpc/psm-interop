@@ -455,6 +455,8 @@ class GcpProjectApiResource:
 
     @staticmethod
     def _is_retryable_api_error(error: Exception) -> bool:
+        if isinstance(error, (_HttpLib2Error, ConnectionError)):
+            return True
         return isinstance(error, _HttpError) and error.resp.status in (
             429,
             500,
@@ -499,8 +501,10 @@ class GcpProjectApiResource:
         except (retryers.RetryError, _HttpError) as error:
             if isinstance(error, retryers.RetryError):
                 error = error.exception()
+            if isinstance(error, (_HttpLib2Error, ConnectionError)):
+                raise TransportError(error) from error
             raise ResponseError(error) from error
-        except _HttpLib2Error as error:
+        except (_HttpLib2Error, ConnectionError) as error:
             raise TransportError(error) from error
 
     def resource_pretty_format(
