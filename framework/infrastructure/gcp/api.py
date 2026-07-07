@@ -498,14 +498,14 @@ class GcpProjectApiResource:
         retryer = self._get_api_retryer(num_retries)
         try:
             return retryer(request.execute, num_retries=0)
-        except (retryers.RetryError, _HttpError) as error:
-            if isinstance(error, retryers.RetryError):
-                error = error.exception()
-            if isinstance(error, (_HttpLib2Error, ConnectionError)):
-                raise TransportError(error) from error
-            raise ResponseError(error) from error
-        except (_HttpLib2Error, ConnectionError) as error:
+        except retryers.RetryError as e:
+            error = e.exception()
+        except (_HttpLib2Error, ConnectionError, _HttpError) as e:
+            error = e
+
+        if isinstance(error, (_HttpLib2Error, ConnectionError)):
             raise TransportError(error) from error
+        raise ResponseError(error) from error
 
     def resource_pretty_format(
         self,
