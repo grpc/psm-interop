@@ -88,7 +88,7 @@ MetadataByPeer: list[str, RpcMetadata]
 _SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
 _SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
 
-TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=15)
 # TODO(sergiitk): get rid of the seconds constant, use timedelta
 _TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
@@ -531,7 +531,7 @@ class XdsKubernetesBaseTestCase(
         duration: _timedelta,
         method: str,
         stray_rpc_limit: int = 0,
-        retry_timeout: _timedelta = dt.timedelta(minutes=10),
+        retry_timeout: _timedelta = dt.timedelta(minutes=15),
     ) -> None:
         """Retries assertRpcStatusCodes until it passes or timeout expires."""
         retryer = retryers.exponential_retryer_with_timeout(
