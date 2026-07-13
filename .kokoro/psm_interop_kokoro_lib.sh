@@ -519,12 +519,36 @@ psm::run() {
 psm::run::test_suite() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   cd "${TEST_DRIVER_FULL_DIR}"
+
+  # Export variables needed by subshells
+  export TEST_XML_OUTPUT_DIR
+  export TEST_DRIVER_FLAGFILE
+  export KUBE_CONTEXT
+  export TESTING_VERSION
+  export CLIENT_IMAGE_NAME
+  export GIT_COMMIT
+  export SERVER_IMAGE_USE_CANONICAL
+  export SERVER_IMAGE_NAME
+  export SECONDARY_KUBE_CONTEXT
+  export GRPC_LANGUAGE
+  export PSM_EXTRA_FLAGS
+  export VIRTUAL_ENV
+
+  # Export functions needed by subshells
+  export -f psm::tools::log
+  export -f psm::tools::run_verbose
+  export -f psm::run::finalize_test_flags
+  export -f "psm::${test_suite}::run_test"
+  export -f psm::run::test
+
   local failed_tests=0
-  for test_name in "${TESTS[@]}"; do
-    psm::run::test "${test_suite}" "${test_name}" || (( ++failed_tests ))
-    psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
-    echo
-  done
+  local jobs="${PSM_PARALLEL_JOBS:-2}"
+
+  psm::tools::log "Running ${test_suite} suite tests in parallel with ${jobs} jobs"
+  # We use --line-buffer to see output in real-time, preventing half-lines from mixing.
+  # We use --shell bash to ensure it runs in bash.
+  parallel --shell bash --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || failed_tests=$?
+
   psm::tools::log "Failed test suites: ${failed_tests}"
 }
 
@@ -575,8 +599,11 @@ psm::run::test() {
   fi
 
   psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}"
-  # Must be the last line.
-  "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}"
+  local exit_code=0
+  "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}" || exit_code=$?
+  psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
+  echo
+  return ${exit_code}
 }
 
 #######################################
@@ -1278,7 +1305,8 @@ kokoro_install_dependencies() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install --auto-remove \
     "python${PYTHON_VERSION}-venv" \
     google-cloud-sdk-gke-gcloud-auth-plugin \
-    kubectl
+    kubectl \
+    parallel
   sudo rm -rf /var/lib/apt/lists
 }
 
