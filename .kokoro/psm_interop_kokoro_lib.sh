@@ -540,10 +540,17 @@ psm::run::test_suite() {
    done
 
   local failed_tests=0
-  local jobs="${PSM_PARALLEL_JOBS:-2}"
+  # TODO(b/526886100): Make the parallelism configurable using a function
+  # parameter.
+  local jobs=1
+  case "${test_suite}" in
+    security | lb | dualstack)
+      jobs=2
+      ;;
+  esac
 
   psm::tools::log "Running ${test_suite} suite tests in parallel with ${jobs} jobs"
-  # We use --line-buffer to see output in real-time, preventing half-lines from 
+  # We use --line-buffer to see output in real-time, preventing half-lines from
   # mixing.
   parallel --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || failed_tests=$?
 
