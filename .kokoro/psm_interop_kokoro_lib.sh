@@ -545,9 +545,9 @@ psm::run::test_suite() {
   local jobs="${PSM_PARALLEL_JOBS:-2}"
 
   psm::tools::log "Running ${test_suite} suite tests in parallel with ${jobs} jobs"
-  # We use --line-buffer to see output in real-time, preventing half-lines from mixing.
-  # We use --shell bash to ensure it runs in bash.
-  parallel --shell bash --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || failed_tests=$?
+  # We use --line-buffer to see output in real-time, preventing half-lines from 
+  # mixing.
+  parallel --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || failed_tests=$?
 
   psm::tools::log "Failed test suites: ${failed_tests}"
 }
