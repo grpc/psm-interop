@@ -520,7 +520,7 @@ psm::run::test_suite() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   cd "${TEST_DRIVER_FULL_DIR}"
 
-  # Export variables needed by subshells
+  # Export variables needed by subshells.
   export TEST_XML_OUTPUT_DIR
   export TEST_DRIVER_FLAGFILE
   export KUBE_CONTEXT
@@ -534,12 +534,10 @@ psm::run::test_suite() {
   export PSM_EXTRA_FLAGS
   export VIRTUAL_ENV
 
-  # Export functions needed by subshells
-  export -f psm::tools::log
-  export -f psm::tools::run_verbose
-  export -f psm::run::finalize_test_flags
-  export -f "psm::${test_suite}::run_test"
-  export -f psm::run::test
+   # Export all functions in the "psm::" namespace.
+   for func in $(declare -F | awk '{print $3}' | grep '^psm::'); do
+       export -f "$func"
+   done
 
   local failed_tests=0
   local jobs="${PSM_PARALLEL_JOBS:-2}"
