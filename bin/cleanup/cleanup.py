@@ -491,6 +491,30 @@ def cleanup_gamma_server(
         raise
 
 
+def _has_gamma_resources(
+    k8s_api_manager: k8s.KubernetesApiManager, namespace: str
+) -> bool:
+    ns = k8s.KubernetesNamespace(k8s_api_manager, namespace)
+    apis = []
+    try:
+        apis.append(ns.api_http_route)
+    except (RuntimeError, NotImplementedError) as e:
+        logger.debug("Gamma HTTPRoute API not available: %s", e)
+    try:
+        apis.append(ns.api_grpc_route)
+    except (RuntimeError, NotImplementedError) as e:
+        logger.debug("Gamma GRPCRoute API not available: %s", e)
+
+    for api in apis:
+        try:
+            routes = api.get(namespace=ns.name)
+            if routes and routes.get("items"):
+                return True
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning("Failed to list routes for %s: %s", api.kind, e)
+    return False
+
+
 # cleanup_server creates a server runner, and calls its cleanup() method.
 def cleanup_server(
     project,
@@ -503,6 +527,23 @@ def cleanup_server(
     suffix: Optional[str] = "",
     enable_dualstack: bool = False,
 ):
+    if _has_gamma_resources(k8s_api_manager, server_namespace):
+        logger.info(
+            "Namespace %s has Gamma resources. Delegating to cleanup_gamma_server.",
+            server_namespace
+        )
+        cleanup_gamma_server(
+            project,
+            network,
+            k8s_api_manager,
+            server_namespace,
+            gcp_api_manager,
+            gcp_service_account,
+            suffix=suffix,
+            enable_dualstack=enable_dualstack,
+        )
+        return
+
     deployment_name = xds_flags.SERVER_NAME.value
     if suffix:
         deployment_name = f"{deployment_name}-{suffix}"
