@@ -540,7 +540,7 @@ psm::run::test_suite() {
    done
 
   local failed_tests=0
-  # TODO(b/526886100): Make the parallelism configurable using a function
+  # TODO: b/535109852 - Make the parallelism configurable using a function
   # parameter.
   local jobs=1
   case "${test_suite}" in
