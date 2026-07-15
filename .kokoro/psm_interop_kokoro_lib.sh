@@ -575,6 +575,7 @@ psm::run::test_suite() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::run::test() {
+  set -eo pipefail
   # Test driver usage: https://github.com/grpc/psm-interop#basic-usage
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   local test_name="${2:?${FUNCNAME[0]} missing the test name argument}"
