@@ -128,7 +128,6 @@ class DualStackTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.td.create_health_check()
 
         with self.subTest("01_create_backend_service"):
-            self.fail("Arjan: Forced test failure in 01_create_backend_service")
             self.td.create_backend_service()
 
         with self.subTest("02_setup_routing_rule_map_for_grpc"):
