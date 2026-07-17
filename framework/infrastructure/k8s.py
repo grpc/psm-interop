@@ -464,6 +464,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
                             # This will raise NotFound and stop retries
                             self._handle_api_exception(e)
                         raise
+
                 return retryer(method_with_404_handler, *args, **kwargs)
             raise
 
