@@ -32,7 +32,7 @@ class GammaBaselineTest(xds_gamma_testcase.GammaXdsKubernetesTestCase):
     @staticmethod
     @override
     def is_supported(config: skips.TestConfig) -> bool:
-        return False
+        return config.version in ("master", None)
 
     def test_ping_pong(self):
         # TODO(sergiitk): [GAMMA] Consider moving out custom gamma
