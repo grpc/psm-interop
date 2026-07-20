@@ -521,17 +521,19 @@ psm::run::test_suite() {
   cd "${TEST_DRIVER_FULL_DIR}"
 
   # Export variables needed by subshells.
-  export TEST_XML_OUTPUT_DIR
-  export TEST_DRIVER_FLAGFILE
-  export KUBE_CONTEXT
-  export TESTING_VERSION
+  # --- KEEP SORTED ---
   export CLIENT_IMAGE_NAME
   export GIT_COMMIT
-  export SERVER_IMAGE_USE_CANONICAL
-  export SERVER_IMAGE_NAME
-  export SECONDARY_KUBE_CONTEXT
   export GRPC_LANGUAGE
+  export KUBE_CONTEXT
+  export PS4
   export PSM_EXTRA_FLAGS
+  export SECONDARY_KUBE_CONTEXT
+  export SERVER_IMAGE_NAME
+  export SERVER_IMAGE_USE_CANONICAL
+  export TESTING_VERSION
+  export TEST_DRIVER_FLAGFILE
+  export TEST_XML_OUTPUT_DIR
   export VIRTUAL_ENV
 
    # Export all functions in the "psm::" namespace.
@@ -539,7 +541,6 @@ psm::run::test_suite() {
        export -f "$func"
    done
 
-  local failed_tests=0
   # TODO: b/535109852 - Make the parallelism configurable using a function
   # parameter.
   local jobs=1
@@ -552,9 +553,18 @@ psm::run::test_suite() {
   psm::tools::log "Running ${test_suite} suite tests in parallel with ${jobs} jobs"
   # We use --line-buffer to see output in real-time, preventing half-lines from
   # mixing.
-  parallel --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || failed_tests=$?
+  local status=0
+  parallel --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || status=$?
 
-  psm::tools::log "Failed test suites: ${failed_tests}"
+  if (( status > 101 )); then
+    psm::tools::log "Error: GNU parallel crashed or exited abnormally with status ${status}"
+    return ${status}
+  fi
+  if (( status == 101 )); then
+    psm::tools::log "Failed test cases in ${test_suite}: >100"
+  else
+    psm::tools::log "Failed test cases in ${test_suite}: ${status}"
+  fi
 }
 
 #######################################
@@ -604,7 +614,7 @@ psm::run::test() {
     PSM_TEST_FLAGS+=("--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}")
   fi
 
-  psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}"
+  psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}" || true
   local exit_code=0
   "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}" || exit_code=$?
   psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
