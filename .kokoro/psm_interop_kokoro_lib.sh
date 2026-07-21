@@ -822,6 +822,18 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
+    # Image exists but version is not correctly tag
+    # Tag the version
+    if is_version_branch "${TESTING_VERSION}"; then
+      if [[ "${client_tags}" != *"${TESTING_VERSION}"* ]]; then
+        psm::tools::log "Adding version tag ${TESTING_VERSION} to existing client image ${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
+        psm::tools::run_verbose gcloud -q container images add-tag "${CLIENT_IMAGE_NAME}:${GIT_COMMIT}" "${CLIENT_IMAGE_NAME}:${TESTING_VERSION}"
+      fi
+      if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" && "${server_tags}" != *"${TESTING_VERSION}"* ]]; then
+        psm::tools::log "Adding version tag ${TESTING_VERSION} to existing server image ${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
+        psm::tools::run_verbose gcloud -q container images add-tag "${SERVER_IMAGE_NAME}:${GIT_COMMIT}" "${SERVER_IMAGE_NAME}:${TESTING_VERSION}"
+      fi
+    fi
   fi
 }
 
@@ -1351,7 +1363,7 @@ kokoro_get_testing_version() {
     # Allows to override the testing version, and force tagging the built
     # images, if necessary.
     readonly TESTING_VERSION="${PSM_FORCE_TESTING_VERSION}"
-  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != "kokoro" ]]; then
+  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != kokoro* ]]; then
     # If not initiated by Kokoro, it's a dev branch.
     # This allows to know later down the line that the built image doesn't need
     # to be tagged, and avoid overriding an actual versioned image used in tests
