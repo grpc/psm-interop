@@ -822,15 +822,13 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
-    # Image exists. Check if version is tagged, if not tag it.
+    # Image exists but version is not correctly tagged
     if is_version_branch "${TESTING_VERSION}"; then
-      if [[ "${client_tags}" != *"${TESTING_VERSION}"* ]]; then
-        psm::tools::log "Adding version tag ${TESTING_VERSION} to existing client image ${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
-        psm::tools::run_verbose gcloud -q container images add-tag "${CLIENT_IMAGE_NAME}:${GIT_COMMIT}" "${CLIENT_IMAGE_NAME}:${TESTING_VERSION}"
-      fi
-      if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" && "${server_tags}" != *"${TESTING_VERSION}"* ]]; then
-        psm::tools::log "Adding version tag ${TESTING_VERSION} to existing server image ${SERVER_IMAGE_NAME}:${GIT_COMMIT}"
-        psm::tools::run_verbose gcloud -q container images add-tag "${SERVER_IMAGE_NAME}:${GIT_COMMIT}" "${SERVER_IMAGE_NAME}:${TESTING_VERSION}"
+      client_tags_raw="$(gcloud_gcr_list_raw_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
+      gcloud_gcr_add_version_tag_if_missing "${CLIENT_IMAGE_NAME}" "${client_tags_raw}" "${TESTING_VERSION}"
+      if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
+        server_tags_raw="$(gcloud_gcr_list_raw_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
+        gcloud_gcr_add_version_tag_if_missing "${SERVER_IMAGE_NAME}" "${server_tags_raw}" "${TESTING_VERSION}"
       fi
     fi
   fi
@@ -1085,6 +1083,40 @@ is_version_branch() {
 #######################################
 gcloud_gcr_list_image_tags() {
   gcloud container images list-tags --format="table[box](tags,digest,timestamp.date())" --filter="tags:$2" "$1"
+}
+
+#######################################
+# List GCR image tags matching given tag name in raw format.
+# Arguments:
+#   Image name
+#   Tag name
+# Outputs:
+#   Writes comma-delimited list of tags to stdout.
+#   If no tags found, the output is an empty string.
+#######################################
+gcloud_gcr_list_raw_image_tags() {
+  gcloud container images list-tags --format="value(tags)" --filter="tags:$2" "$1"
+}
+
+#######################################
+# Adds a version tag to an existing GCR image if missing.
+# Globals:
+#   GIT_COMMIT: SHA-1 of git commit being built
+# Arguments:
+#   Image name
+#   Comma-separated list of existing tags
+#   Tag to add if missing
+# Outputs:
+#   Writes logs to stdout
+#######################################
+gcloud_gcr_add_version_tag_if_missing() {
+  local image_name="$1"
+  local existing_tags="$2"
+  local to_tag="$3"
+  if [[ ! "${existing_tags}" =~ (^|,)${to_tag}(,|$) ]]; then
+    psm::tools::log "Adding version tag ${to_tag} to existing image ${image_name}:${GIT_COMMIT}"
+    psm::tools::run_verbose gcloud -q container images add-tag "${image_name}:${GIT_COMMIT}" "${image_name}:${to_tag}"
+  fi
 }
 
 #######################################
