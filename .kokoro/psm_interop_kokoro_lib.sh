@@ -822,8 +822,7 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
-    # Image exists but version is not correctly tag
-    # Tag the version
+    # Image exists. Check if version is tagged, if not tag it.
     if is_version_branch "${TESTING_VERSION}"; then
       if [[ "${client_tags}" != *"${TESTING_VERSION}"* ]]; then
         psm::tools::log "Adding version tag ${TESTING_VERSION} to existing client image ${CLIENT_IMAGE_NAME}:${GIT_COMMIT}"
