@@ -121,8 +121,8 @@ CLIENT_PREFIXES = flags.DEFINE_list(
 MODE = flags.DEFINE_enum(
     "mode",
     default="td",
-    enum_values=["k8s", "td", "td_no_legacy"],
-    help="Mode: Kubernetes or Traffic Director",
+    enum_values=["k8s", "td", "td_no_legacy", "cloudrun"],
+    help="Mode: Kubernetes, Traffic Director, or Cloud Run",
 )
 SECONDARY = flags.DEFINE_bool(
     "secondary",
@@ -791,6 +791,57 @@ def find_and_remove_leaked_td_resources(
         )
 
 
+def find_and_remove_leaked_cloudrun_resources(dry_run, project, region):
+    # 1. Regional Backend Services
+    logger.info("Scanning for leaked Backend Services...")
+    backend_services = exec_gcloud(project, "compute", "backend-services", "list")
+    if backend_services:
+        for bs in backend_services:
+            name = bs["name"]
+            is_regional = bs.get("region") and f"regions/{region}" in bs["region"]
+            if is_regional and name.startswith("psm-interop-"):
+                creation_ts = bs.get("creationTimestamp")
+                if creation_ts and dateutil.parser.isoparse(creation_ts) <= get_expire_timestamp():
+                    logger.info("----- Cleaning up Backend Service %s", name)
+                    if dry_run:
+                        logger.info("----- Skipped [Dry Run]: %s", name)
+                    else:
+                        exec_gcloud(project, "compute", "backend-services", "delete", name, "--region", region)
+
+    # 2. Serverless NEGs (Network Endpoint Groups)
+    logger.info("Scanning for leaked Serverless NEGs...")
+    negs = exec_gcloud(project, "compute", "network-endpoint-groups", "list", "--regions", region)
+    if negs:
+        for neg in negs:
+            name = neg["name"]
+            if neg.get("networkEndpointType") == "SERVERLESS" and name.startswith("psm-interop-"):
+                creation_ts = neg.get("creationTimestamp")
+                if creation_ts and dateutil.parser.isoparse(creation_ts) <= get_expire_timestamp():
+                    logger.info("-----")
+                    logger.info("----- Cleaning up Serverless NEG %s", name)
+                    if dry_run:
+                        logger.info("----- Skipped [Dry Run]: %s", name)
+                    else:
+                        exec_gcloud(project, "compute", "network-endpoint-groups", "delete", name, "--region", region)
+
+    # 3. Cloud Run Services
+    logger.info("Scanning for leaked Cloud Run services...")
+    services = exec_gcloud(project, "run", "services", "list", "--region", region)
+    if services:
+        for svc in services:
+            name = svc["metadata"]["name"]
+            if name.startswith("psm-interop-"):
+                metadata = svc.get("metadata", {})
+                creation_ts = metadata.get("creationTimestamp")
+                if creation_ts and dateutil.parser.isoparse(creation_ts) <= get_expire_timestamp():
+                    logger.info("-----")
+                    logger.info("----- Cleaning up Cloud Run service %s", name)
+                    if dry_run:
+                        logger.info("----- Skipped [Dry Run]: %s", name)
+                    else:
+                        exec_gcloud(project, "run", "services", "delete", name, "--region", region)
+
+
 def main(argv):
     # TODO(sergiitk): instead, base on absltest so that result.xml is available.
     if len(argv) > 1:
@@ -824,6 +875,9 @@ def main(argv):
             k8s_context,
             enable_dualstack,
         )
+    elif MODE.value == "cloudrun":
+        region = xds_flags.CLOUD_RUN_REGION.value or "us-central1"
+        find_and_remove_leaked_cloudrun_resources(dry_run, project, region)
 
     logger.info("##################### Done cleaning up #####################")
     if _CLEANUP_RESULT.error_count > 0:
