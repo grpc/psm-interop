@@ -822,6 +822,13 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
+    # Image exists; ensure it is tagged with the testing version if on a version branch
+    if is_version_branch "${TESTING_VERSION}"; then
+      gcloud_gcr_add_version_tag_if_missing "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+      if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
+        gcloud_gcr_add_version_tag_if_missing "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+      fi
+    fi
   fi
 }
 
@@ -1074,6 +1081,40 @@ is_version_branch() {
 #######################################
 gcloud_gcr_list_image_tags() {
   gcloud container images list-tags --format="table[box](tags,digest,timestamp.date())" --filter="tags:$2" "$1"
+}
+
+#######################################
+# List GCR image tags matching given tag name in raw format.
+# Arguments:
+#   Image name
+#   Tag name
+# Outputs:
+#   Writes comma-delimited list of tags to stdout.
+#   If no tags found, the output is an empty string.
+#######################################
+gcloud_gcr_list_raw_image_tags() {
+  gcloud container images list-tags --format="value(tags)" --filter="tags:$2" "$1"
+}
+
+#######################################
+# Adds a version tag to an existing GCR image if missing.
+# Arguments:
+#   Image name
+#   Tag to check and tag from (e.g. GIT_COMMIT)
+#   Tag to add if missing (e.g. TESTING_VERSION)
+# Outputs:
+#   Writes logs to stdout
+#######################################
+gcloud_gcr_add_version_tag_if_missing() {
+  local image_name="${1:?image_name is required}"
+  local from_tag="${2:?from_tag is required}"
+  local to_tag="${3:?to_tag is required}"
+  local existing_tags
+  existing_tags="$(gcloud_gcr_list_raw_image_tags "${image_name}" "${from_tag}")"
+  if [[ ! "${existing_tags}" =~ (^|,)${to_tag}(,|$) ]]; then
+    psm::tools::log "Adding version tag ${to_tag} to existing image ${image_name}:${from_tag}"
+    psm::tools::run_verbose gcloud -q container images add-tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
+  fi
 }
 
 #######################################
@@ -1351,7 +1392,7 @@ kokoro_get_testing_version() {
     # Allows to override the testing version, and force tagging the built
     # images, if necessary.
     readonly TESTING_VERSION="${PSM_FORCE_TESTING_VERSION}"
-  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != "kokoro" ]]; then
+  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != kokoro* ]]; then
     # If not initiated by Kokoro, it's a dev branch.
     # This allows to know later down the line that the built image doesn't need
     # to be tagged, and avoid overriding an actual versioned image used in tests
