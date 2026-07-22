@@ -822,13 +822,11 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
-    # Image exists but version is not correctly tagged
+    # Image exists; ensure it is tagged with the testing version if on a version branch
     if is_version_branch "${TESTING_VERSION}"; then
-      client_tags_raw="$(gcloud_gcr_list_raw_image_tags "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}")"
-      gcloud_gcr_add_version_tag_if_missing "${CLIENT_IMAGE_NAME}" "${client_tags_raw}" "${TESTING_VERSION}"
+      gcloud_gcr_add_version_tag_if_missing "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
       if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
-        server_tags_raw="$(gcloud_gcr_list_raw_image_tags "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}")"
-        gcloud_gcr_add_version_tag_if_missing "${SERVER_IMAGE_NAME}" "${server_tags_raw}" "${TESTING_VERSION}"
+        gcloud_gcr_add_version_tag_if_missing "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
       fi
     fi
   fi
@@ -1100,22 +1098,22 @@ gcloud_gcr_list_raw_image_tags() {
 
 #######################################
 # Adds a version tag to an existing GCR image if missing.
-# Globals:
-#   GIT_COMMIT: SHA-1 of git commit being built
 # Arguments:
 #   Image name
-#   Comma-separated list of existing tags
-#   Tag to add if missing
+#   Tag to check and tag from (e.g. GIT_COMMIT)
+#   Tag to add if missing (e.g. TESTING_VERSION)
 # Outputs:
 #   Writes logs to stdout
 #######################################
 gcloud_gcr_add_version_tag_if_missing() {
-  local image_name="$1"
-  local existing_tags="$2"
-  local to_tag="$3"
+  local image_name="${1:?image_name is required}"
+  local from_tag="${2:?from_tag is required}"
+  local to_tag="${3:?to_tag is required}"
+  local existing_tags
+  existing_tags="$(gcloud_gcr_list_raw_image_tags "${image_name}" "${from_tag}")"
   if [[ ! "${existing_tags}" =~ (^|,)${to_tag}(,|$) ]]; then
-    psm::tools::log "Adding version tag ${to_tag} to existing image ${image_name}:${GIT_COMMIT}"
-    psm::tools::run_verbose gcloud -q container images add-tag "${image_name}:${GIT_COMMIT}" "${image_name}:${to_tag}"
+    psm::tools::log "Adding version tag ${to_tag} to existing image ${image_name}:${from_tag}"
+    psm::tools::run_verbose gcloud -q container images add-tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
   fi
 }
 
