@@ -446,7 +446,7 @@ class GcpProjectApiResource:
     # TODO(sergiitk): move someplace better
     _WAIT_FOR_OPERATION_SEC = 60 * 10
     _WAIT_FIXED_SEC = 2
-    _GCP_API_RETRIES = 5
+    _GCP_API_RETRIES = 10
 
     def __init__(self, api: discovery.Resource, project: str):
         self.api: discovery.Resource = api
