@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import logging
+import time
 
 from absl import flags
 from absl.testing import absltest
@@ -36,6 +38,13 @@ _QPS = 100
 _INITIAL_UNARY_MAX_REQUESTS = 500
 _INITIAL_EMPTY_MAX_REQUESTS = 1000
 _UPDATED_UNARY_MAX_REQUESTS = 800
+
+# Wait for xDS CDS circuit breaker configuration (maxRequests) to propagate and
+# settle on the client, and allow any initial RPC bursts from connection setup
+# to drain before enabling `keep-open` metadata. Because `keep-open` RPCs stay
+# open indefinitely, any RPC started before CDS circuit breaking takes effect
+# remains active forever, causing intermittent overshoots (e.g., 2000 vs 1000).
+_SETTLE_DURATION = datetime.timedelta(seconds=10)
 
 
 class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
@@ -176,6 +185,9 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             self.assertRpcsEventuallyGoToGivenServers(
                 test_client, (default_test_server, alternate_test_server)
             )
+            # Allow time for the client and server to settle and drain any buffered RPC backlog
+            # from initial xDS connection establishment before enabling keep-open.
+            time.sleep(_SETTLE_DURATION.total_seconds())
 
         with self.subTest("11_configure_client_with_keep_open"):
             test_client.update_config.configure(
