@@ -104,3 +104,25 @@ disable=
 	unsubscriptable-object,
 	# NOTE(sergiitk): yapf compatibility, ref #25071
 	bad-continuation,
+	# TODO(asheshvidyut): Clean up the following suppressions and fix them in code later
+	# b/541074445
+	unknown-option-value,
+	useless-option-value,
+	no-member,
+	used-before-assignment,
+	method-cache-max-size-none,
+	unexpected-keyword-arg,
+	unspecified-encoding,
+	c-extension-no-member,
+	use-dict-literal,
+	unused-argument,
+	no-else-raise,
+	bad-mcs-classmethod-argument,
+	consider-using-f-string,
+	consider-using-from-import,
+	f-string-without-interpolation,
+	too-many-positional-arguments,
+	too-many-arguments,
+	use-yield-from,
+	consider-using-with,
+	unnecessary-comprehension

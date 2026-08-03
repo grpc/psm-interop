@@ -455,7 +455,17 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         except _RETRY_ON_EXCEPTIONS as err:
             retryer = self._handle_exception(err)
             if retryer is not None:
-                return retryer(method, *args, **kwargs)
+                # Wrap the method to handle 404 error translation neatly.
+                def method_with_404_handler(*w_args, **w_kwargs):
+                    try:
+                        return method(*w_args, **w_kwargs)
+                    except _ApiException as e:
+                        if e.status == 404:
+                            # This will raise NotFound and stop retries
+                            self._handle_api_exception(e)
+                        raise
+
+                return retryer(method_with_404_handler, *args, **kwargs)
             raise
 
     def _handle_exception(self, err: Exception) -> Optional[retryers.Retrying]:

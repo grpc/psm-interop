@@ -16,13 +16,5 @@
 
 set -exo pipefail
 
-VENV_NAME="venv-$(mktemp -d)"
-readonly VENV_NAME
-
-python3 -m virtualenv "${VENV_NAME}"
-
-"${VENV_NAME}"/bin/pip install -r requirements.txt
-"${VENV_NAME}"/bin/pip freeze --require-virtualenv --local -r requirements.txt \
-  > requirements.lock
-
-rm -rf "${VENV_NAME}"
+sudo python3 -m pip install uv
+uv pip compile requirements.txt --python-version 3.11 -o requirements.lock

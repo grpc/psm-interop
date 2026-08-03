@@ -1002,7 +1002,7 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
         self.k8s_namespace.wait_for_pod_started(name, **kwargs)
         pod = self.k8s_namespace.get_pod(name)
 
-        pod_ips = pod.status.pod_i_ps or pod.status.pod_ip
+        pod_ips = pod.status.pod_ips or pod.status.pod_ip
         logger.info("Pod %s ready, IP: %s", pod.metadata.name, pod_ips)
         return pod
 

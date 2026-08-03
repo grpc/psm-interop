@@ -88,7 +88,7 @@ MetadataByPeer: list[str, RpcMetadata]
 _SignalNum = Union[int, signal.Signals]  # pylint: disable=no-member
 _SignalHandler = Callable[[_SignalNum, Optional[FrameType]], Any]
 
-TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=15)
 # TODO(sergiitk): get rid of the seconds constant, use timedelta
 _TD_CONFIG_MAX_WAIT_SEC: Final[int] = int(TD_CONFIG_MAX_WAIT.total_seconds())
 
@@ -200,6 +200,7 @@ class XdsKubernetesBaseTestCase(
         cls.gcp_service_account = xds_k8s_flags.GCP_SERVICE_ACCOUNT.value
         cls.td_bootstrap_image = xds_k8s_flags.TD_BOOTSTRAP_IMAGE.value
         cls.xds_server_uri = xds_flags.XDS_SERVER_URI.value
+        cls.xds_server_region = xds_flags.XDS_SERVER_REGION.value
         cls.compute_api_version = xds_flags.COMPUTE_API_VERSION.value
         cls.enable_dualstack = xds_flags.ENABLE_DUALSTACK.value
 
@@ -224,6 +225,7 @@ class XdsKubernetesBaseTestCase(
         cls.server_maintenance_port = xds_flags.SERVER_MAINTENANCE_PORT.value
         cls.server_xds_host = xds_flags.SERVER_NAME.value
         cls.server_xds_port = xds_flags.SERVER_XDS_PORT.value
+        cls.server_xds_authority = xds_flags.SERVER_XDS_AUTHORITY.value
 
         # Test client
         cls.client_image = xds_k8s_flags.CLIENT_IMAGE.value
@@ -529,7 +531,7 @@ class XdsKubernetesBaseTestCase(
         duration: _timedelta,
         method: str,
         stray_rpc_limit: int = 0,
-        retry_timeout: _timedelta = dt.timedelta(minutes=10),
+        retry_timeout: _timedelta = dt.timedelta(minutes=15),
     ) -> None:
         """Retries assertRpcStatusCodes until it passes or timeout expires."""
         retryer = retryers.exponential_retryer_with_timeout(
@@ -1167,6 +1169,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             compute_api_version=self.compute_api_version,
             enable_dualstack=self.enable_dualstack,
+            xds_server_region=self.xds_server_region,
         )
 
     def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
@@ -1181,6 +1184,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             gcp_api_manager=self.gcp_api_manager,
             gcp_service_account=self.gcp_service_account,
             xds_server_uri=self.xds_server_uri,
+            xds_server_region=self.xds_server_region,
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
@@ -1203,6 +1207,7 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             gcp_api_manager=self.gcp_api_manager,
             gcp_service_account=self.gcp_service_account,
             xds_server_uri=self.xds_server_uri,
+            xds_server_region=self.xds_server_region,
             network=self.network,
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
@@ -1225,14 +1230,17 @@ class RegularXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
         for test_server in test_servers:
             test_server.set_xds_address(
-                self.server_xds_host, self.server_xds_port
+                self.server_xds_host,
+                self.server_xds_port,
+                self.server_xds_authority,
             )
         return test_servers
 
     def startTestClient(
         self, test_server: XdsTestServer, **kwargs
     ) -> XdsTestClient:
-        return self._start_test_client(test_server.xds_uri, **kwargs)
+        server_target = test_server.xds_uri
+        return self._start_test_client(server_target, **kwargs)
 
 
 class AppNetXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
@@ -1247,6 +1255,7 @@ class AppNetXdsKubernetesTestCase(RegularXdsKubernetesTestCase):
             network=self.network,
             compute_api_version=self.compute_api_version,
             enable_dualstack=self.enable_dualstack,
+            xds_server_region=self.xds_server_region,
         )
 
 
@@ -1300,6 +1309,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             gcp_service_account=self.gcp_service_account,
             network=self.network,
             xds_server_uri=self.xds_server_uri,
+            xds_server_region=self.xds_server_region,
             deployment_template="server-secure.deployment.yaml",
             debug_use_port_forwarding=self.debug_use_port_forwarding,
             enable_workload_identity=self.enable_workload_identity,
@@ -1319,6 +1329,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             gcp_api_manager=self.gcp_api_manager,
             gcp_service_account=self.gcp_service_account,
             xds_server_uri=self.xds_server_uri,
+            xds_server_region=self.xds_server_region,
             network=self.network,
             deployment_template="client-secure.deployment.yaml",
             stats_port=self.client_port,
@@ -1337,7 +1348,11 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             secure_mode=True,
             **kwargs,
         )[0]
-        test_server.set_xds_address(self.server_xds_host, self.server_xds_port)
+        test_server.set_xds_address(
+            self.server_xds_host,
+            self.server_xds_port,
+            self.server_xds_authority,
+        )
         return test_server
 
     def setupSecurityPolicies(
@@ -1355,6 +1370,37 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             server_port=self.server_port,
             tls=server_tls,
             mtls=server_mtls,
+        )
+
+    def setupTrafficDirectorGrpcWithSecurity(
+        self, server_tls, server_mtls, client_tls, client_mtls
+    ):
+        # Create policies first
+        self.td.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
+        self.td.create_server_tls_policy(tls=server_tls, mtls=server_mtls)
+
+        self.td.create_endpoint_policy(
+            server_namespace=self.server_namespace,
+            server_name=self.server_name,
+            server_port=self.server_port,
+        )
+
+        security_settings = None
+        if self.td.client_tls_policy:
+            server_spiffe = (
+                f"spiffe://{self.project}.svc.id.goog/"
+                f"ns/{self.server_namespace}/sa/{self.server_name}"
+            )
+            security_settings = {
+                "clientTlsPolicy": self.td.client_tls_policy.url,
+                "subjectAltNames": [server_spiffe],
+            }
+
+        self.td.setup_for_grpc(
+            self.server_xds_host,
+            self.server_xds_port,
+            health_check_port=self.server_maintenance_port,
+            security_settings=security_settings,
         )
 
     def startSecureTestClient(

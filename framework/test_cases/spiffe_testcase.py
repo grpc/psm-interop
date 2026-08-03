@@ -37,7 +37,7 @@ XdsTestServer = server_app.XdsTestServer
 XdsTestClient = client_app.XdsTestClient
 _SecurityMode = xds_k8s_testcase.SecurityXdsKubernetesTestCase.SecurityMode
 
-TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=10)
+TD_CONFIG_MAX_WAIT: Final[dt.timedelta] = dt.timedelta(minutes=15)
 
 
 class SpiffeMtlsXdsKubernetesCloudRunTestCase(

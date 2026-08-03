@@ -26,7 +26,6 @@ from typing import Any, Callable, List, Optional, Tuple, Type
 
 import tenacity
 from tenacity import _utils as tenacity_utils
-from tenacity import compat as tenacity_compat
 from tenacity import stop
 from tenacity import wait
 from tenacity.retry import retry_base
@@ -86,6 +85,44 @@ def exponential_retryer_with_timeout(
             min=wait_min.total_seconds(), max=wait_max.total_seconds()
         ),
         stop=stop.stop_after_delay(timeout.total_seconds()),
+        before_sleep=_before_sleep_log(logger, log_level),
+        retry_error_callback=retry_error_callback,
+    )
+
+
+def exponential_retryer_with_attempts(
+    *,
+    wait_min: timedelta,
+    wait_max: timedelta,
+    attempts: int,
+    retry_on_exceptions: Optional[_ExceptionClasses] = None,
+    retry_on_predicate: Optional[Callable[[BaseException], bool]] = None,
+    logger: Optional[logging.Logger] = None,
+    log_level: Optional[int] = logging.DEBUG,
+) -> Retrying:
+    if logger is None:
+        logger = retryers_logger
+    if log_level is None:
+        log_level = logging.DEBUG
+
+    retry_conditions = []
+    if retry_on_exceptions:
+        retry_conditions.append(
+            tenacity.retry_if_exception_type(retry_on_exceptions)
+        )
+    if retry_on_predicate:
+        retry_conditions.append(tenacity.retry_if_exception(retry_on_predicate))
+
+    if not retry_conditions:
+        retry_conditions.append(tenacity.retry_if_exception_type(Exception))
+
+    retry_error_callback = _on_error_callback(attempts=attempts)
+    return Retrying(
+        retry=tenacity.retry_any(*retry_conditions),
+        wait=wait.wait_exponential(
+            min=wait_min.total_seconds(), max=wait_max.total_seconds()
+        ),
+        stop=stop.stop_after_attempt(attempts),
         before_sleep=_before_sleep_log(logger, log_level),
         retry_error_callback=retry_error_callback,
     )
@@ -197,9 +234,7 @@ def _before_sleep_log(logger, log_level, exc_info=False):
             verb, value = "raised", "%s: %s" % (type(ex).__name__, ex)
 
             if exc_info:
-                local_exc_info = tenacity_compat.get_exc_info_from_future(
-                    retry_state.outcome
-                )
+                local_exc_info = ex
             else:
                 local_exc_info = False
         else:

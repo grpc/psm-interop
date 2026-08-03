@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ["3.10", "3.11"]
+        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
       fail-fast: false
     permissions:
       pull-requests: read  # Used by paths-filter to read the diff.
@@ -81,14 +81,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip list
           python -m pip install --upgrade pip
-          pip install pylint==2.2.2 astroid==2.3.3 toml==0.10.2 "isort>=4.3.0,<5.0.0"
+          pip install pylint==2.17.7 astroid==2.15.8 toml==0.10.2 "isort>=4.3.0,<5.0.0"
           pip list
       - name: Analysing source code with pylint
         run: |

@@ -22,6 +22,7 @@ PS4='+ $(date "+[%H:%M:%S %Z]")\011 '
 readonly GKE_CLUSTER_PSM_LB="psm-lb"
 readonly GKE_CLUSTER_PSM_SECURITY="psm-security"
 readonly GKE_CLUSTER_PSM_BASIC="psm-basic"
+readonly GKE_CLUSTER_PSM_REGIONAL_TD="psm-regional"
 # TODO(sergiitk): 'if' can be removed when DOCKER_REGISTRY removed from buildscripts.
 if [[ -z "${DOCKER_REGISTRY}" ]] ; then
   readonly DOCKER_REGISTRY="us-docker.pkg.dev"
@@ -32,7 +33,7 @@ readonly TEST_DRIVER_PATH=""
 readonly TEST_DRIVER_PROTOS_PATH="protos/grpc/testing"
 
 # --- Injectable constants ---
-readonly PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+readonly PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 
 # Test driver
 readonly TEST_DRIVER_REPO_OWNER="${TEST_DRIVER_REPO_OWNER:-grpc}"
@@ -443,6 +444,27 @@ psm::csm::run_test() {
   psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
 }
 
+# --- Regional TD TESTS -----------------
+
+psm::regional_td::setup() {
+  activate_gke_cluster GKE_CLUSTER_PSM_REGIONAL_TD
+}
+
+psm::regional_td::get_tests() {
+  TESTS=(
+    "app_net_test"
+  )
+}
+
+psm::regional_td::run_test() {
+  local test_name="${1:?${FUNCNAME[0]} missing the test name argument}"
+  PSM_TEST_FLAGS+=(
+    "--flagfile=config/common-regional_td.cfg"
+  )
+  psm::run::finalize_test_flags "${test_name}"
+  psm::tools::run_verbose python -m "tests.${test_name}" "${PSM_TEST_FLAGS[@]}"
+}
+
 # --- Common test run logic -----------
 
 #######################################
@@ -471,7 +493,7 @@ psm::run() {
   psm::setup::docker_image_names "${GRPC_LANGUAGE}" "${test_suite}"
 
   case "${test_suite}" in
-    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe)
+    csm | dualstack | light | lb | security | url_map | cloud_run | spiffe | regional_td)
       psm::setup::generic_test_suite "${test_suite}"
       ;;
     *)
@@ -497,13 +519,52 @@ psm::run() {
 psm::run::test_suite() {
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   cd "${TEST_DRIVER_FULL_DIR}"
-  local failed_tests=0
-  for test_name in "${TESTS[@]}"; do
-    psm::run::test "${test_suite}" "${test_name}" || (( ++failed_tests ))
-    psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
-    echo
-  done
-  psm::tools::log "Failed test suites: ${failed_tests}"
+
+  # Export variables needed by subshells.
+  # --- KEEP SORTED ---
+  export CLIENT_IMAGE_NAME
+  export GIT_COMMIT
+  export GRPC_LANGUAGE
+  export KUBE_CONTEXT
+  export PS4
+  export PSM_EXTRA_FLAGS
+  export SECONDARY_KUBE_CONTEXT
+  export SERVER_IMAGE_NAME
+  export SERVER_IMAGE_USE_CANONICAL
+  export TESTING_VERSION
+  export TEST_DRIVER_FLAGFILE
+  export TEST_XML_OUTPUT_DIR
+  export VIRTUAL_ENV
+
+   # Export all functions in the "psm::" namespace.
+   for func in $(declare -F | awk '{print $3}' | grep '^psm::'); do
+       export -f "$func"
+   done
+
+  # TODO: b/535109852 - Make the parallelism configurable using a function
+  # parameter.
+  local jobs=1
+  case "${test_suite}" in
+    security | lb | dualstack)
+      jobs=2
+      ;;
+  esac
+
+  psm::tools::log "Running ${test_suite} suite tests in parallel with ${jobs} jobs"
+  # We use --line-buffer to see output in real-time, preventing half-lines from
+  # mixing.
+  local status=0
+  parallel --line-buffer --jobs "${jobs}" psm::run::test "${test_suite}" ::: "${TESTS[@]}" || status=$?
+
+  if (( status > 101 )); then
+    psm::tools::log "Error: GNU parallel crashed or exited abnormally with status ${status}"
+    return ${status}
+  fi
+  if (( status == 101 )); then
+    psm::tools::log "Failed test cases in ${test_suite}: >100"
+  else
+    psm::tools::log "Failed test cases in ${test_suite}: ${status}"
+  fi
 }
 
 #######################################
@@ -524,6 +585,7 @@ psm::run::test_suite() {
 #   Test xUnit report to ${TEST_XML_OUTPUT_DIR}/${test_name}/sponge_log.xml
 #######################################
 psm::run::test() {
+  set -eo pipefail
   # Test driver usage: https://github.com/grpc/psm-interop#basic-usage
   local test_suite="${1:?${FUNCNAME[0]} missing the test suite argument}"
   local test_name="${2:?${FUNCNAME[0]} missing the test name argument}"
@@ -552,9 +614,12 @@ psm::run::test() {
     PSM_TEST_FLAGS+=("--secondary_kube_context=${SECONDARY_KUBE_CONTEXT}")
   fi
 
-  psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}"
-  # Must be the last line.
-  "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}"
+  psm::tools::log "Running ${test_suite} suite test: ${test_name}" |& tee "${test_log}" || true
+  local exit_code=0
+  "psm::${test_suite}::run_test" "${test_name}" |& tee -a "${test_log}" || exit_code=$?
+  psm::tools::log "Finished ${test_suite} suite test: ${test_name}"
+  echo
+  return ${exit_code}
 }
 
 #######################################
@@ -757,6 +822,13 @@ psm::build::docker_images_if_needed() {
     } |& tee -a "${BUILD_LOGS_ROOT}/build-docker.log"
   else
     psm::tools::log "Skipping ${GRPC_LANGUAGE} test app build"
+    # Image exists; ensure it is tagged with the testing version if on a version branch
+    if is_version_branch "${TESTING_VERSION}"; then
+      gcloud_gcr_add_version_tag_if_missing "${CLIENT_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+      if [[ -z "${SERVER_IMAGE_USE_CANONICAL}" ]]; then
+        gcloud_gcr_add_version_tag_if_missing "${SERVER_IMAGE_NAME}" "${GIT_COMMIT}" "${TESTING_VERSION}"
+      fi
+    fi
   fi
 }
 
@@ -895,6 +967,10 @@ activate_gke_cluster() {
       GKE_CLUSTER_NAME="psm-interop-fleet-cluster"
       GKE_CLUSTER_ZONE="us-central1-a"
       ;;
+    GKE_CLUSTER_PSM_REGIONAL_TD)
+      GKE_CLUSTER_NAME="psm-interop-lb-secondary"
+      GKE_CLUSTER_ZONE="us-west1-b"
+      ;;
     *)
       psm::tools::log "Unknown GKE cluster: ${1}"
       exit 1
@@ -1008,6 +1084,40 @@ gcloud_gcr_list_image_tags() {
 }
 
 #######################################
+# List GCR image tags matching given tag name in raw format.
+# Arguments:
+#   Image name
+#   Tag name
+# Outputs:
+#   Writes comma-delimited list of tags to stdout.
+#   If no tags found, the output is an empty string.
+#######################################
+gcloud_gcr_list_raw_image_tags() {
+  gcloud container images list-tags --format="value(tags)" --filter="tags:$2" "$1"
+}
+
+#######################################
+# Adds a version tag to an existing GCR image if missing.
+# Arguments:
+#   Image name
+#   Tag to check and tag from (e.g. GIT_COMMIT)
+#   Tag to add if missing (e.g. TESTING_VERSION)
+# Outputs:
+#   Writes logs to stdout
+#######################################
+gcloud_gcr_add_version_tag_if_missing() {
+  local image_name="${1:?image_name is required}"
+  local from_tag="${2:?from_tag is required}"
+  local to_tag="${3:?to_tag is required}"
+  local existing_tags
+  existing_tags="$(gcloud_gcr_list_raw_image_tags "${image_name}" "${from_tag}")"
+  if [[ ! "${existing_tags}" =~ (^|,)${to_tag}(,|$) ]]; then
+    psm::tools::log "Adding version tag ${to_tag} to existing image ${image_name}:${from_tag}"
+    psm::tools::run_verbose gcloud -q container images add-tag "${image_name}:${from_tag}" "${image_name}:${to_tag}"
+  fi
+}
+
+#######################################
 # Create kube context authenticated with GKE cluster, saves context name.
 # to KUBE_CONTEXT
 # Globals:
@@ -1085,6 +1195,9 @@ test_driver_get_source() {
 #   Writes the list of installed modules to stdout
 #######################################
 test_driver_pip_install() {
+  psm::tools::log "uv version:"
+  uv --version
+  uv run --python "${PYTHON_VERSION}" python --version
   psm::tools::log "Install python dependencies"
   cd "${TEST_DRIVER_FULL_DIR}"
 
@@ -1095,21 +1208,21 @@ test_driver_pip_install() {
       psm::tools::log "Found python virtual environment directory: ${venv_dir}"
     else
       psm::tools::log "Creating python virtual environment: ${venv_dir}"
-      "python${PYTHON_VERSION}" -m venv "${venv_dir}" --upgrade-deps
+      uv venv --python "${PYTHON_VERSION}" --seed "${venv_dir}"
     fi
     # Intentional: No need to check python venv activate script.
     # shellcheck source=/dev/null
     source "${venv_dir}/bin/activate"
   fi
 
-  psm::tools::log "Installing Python packages with pip, see install-pip.log"
+  psm::tools::log "Installing Python packages with uv pip, see install-pip.log"
   psm::driver::pip_install &>> "${BUILD_LOGS_ROOT}/install-pip.log"
 }
 
 psm::driver::pip_install() {
-  psm::tools::run_verbose python3 -m pip install -r requirements.lock
+  psm::tools::run_verbose uv pip install -r requirements.lock
   echo
-  psm::tools::run_verbose python3 -m pip list
+  psm::tools::run_verbose uv pip list
 }
 
 #######################################
@@ -1136,7 +1249,7 @@ test_driver_compile_protos() {
   )
   psm::tools::log "Generate python code from grpc.testing protos: ${protos[*]}"
   cd "${TEST_DRIVER_REPO_DIR}"
-  python3 -m grpc_tools.protoc \
+  python -m grpc_tools.protoc \
     --proto_path=. \
     --python_out="${TEST_DRIVER_FULL_DIR}" \
     --grpc_python_out="${TEST_DRIVER_FULL_DIR}" \
@@ -1179,8 +1292,9 @@ test_driver_install() {
 kokoro_print_version() {
   psm::tools::log "Kokoro Ubuntu version:"
   run_ignore_exit_code lsb_release -a
-  run_ignore_exit_code "python${PYTHON_VERSION}" --version
-  run_ignore_exit_code "python${PYTHON_VERSION}" -m pip --version
+  psm::tools::log "This is the System Python version and may be different from the actual running version"
+  run_ignore_exit_code python3 --version
+  run_ignore_exit_code python3 -m pip --version
 }
 
 #######################################
@@ -1250,10 +1364,15 @@ kokoro_install_dependencies() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get -qq remove needrestart
   sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install --auto-remove \
-    "python${PYTHON_VERSION}-venv" \
     google-cloud-sdk-gke-gcloud-auth-plugin \
-    kubectl
+    kubectl \
+    parallel
   sudo rm -rf /var/lib/apt/lists
+  sudo python3 -m pip install uv
+  uv python install "${PYTHON_VERSION}"
+  psm::tools::log "uv version:"
+  uv --version
+  uv run --python "${PYTHON_VERSION}" python --version
 }
 
 #######################################
@@ -1281,7 +1400,7 @@ kokoro_get_testing_version() {
     # Allows to override the testing version, and force tagging the built
     # images, if necessary.
     readonly TESTING_VERSION="${PSM_FORCE_TESTING_VERSION}"
-  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != "kokoro" ]]; then
+  elif [[ "${KOKORO_BUILD_INITIATOR:-anonymous}" != kokoro* ]]; then
     # If not initiated by Kokoro, it's a dev branch.
     # This allows to know later down the line that the built image doesn't need
     # to be tagged, and avoid overriding an actual versioned image used in tests

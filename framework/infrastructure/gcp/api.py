@@ -13,6 +13,7 @@
 # limitations under the License.
 import abc
 import contextlib
+import datetime
 import functools
 import json
 import logging
@@ -34,6 +35,7 @@ import googleapiclient.model
 import tenacity
 import yaml
 
+from framework.helpers import retryers
 import framework.helpers.highlighter
 
 logger = logging.getLogger(__name__)
@@ -135,8 +137,7 @@ class GcpApiManager:
     @property
     @functools.lru_cache(None)
     def private_api_key(self):
-        """
-        Private API key.
+        """Private API key.
 
         Return API key credential that identifies a GCP project allow-listed for
         accessing private API discovery documents.
@@ -362,8 +363,7 @@ class TransportError(Error):
 
 
 class OperationError(Error):
-    """
-    Operation was not successful.
+    """Operation was not successful.
 
     Assuming Operation based on Google API Style Guide:
     https://cloud.google.com/apis/design/design_patterns#long_running_operations
@@ -446,12 +446,37 @@ class GcpProjectApiResource:
     # TODO(sergiitk): move someplace better
     _WAIT_FOR_OPERATION_SEC = 60 * 10
     _WAIT_FIXED_SEC = 2
-    _GCP_API_RETRIES = 5
+    _GCP_API_RETRIES = 10
 
     def __init__(self, api: discovery.Resource, project: str):
         self.api: discovery.Resource = api
         self.project: str = project
         self._highlighter = _HighlighterYaml()
+
+    @staticmethod
+    def _is_retryable_api_error(error: Exception) -> bool:
+        if isinstance(error, (_HttpLib2Error, ConnectionError)):
+            return True
+        return isinstance(error, _HttpError) and error.resp.status in (
+            429,
+            500,
+            502,
+            503,
+            504,
+        )
+
+    def _get_api_retryer(
+        self, num_retries: Optional[int] = None
+    ) -> retryers.Retrying:
+        if num_retries is None:
+            num_retries = self._GCP_API_RETRIES
+        return retryers.exponential_retryer_with_attempts(
+            wait_min=datetime.timedelta(seconds=1),
+            wait_max=datetime.timedelta(seconds=10),
+            attempts=num_retries + 1,
+            retry_on_predicate=self._is_retryable_api_error,
+            logger=logger,
+        )
 
     # TODO(sergiitk): in upcoming GCP refactoring, differentiate between
     #   _execute for LRO (Long Running Operations), and immediate operations.
@@ -470,14 +495,17 @@ class GcpProjectApiResource:
           ResponseError if the response was not a 2xx.
           TransportError if a transport error has occurred.
         """
-        if num_retries is None:
-            num_retries = self._GCP_API_RETRIES
+        retryer = self._get_api_retryer(num_retries)
         try:
-            return request.execute(num_retries=num_retries)
-        except _HttpError as error:
-            raise ResponseError(error)
-        except _HttpLib2Error as error:
-            raise TransportError(error)
+            return retryer(request.execute, num_retries=0)
+        except retryers.RetryError as e:
+            error = e.exception()
+        except (_HttpLib2Error, ConnectionError, _HttpError) as e:
+            error = e
+
+        if isinstance(error, (_HttpLib2Error, ConnectionError)):
+            raise TransportError(error) from error
+        raise ResponseError(error) from error
 
     def resource_pretty_format(
         self,
@@ -572,7 +600,10 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def _get_resource(self, collection: discovery.Resource, full_name):
-        resource = collection.get(name=full_name).execute()
+        retryer = self._get_api_retryer()
+        resource = retryer(
+            collection.get(name=full_name).execute, num_retries=0
+        )
         logger.info(
             "Loaded %s:\n%s", full_name, self.resource_pretty_format(resource)
         )
@@ -598,7 +629,8 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
         request: HttpRequest,
         timeout_sec: int = GcpProjectApiResource._WAIT_FOR_OPERATION_SEC,
     ):
-        operation = request.execute(num_retries=self._GCP_API_RETRIES)
+        retryer = self._get_api_retryer()
+        operation = retryer(request.execute, num_retries=0)
         logger.debug("Operation %s", operation)
         self._wait(operation["name"], timeout_sec)
 

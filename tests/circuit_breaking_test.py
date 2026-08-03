@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import dataclasses
 import logging
 import time
 
@@ -38,6 +39,8 @@ _QPS = 100
 _INITIAL_UNARY_MAX_REQUESTS = 500
 _INITIAL_EMPTY_MAX_REQUESTS = 1000
 _UPDATED_UNARY_MAX_REQUESTS = 800
+_MEMORY_LIMIT = "2Gi"
+_MEMORY_REQUEST = "1Gi"
 
 # Wait for xDS CDS circuit breaker configuration (maxRequests) to propagate and
 # settle on the client, and allow any initial RPC bursts from connection setup
@@ -62,6 +65,42 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             # TODO(https://github.com/grpc/grpc/issues/33134): use python server.
             cls.server_image = xds_k8s_flags.SERVER_IMAGE_CANONICAL.value
 
+    def initKubernetesServerRunner(self, **kwargs) -> _KubernetesServerRunner:
+        deployment_args = kwargs.pop("deployment_args", None)
+        if deployment_args is None:
+            deployment_args = k8s_xds_server_runner.ServerDeploymentArgs(
+                memory_limit=_MEMORY_LIMIT, memory_request=_MEMORY_REQUEST
+            )
+        else:
+            deployment_args = (
+                dataclasses.replace(  # pylint: disable=too-many-function-args
+                    deployment_args,
+                    memory_limit=_MEMORY_LIMIT,
+                    memory_request=_MEMORY_REQUEST,
+                )
+            )
+        return super().initKubernetesServerRunner(
+            deployment_args=deployment_args, **kwargs
+        )
+
+    def initKubernetesClientRunner(self, **kwargs) -> _XdsTestClient:
+        deployment_args = kwargs.pop("deployment_args", None)
+        if deployment_args is None:
+            deployment_args = xds_k8s_testcase.ClientDeploymentArgs(
+                memory_limit=_MEMORY_LIMIT, memory_request=_MEMORY_REQUEST
+            )
+        else:
+            deployment_args = (
+                dataclasses.replace(  # pylint: disable=too-many-function-args
+                    deployment_args,
+                    memory_limit=_MEMORY_LIMIT,
+                    memory_request=_MEMORY_REQUEST,
+                )
+            )
+        return super().initKubernetesClientRunner(
+            deployment_args=deployment_args, **kwargs
+        )
+
     def setUp(self):
         super().setUp()
         self.alternate_k8s_namespace = k8s.KubernetesNamespace(
@@ -81,6 +120,9 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
             enable_workload_identity=self.enable_workload_identity,
             workload_identity_iam_policy_binding=self.workload_identity_iam_policy_binding,
             reuse_namespace=True,
+            deployment_args=k8s_xds_server_runner.ServerDeploymentArgs(
+                memory_limit=_MEMORY_LIMIT, memory_request=_MEMORY_REQUEST
+            ),
         )
 
     def cleanup(self):
