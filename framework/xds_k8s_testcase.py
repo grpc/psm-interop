@@ -768,7 +768,10 @@ class XdsKubernetesBaseTestCase(
             for cluster in config.cds:
                 cluster_name = cluster.get("name", "")
                 alt_stat_name = cluster.get("altStatName", "")
-                if backend_service_name in cluster_name or backend_service_name in alt_stat_name:
+                if (
+                    backend_service_name in cluster_name
+                    or backend_service_name in alt_stat_name
+                ):
                     cb = cluster.get("circuitBreakers", {})
                     thresholds = cb.get("thresholds", [])
                     if thresholds:

@@ -273,7 +273,9 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 circuit_breakers={"maxRequests": _UPDATED_UNARY_MAX_REQUESTS}
             )
 
-        with self.subTest("15_wait_for_increased_circuit_breaker_config_propagation"):
+        with self.subTest(
+            "15_wait_for_increased_circuit_breaker_config_propagation"
+        ):
             self.assertCdsCircuitBreakerRequestsLimit(
                 test_client,
                 self.td.backend_service.name,
