@@ -219,7 +219,19 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 test_client, (default_test_server, alternate_test_server)
             )
 
-        with self.subTest("11_configure_client_with_keep_open"):
+        with self.subTest("11_wait_for_circuit_breaker_configs_propagation"):
+            self.assertCdsCircuitBreakerRequestsLimit(
+                test_client,
+                self.td.backend_service.name,
+                _INITIAL_UNARY_MAX_REQUESTS,
+            )
+            self.assertCdsCircuitBreakerRequestsLimit(
+                test_client,
+                self.td.alternative_backend_service.name,
+                _INITIAL_EMPTY_MAX_REQUESTS,
+            )
+
+        with self.subTest("12_configure_client_with_keep_open"):
             test_client.update_config.configure(
                 rpc_types=grpc_testing.RPC_TYPES_BOTH_CALLS,
                 metadata={
@@ -242,7 +254,7 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
         # batch thereby resulting in a shortfall of QPS number of RPCs inflight.
         after_steady_state_shortfall = _QPS
 
-        with self.subTest("12_client_reaches_target_steady_state"):
+        with self.subTest("13_client_reaches_target_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,
@@ -256,12 +268,19 @@ class CircuitBreakingTest(xds_k8s_testcase.RegularXdsKubernetesTestCase):
                 after_steady_state_allowed_shortfall_count=after_steady_state_shortfall,
             )
 
-        with self.subTest("13_increase_backend_max_requests"):
+        with self.subTest("14_increase_backend_max_requests"):
             self.td.backend_service_patch_backends(
                 circuit_breakers={"maxRequests": _UPDATED_UNARY_MAX_REQUESTS}
             )
 
-        with self.subTest("14_client_reaches_increased_steady_state"):
+        with self.subTest("15_wait_for_increased_circuit_breaker_config_propagation"):
+            self.assertCdsCircuitBreakerRequestsLimit(
+                test_client,
+                self.td.backend_service.name,
+                _UPDATED_UNARY_MAX_REQUESTS,
+            )
+
+        with self.subTest("16_client_reaches_increased_steady_state"):
             self.assertClientEventuallyReachesSteadyState(
                 test_client,
                 rpc_type=grpc_testing.RPC_TYPE_UNARY_CALL,

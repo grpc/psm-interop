@@ -745,6 +745,51 @@ class XdsKubernetesBaseTestCase(
                 f"Timeout waiting for RDS to update to cluster {expected_cluster_name}"
             )
 
+    def assertCdsCircuitBreakerRequestsLimit(
+        self,
+        test_client: XdsTestClient,
+        backend_service_name: str,
+        expected_max_requests: int,
+        *,
+        retry_timeout: datetime.timedelta = datetime.timedelta(minutes=5),
+        retry_wait: datetime.timedelta = datetime.timedelta(seconds=5),
+    ) -> None:
+        logger.info(
+            "Waiting for CDS update to backend service %s to have maxRequests %d",
+            backend_service_name,
+            expected_max_requests,
+        )
+
+        def _check_config() -> bool:
+            config = test_client.csds.fetch_client_status_parsed()
+            if not config or not config.cds:
+                return False
+
+            for cluster in config.cds:
+                cluster_name = cluster.get("name", "")
+                alt_stat_name = cluster.get("altStatName", "")
+                if backend_service_name in cluster_name or backend_service_name in alt_stat_name:
+                    cb = cluster.get("circuitBreakers", {})
+                    thresholds = cb.get("thresholds", [])
+                    if thresholds:
+                        max_requests = thresholds[0].get("maxRequests")
+                        if max_requests == expected_max_requests:
+                            return True
+            return False
+
+        retryer = retryers.constant_retryer(
+            wait_fixed=retry_wait,
+            timeout=retry_timeout,
+        )
+
+        try:
+            retryer(_check_config)
+        except retryers.RetryError:
+            self.fail(
+                f"Timeout waiting for CDS of {backend_service_name} "
+                f"to update to maxRequests={expected_max_requests}"
+            )
+
     def assertRouteConfigUpdateTrafficHandoff(
         self,
         test_client: XdsTestClient,
