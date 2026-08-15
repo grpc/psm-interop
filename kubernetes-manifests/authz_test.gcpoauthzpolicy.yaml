@@ -1,0 +1,135 @@
+apiVersion: security.gke.io/v1beta1
+kind: GCPAuthzPolicy
+metadata:
+  namespace: ${namespace_name}
+  name: ${deployment_name}_authz_policy
+spec:
+  targetRefs:
+    - kind: Deployment
+      name: ${deployment_id}
+    
+  httpRules:
+    - to:
+        operations:
+          - headers:
+              - name: "test"
+                value: "host-wildcard"
+                type: "Exact"
+            hosts:
+              - type: "Suffix"
+                value: ":${test_port}"
+      action: ALLOW
+    - to:
+        operations:
+          - headers:
+              - name: "test"
+                value: "header-regex-a"
+                type: "Contains"
+            hosts:
+              - type: "Suffix"
+                value: ":${test_port}"
+      action: ALLOW
+    - to:
+        operations:
+          - hosts:
+              - type: "Exact"
+                value: "${server_target}:${test_port}"
+            headers:
+              - name: "test"
+                value: "host-match1"
+                type: "Exact"
+          - hosts:
+              - type: "Exact"
+                value: "a-not-it.com:${test_port}"
+              - type: "Exact"
+                value: "${server_target}:${test_port}"
+              - type: "Exact"
+                value: "z-not-it.com:1"
+            headers:
+              - name: "test"
+                value: "host-match2"
+                type: "Exact"
+      action: ALLOW
+    - to:
+        operations:
+          - hosts:
+              - type: "Exact"
+                value: "not-the-host:${test_port}"
+              - type: "Exact"
+                value: "not-the-host"
+            headers:
+              - name: "test"
+                value: "never-match-host"
+                type: "Exact"
+      action: ALLOW
+    - to:
+        operations:
+          - headers:
+              - name: "test"
+                value: "never-match-port"
+                type: "Exact"
+            hosts:
+              - type: "Suffix"
+                value: ":1"
+      action: ALLOW
+
+    #     {
+    #         "sources": {
+    #             "principals": ["*"],
+    #         },
+    #         "destinations": {
+    #             "hosts": [f"*:{self.server_xds_port}"],
+    #             "ports": [self.server_port],
+    #             "httpHeaderMatch": {
+    #                 "headerName": "test",
+    #                 "regexMatch": "principal-present",
+    #             },
+    #         },
+    #     },
+    # - from: # Rule 6 Start
+    #     sources:
+    #       - {} # Represents principals: ["*"] - Any authenticated source
+    #   to:
+    #     operations:
+    #       - headers:
+    #           - name: "test"
+    #             value: "principal-present"
+    #             type: "Exact"
+    #         hosts:
+    #           - type: "Suffix"
+    #             value: ":${test_port}"
+    #   action: ALLOW # Rule 6 End
+
+    - from:
+        sources:
+          - principals:
+              - type: "Exact"
+                exact: "spiffe://${project}.svc.id.goog/not/the/client"
+              - type: "Exact"
+                exact: "spiffe://${project}.svc.id.goog/ns/${client_namespace}/sa/${client_name}"
+      to:
+        operations:
+          - headers:
+              - name: "test"
+                value: "match-principal"
+                type: "Exact"
+            hosts:
+              - type: "Suffix"
+                value: ":${test_port}"
+      action: ALLOW
+
+    - from:
+        sources:
+          - principals:
+              - type: "Exact"
+                exact: "spiffe://${project}.svc.id.goog/not/the/client"
+      to:
+        operations:
+          - headers:
+              - name: "test"
+                value: "never-match-principal"
+                type: "Exact"
+            hosts:
+              - type: "Suffix"
+                value: ":${test_port}"
+      action: ALLOW
