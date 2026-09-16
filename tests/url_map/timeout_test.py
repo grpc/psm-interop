@@ -87,9 +87,10 @@ class _BaseXdsTimeOutTestCase(XdsUrlMapTestCase):
 class TestTimeoutInRouteRule(_BaseXdsTimeOutTestCase):
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        # TODO(lidiz) either add support for rpc-behavior to other languages, or we
-        # should always use Java server as backend.
-        if config.server_lang != skips.Lang.JAVA:
+        if config.server_lang == skips.Lang.PYTHON:
+            if not config.version_gte("v1.85.x"):
+                return False
+        elif config.server_lang != skips.Lang.JAVA:
             return False
         if config.client_lang == skips.Lang.NODE:
             return config.version_gte("v1.4.x")
@@ -127,9 +128,10 @@ class TestTimeoutInRouteRule(_BaseXdsTimeOutTestCase):
 class TestTimeoutInApplication(_BaseXdsTimeOutTestCase):
     @staticmethod
     def is_supported(config: skips.TestConfig) -> bool:
-        # TODO(lidiz) either add support for rpc-behavior to other languages, or we
-        # should always use Java server as backend.
-        if config.server_lang != skips.Lang.JAVA:
+        if config.server_lang == skips.Lang.PYTHON:
+            if not config.version_gte("v1.85.x"):
+                return False
+        elif config.server_lang != skips.Lang.JAVA:
             return False
         if config.client_lang == skips.Lang.NODE:
             return config.version_gte("v1.4.x")
