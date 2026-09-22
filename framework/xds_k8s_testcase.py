@@ -1461,8 +1461,19 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         )
 
     def setupTlsPolicies(
-        self, server_tls, server_mtls, client_tls, client_mtls
-    ):
+        self,
+        *,
+        server_tls: bool,
+        server_mtls: bool,
+        client_tls: bool,
+        client_mtls: bool,
+    ) -> Optional[dict]:
+        """Creates client TLS, server TLS, and endpoint policies.
+
+        Returns:
+            A security_settings dict to be passed to create_backend_service,
+            or None if client TLS policy is not configured.
+        """
         # Create policies first
         self.td.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
         self.td.create_server_tls_policy(tls=server_tls, mtls=server_mtls)

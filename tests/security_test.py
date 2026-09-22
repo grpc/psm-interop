@@ -50,28 +50,33 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         """
         with self.subTest("00_setup_tls_policies"):
             security_settings = self.setupTlsPolicies(
-                server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
+                server_tls=True,
+                server_mtls=True,
+                client_tls=True,
+                client_mtls=True,
             )
 
         with self.subTest("01_create_health_check"):
             self.td.create_health_check(port=self.server_maintenance_port)
 
         with self.subTest("02_create_backend_service"):
-            self.td.create_backend_service(
-                security_settings=security_settings
-            )
+            self.td.create_backend_service(security_settings=security_settings)
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
         with self.subTest("04_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("05_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         with self.subTest("07_assert_expected_security_config_used"):
             self.assertTestAppSecurityWithRetry(
@@ -100,27 +105,30 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_health_check(port=self.server_maintenance_port)
 
         with self.subTest("02_create_backend_service"):
-            self.td.create_backend_service(
-                security_settings=security_settings
-            )
+            self.td.create_backend_service(security_settings=security_settings)
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
         with self.subTest("04_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("05_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         with self.subTest("07_assert_expected_security_config_used"):
             self.assertTestAppSecurityWithRetry(
                 _SecurityMode.TLS, test_client, test_server
             )
-        with self.subTest("8_assert_successful_rpcs"):
+
+        with self.subTest("08_assert_successful_rpcs"):
             self.assertSuccessfulRpcs(test_client)
 
         logger.info("[SUCCESS] TLS security mode confirmed.")
@@ -143,21 +151,23 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_health_check(port=self.server_maintenance_port)
 
         with self.subTest("02_create_backend_service"):
-            self.td.create_backend_service(
-                security_settings=security_settings
-            )
+            self.td.create_backend_service(security_settings=security_settings)
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
         with self.subTest("04_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("05_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         with self.subTest("07_assert_expected_security_config_used"):
             self.assertTestAppSecurityWithRetry(
@@ -208,7 +218,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         # Setup policies and attach them.
         with self.subTest("04_setup_security_policies"):
@@ -257,7 +269,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         # Regular TLS setup, but with client policy configured using
         # intentionally incorrect server_namespace.

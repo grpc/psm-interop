@@ -24,7 +24,7 @@ Mesh = gcp.network_services.Mesh
 logger = logging.getLogger(__name__)
 
 
-# TODO: Verify and delete this class if TrafficDirectorSecureManager can be 
+# TODO: Verify and delete this class if TrafficDirectorSecureManager can be
 # directly used instead, as it also has the required mesh and route related
 # functionalities
 class SpiffeMeshManager(td_base.TrafficDirectorSecureManager):

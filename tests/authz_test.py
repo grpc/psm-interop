@@ -225,7 +225,6 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
     def test_plaintext_allow(self) -> None:
-
         with self.subTest("00_create_health_check"):
             self.td.create_health_check(port=self.server_maintenance_port)
 
@@ -236,10 +235,14 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("04_create_authz_policy_and_setup_security_policies"):
-            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.td.create_authz_policy(
+                action="ALLOW", rules=self.authz_rules()
+            )
             self.setupSecurityPolicies(
                 server_tls=False,
                 server_mtls=False,
@@ -252,7 +255,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         time.sleep(_SETTLE_DURATION.total_seconds())
 
@@ -330,10 +335,14 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("04_create_authz_policy_and_setup_security_policies"):
-            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.td.create_authz_policy(
+                action="ALLOW", rules=self.authz_rules()
+            )
             self.setupSecurityPolicies(
                 server_tls=True,
                 server_mtls=False,
@@ -346,7 +355,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         time.sleep(_SETTLE_DURATION.total_seconds())
 
@@ -378,12 +389,19 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("04_create_authz_policy_and_setup_security_policies"):
-            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.td.create_authz_policy(
+                action="ALLOW", rules=self.authz_rules()
+            )
             self.setupSecurityPolicies(
-                server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
+                server_tls=True,
+                server_mtls=True,
+                client_tls=True,
+                client_mtls=True,
             )
 
         with self.subTest("05_start_secure_test_server"):
@@ -391,7 +409,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         time.sleep(_SETTLE_DURATION.total_seconds())
 
@@ -433,7 +453,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.td.create_mesh()
 
         with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         with self.subTest("04_create_authz_policy_and_setup_security_policies"):
             self.td.create_authz_policy(action="DENY", rules=self.authz_rules())
@@ -449,7 +471,9 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             self.setupServerBackends()
 
         with self.subTest("06_start_secure_test_client"):
-            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
 
         time.sleep(_SETTLE_DURATION.total_seconds())
 
