@@ -1460,7 +1460,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             mtls=server_mtls,
         )
 
-    def setupTrafficDirectorGrpcWithSecurity(
+    def setupTlsPolicies(
         self, server_tls, server_mtls, client_tls, client_mtls
     ):
         # Create policies first
@@ -1484,12 +1484,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
                 "subjectAltNames": [server_spiffe],
             }
 
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port,
-            security_settings=security_settings,
-        )
-        self.td.create_mesh()
-        self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+        return security_settings
 
     def startSecureTestClient(
         self,

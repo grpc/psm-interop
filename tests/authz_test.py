@@ -225,30 +225,43 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
     def test_plaintext_allow(self) -> None:
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
-        self.td.create_mesh()
-        self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
-        self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
-            server_tls=False,
-            server_mtls=False,
-            client_tls=False,
-            client_mtls=False,
-        )
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+
+        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.setupSecurityPolicies(
+                server_tls=False,
+                server_mtls=False,
+                client_tls=False,
+                client_mtls=False,
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+
         time.sleep(_SETTLE_DURATION.total_seconds())
 
-        with self.subTest("01_host_wildcard"):
+        with self.subTest("07_host_wildcard"):
             self.configure_and_assert(
                 test_client, "host-wildcard", grpc.StatusCode.OK
             )
 
-        with self.subTest("02_no_match"):
+        with self.subTest("08_no_match"):
             self.configure_and_assert(
                 test_client, "no-such-rule", grpc.StatusCode.PERMISSION_DENIED
             )
@@ -256,7 +269,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
                 test_client, None, grpc.StatusCode.PERMISSION_DENIED
             )
 
-        with self.subTest("03_header_regex"):
+        with self.subTest("09_header_regex"):
             self.configure_and_assert(
                 test_client, "header-regex-a", grpc.StatusCode.OK
             )
@@ -277,7 +290,7 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
                 grpc.StatusCode.PERMISSION_DENIED,
             )
 
-        with self.subTest("04_host_match"):
+        with self.subTest("10_host_match"):
             self.configure_and_assert(
                 test_client, "host-match1", grpc.StatusCode.OK
             )
@@ -285,21 +298,21 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
                 test_client, "host-match2", grpc.StatusCode.OK
             )
 
-        with self.subTest("05_never_match_host"):
+        with self.subTest("11_never_match_host"):
             self.configure_and_assert(
                 test_client,
                 "never-match-host",
                 grpc.StatusCode.PERMISSION_DENIED,
             )
 
-        with self.subTest("06_never_match_port"):
+        with self.subTest("12_never_match_port"):
             self.configure_and_assert(
                 test_client,
                 "never-match-port",
                 grpc.StatusCode.PERMISSION_DENIED,
             )
 
-        with self.subTest("07_principal_present"):
+        with self.subTest("13_principal_present"):
             self.configure_and_assert(
                 test_client,
                 "principal-present",
@@ -307,35 +320,47 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_tls_allow(self) -> None:
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
-        self.td.create_mesh()
-        self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
-        self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
-            server_tls=True,
-            server_mtls=False,
-            client_tls=True,
-            client_mtls=False,
-        )
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+
+        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.setupSecurityPolicies(
+                server_tls=True,
+                server_mtls=False,
+                client_tls=True,
+                client_mtls=False,
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+
         time.sleep(_SETTLE_DURATION.total_seconds())
 
-        with self.subTest("01_host_wildcard"):
+        with self.subTest("07_host_wildcard"):
             self.configure_and_assert(
                 test_client, "host-wildcard", grpc.StatusCode.OK
             )
 
-        with self.subTest("02_no_match"):
+        with self.subTest("08_no_match"):
             self.configure_and_assert(
                 test_client, None, grpc.StatusCode.PERMISSION_DENIED
             )
 
-        with self.subTest("03_principal_present"):
+        with self.subTest("09_principal_present"):
             self.configure_and_assert(
                 test_client,
                 "principal-present",
@@ -343,42 +368,54 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_mtls_allow(self) -> None:
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
-        self.td.create_mesh()
-        self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
-        self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
-            server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
-        )
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+
+        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+            self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
+            self.setupSecurityPolicies(
+                server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+
         time.sleep(_SETTLE_DURATION.total_seconds())
 
-        with self.subTest("01_host_wildcard"):
+        with self.subTest("07_host_wildcard"):
             self.configure_and_assert(
                 test_client, "host-wildcard", grpc.StatusCode.OK
             )
 
-        with self.subTest("02_no_match"):
+        with self.subTest("08_no_match"):
             self.configure_and_assert(
                 test_client, None, grpc.StatusCode.PERMISSION_DENIED
             )
 
-        with self.subTest("03_principal_present"):
+        with self.subTest("09_principal_present"):
             self.configure_and_assert(
                 test_client, "principal-present", grpc.StatusCode.OK
             )
 
-        with self.subTest("04_match_principal"):
+        with self.subTest("10_match_principal"):
             self.configure_and_assert(
                 test_client, "match-principal", grpc.StatusCode.OK
             )
 
-        with self.subTest("05_never_match_principal"):
+        with self.subTest("11_never_match_principal"):
             self.configure_and_assert(
                 test_client,
                 "never-match-principal",
@@ -386,30 +423,42 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_plaintext_deny(self) -> None:
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
-        self.td.create_mesh()
-        self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
-        self.td.create_authz_policy(action="DENY", rules=self.authz_rules())
-        self.setupSecurityPolicies(
-            server_tls=False,
-            server_mtls=False,
-            client_tls=False,
-            client_mtls=False,
-        )
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(self.server_xds_host, self.server_xds_port)
+
+        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+            self.td.create_authz_policy(action="DENY", rules=self.authz_rules())
+            self.setupSecurityPolicies(
+                server_tls=False,
+                server_mtls=False,
+                client_tls=False,
+                client_mtls=False,
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+
         time.sleep(_SETTLE_DURATION.total_seconds())
 
-        with self.subTest("01_host_wildcard"):
+        with self.subTest("07_host_wildcard"):
             self.configure_and_assert(
                 test_client, "host-wildcard", grpc.StatusCode.PERMISSION_DENIED
             )
 
-        with self.subTest("02_no_match"):
+        with self.subTest("08_no_match"):
             self.configure_and_assert(test_client, None, grpc.StatusCode.OK)
 
 
