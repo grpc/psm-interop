@@ -74,3 +74,6 @@ out/
 protos/**/*_pb2*
 # Generated Go files
 docker/test-control-plane/grpc/interop/grpc_testing/xdsconfig/*.pb.go
+
+#### IDE configs ###
+.vscode
