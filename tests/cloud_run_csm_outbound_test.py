@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime as dt
 import logging
 from typing import TypeAlias
 
@@ -18,6 +19,7 @@ from absl.testing import absltest
 from typing_extensions import override
 
 from framework import xds_k8s_testcase
+from framework.helpers import retryers
 from framework.helpers import skips
 from framework.infrastructure import gcp
 from framework.test_cases import cloud_run_testcase
@@ -41,6 +43,31 @@ class CloudRunCsmOutboundTest(cloud_run_testcase.CloudRunXdsTestCase):
         elif config.client_lang is _Lang.JAVA:
             return config.version_gte("v1.77.x")
         return False
+
+    @override
+    def assertSuccessfulRpcs(
+        self,
+        test_client: _XdsTestClient,
+        num_rpcs: int = 100,
+        *,
+        secure_channel: bool = False,
+    ):
+        # Cloud Run outbound connections often return 503s during cold starts
+        # when the container is scaling from zero. We wrap this in a retryer
+        # to allow the connection to warm up.
+        retryer = retryers.exponential_retryer_with_timeout(
+            wait_min=dt.timedelta(seconds=10),
+            wait_max=dt.timedelta(seconds=25),
+            timeout=dt.timedelta(minutes=3),
+            retry_on_exceptions=(AssertionError,),
+            logger=logger,
+        )
+        return retryer(
+            super().assertSuccessfulRpcs,
+            test_client,
+            num_rpcs=num_rpcs,
+            secure_channel=secure_channel,
+        )
 
     def test_cloud_run_to_cloud_run(self):
         with self.subTest("0_create_mesh"):
