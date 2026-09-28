@@ -61,6 +61,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         with self.subTest("02_create_backend_service"):
             self.td.create_backend_service(security_settings=security_settings)
+
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
@@ -106,6 +107,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         with self.subTest("02_create_backend_service"):
             self.td.create_backend_service(security_settings=security_settings)
+
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
@@ -152,6 +154,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         with self.subTest("02_create_backend_service"):
             self.td.create_backend_service(security_settings=security_settings)
+
         with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
