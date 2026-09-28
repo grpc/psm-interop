@@ -1075,7 +1075,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         super().cleanup(force=force)
 
 
-class TrafficDirectorSecureManager(TrafficDirectorManager):
+class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
     SERVER_TLS_POLICY_NAME = "server-tls-policy"
     CLIENT_TLS_POLICY_NAME = "client-tls-policy"
     AUTHZ_POLICY_NAME = "authz-policy"
@@ -1083,7 +1083,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
     CERTIFICATE_PROVIDER_INSTANCE = "google_cloud_private_spiffe"
 
     netsec: _NetworkSecurityV1Beta1
-    netsvc: _NetworkServicesV1Beta1
+    netsvc_beta: _NetworkServicesV1Beta1
 
     def __init__(
         self,
@@ -1095,6 +1095,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
+        xds_server_region: Optional[str] = None,
     ):
         super().__init__(
             gcp_api_manager,
@@ -1104,11 +1105,12 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
             network=network,
             compute_api_version=compute_api_version,
             enable_dualstack=enable_dualstack,
+            xds_server_region=xds_server_region,
         )
 
         # API
         self.netsec = _NetworkSecurityV1Beta1(gcp_api_manager, project)
-        self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
+        self.netsvc_beta = _NetworkServicesV1Beta1(gcp_api_manager, project)
 
         # Managed resources
         self.server_tls_policy: Optional[ServerTlsPolicy] = None
@@ -1238,8 +1240,8 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         if self.authz_policy:
             config["authorizationPolicy"] = self.authz_policy.name
 
-        self.netsvc.create_endpoint_policy(name, config)
-        self.endpoint_policy = self.netsvc.get_endpoint_policy(name)
+        self.netsvc_beta.create_endpoint_policy(name, config)
+        self.endpoint_policy = self.netsvc_beta.get_endpoint_policy(name)
         logger.debug("Loaded Endpoint Policy: %r", self.endpoint_policy)
 
     def delete_endpoint_policy(self, force: bool = False) -> None:
@@ -1250,7 +1252,7 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
         else:
             return
         logger.info("Deleting Endpoint Policy %s", name)
-        self.netsvc.delete_endpoint_policy(name)
+        self.netsvc_beta.delete_endpoint_policy(name)
         self.endpoint_policy = None
 
     def create_client_tls_policy(self, *, tls, mtls):

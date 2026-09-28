@@ -48,18 +48,45 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         Both client and server configured to use TLS and mTLS.
         """
-        self.setupTrafficDirectorGrpcWithSecurity(
-            server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
-        )
+        with self.subTest("00_setup_tls_policies"):
+            security_settings = self.setupTlsPolicies(
+                server_tls=True,
+                server_mtls=True,
+                client_tls=True,
+                client_mtls=True,
+            )
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        self.assertTestAppSecurityWithRetry(
-            _SecurityMode.MTLS, test_client, test_server
-        )
-        self.assertSuccessfulRpcs(test_client)
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
+
+        with self.subTest("07_assert_expected_security_config_used"):
+            self.assertTestAppSecurityWithRetry(
+                _SecurityMode.MTLS, test_client, test_server
+            )
+
+        with self.subTest("08_assert_successful_rpcs"):
+            self.assertSuccessfulRpcs(test_client)
+
         logger.info("[SUCCESS] mTLS security mode confirmed.")
 
     def test_tls(self):
@@ -67,21 +94,45 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
 
         Both client and server configured to use TLS and not use mTLS.
         """
-        self.setupTrafficDirectorGrpcWithSecurity(
-            server_tls=True,
-            server_mtls=False,
-            client_tls=True,
-            client_mtls=False,
-        )
+        with self.subTest("00_setup_tls_policies"):
+            security_settings = self.setupTlsPolicies(
+                server_tls=True,
+                server_mtls=False,
+                client_tls=True,
+                client_mtls=False,
+            )
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        self.assertTestAppSecurityWithRetry(
-            _SecurityMode.TLS, test_client, test_server
-        )
-        self.assertSuccessfulRpcs(test_client)
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
+
+        with self.subTest("07_assert_expected_security_config_used"):
+            self.assertTestAppSecurityWithRetry(
+                _SecurityMode.TLS, test_client, test_server
+            )
+
+        with self.subTest("08_assert_successful_rpcs"):
+            self.assertSuccessfulRpcs(test_client)
+
         logger.info("[SUCCESS] TLS security mode confirmed.")
 
     def test_plaintext_fallback(self):
@@ -90,21 +141,45 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Control plane provides no security config so both client and server
         fallback to plaintext based on fallback-credentials.
         """
-        self.setupTrafficDirectorGrpcWithSecurity(
-            server_tls=False,
-            server_mtls=False,
-            client_tls=False,
-            client_mtls=False,
-        )
+        with self.subTest("00_setup_tls_policies"):
+            security_settings = self.setupTlsPolicies(
+                server_tls=False,
+                server_mtls=False,
+                client_tls=False,
+                client_mtls=False,
+            )
 
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends()
-        test_client: _XdsTestClient = self.startSecureTestClient(test_server)
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        self.assertTestAppSecurityWithRetry(
-            _SecurityMode.PLAINTEXT, test_client, test_server
-        )
-        self.assertSuccessfulRpcs(test_client)
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
+
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
+
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server
+            )
+
+        with self.subTest("07_assert_expected_security_config_used"):
+            self.assertTestAppSecurityWithRetry(
+                _SecurityMode.PLAINTEXT, test_client, test_server
+            )
+
+        with self.subTest("08_assert_successful_rpcs"):
+            self.assertSuccessfulRpcs(test_client)
+
         logger.info("[SUCCESS] Plaintext security mode confirmed.")
 
     def test_mtls_error(self):
@@ -117,47 +192,62 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         client. To ensure that we will perform the following steps in that
         sequence:
 
-        - Creation of a backendService, and attaching the backend (NEG)
-        - Creation of the Server mTLS Policy, and attaching to the ECS
+        - Creation of a backendService, mesh, and grpcRoute
+        - Creation of the Server mTLS Policy, and attaching to the EndpointPolicy
         - Creation of the Client TLS Policy, and attaching to the backendService
-        - Creation of the urlMap, targetProxy, and forwardingRule
+        - Creation of the server and attaching healthy backends (NEGs)
+        - Start the client and confirm connection failure
 
         With this sequence we are sure that when the client receives the
         endpoints of the backendService the security-config would also have
         been received as confirmed by the TD team.
-        """
-        # Create backend service
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
 
-        # Start server and attach its NEGs to the backend service, but
-        # until they become healthy.
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends(wait_for_healthy_status=False)
+        Additionally, creating the mesh and grpcRoute upfront allows Traffic
+        Director's background control plane propagation to begin while the
+        server and backends are initializing, reducing the frequency of
+        transient "Traffic Director configuration was not found for mesh" errors
+        (b/465910984).
+        """
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        # Create backend service
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        # Create the mesh and grpc route upfront to allow maximum TD
+        # propagation time (b/465910984).
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         # Setup policies and attach them.
-        self.setupSecurityPolicies(
-            server_tls=True,
-            server_mtls=True,
-            client_tls=True,
-            client_mtls=False,
-        )
+        with self.subTest("04_setup_security_policies"):
+            self.setupSecurityPolicies(
+                server_tls=True,
+                server_mtls=True,
+                client_tls=True,
+                client_mtls=False,
+            )
 
-        # Create the routing rule map.
-        self.td.setup_routing_rule_map_for_grpc(
-            self.server_xds_host, self.server_xds_port
-        )
-        # Now that TD setup is complete, Backend Service can be populated
-        # with healthy backends (NEGs).
-        self.td.wait_for_backends_healthy_status()
+        # Start server and attach its NEGs to the backend service.
+        with self.subTest("05_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
 
         # Start the client, but don't wait for it to report a healthy channel.
-        test_client: _XdsTestClient = self.startSecureTestClient(
-            test_server, wait_for_server_channel_ready=False
-        )
+        with self.subTest("06_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server, wait_for_server_channel_ready=False
+            )
 
-        self.assertClientCannotReachServerRepeatedly(test_client)
+        with self.subTest("07_assert_client_cannot_reach_server"):
+            self.assertClientCannotReachServerRepeatedly(test_client)
+
         logger.info(
             "[SUCCESS] Client's connectivity state is consistent with a mTLS "
             "error caused by not presenting mTLS certificate to the server."
@@ -169,47 +259,57 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Client does not authorize server because of mismatched SAN name.
         The order of operations is the same as in `test_mtls_error`.
         """
-        # Create backend service
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
-        )
+        with self.subTest("00_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
 
-        # Start server and attach its NEGs to the backend service, but
-        # until they become healthy.
-        test_server: _XdsTestServer = self.startSecureTestServer()
-        self.setupServerBackends(wait_for_healthy_status=False)
+        # Create backend service
+        with self.subTest("01_create_backend_service"):
+            self.td.create_backend_service()
+
+        # Create the mesh and grpc route upfront to allow maximum TD
+        # propagation time (b/465910984).
+        with self.subTest("02_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("03_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
+            )
 
         # Regular TLS setup, but with client policy configured using
-        # intentionality incorrect server_namespace.
-        self.td.setup_server_security(
-            server_namespace=self.server_namespace,
-            server_name=self.server_name,
-            server_port=self.server_port,
-            tls=True,
-            mtls=False,
-        )
+        # intentionally incorrect server_namespace.
+        with self.subTest("04_setup_server_security"):
+            self.td.setup_server_security(
+                server_namespace=self.server_namespace,
+                server_name=self.server_name,
+                server_port=self.server_port,
+                tls=True,
+                mtls=False,
+            )
         incorrect_namespace = f"incorrect-namespace-{rand.rand_string()}"
-        self.td.setup_client_security(
-            server_namespace=incorrect_namespace,
-            server_name=self.server_name,
-            tls=True,
-            mtls=False,
-        )
 
-        # Create the routing rule map.
-        self.td.setup_routing_rule_map_for_grpc(
-            self.server_xds_host, self.server_xds_port
-        )
-        # Now that TD setup is complete, Backend Service can be populated
-        # with healthy backends (NEGs).
-        self.td.wait_for_backends_healthy_status()
+        with self.subTest("05_setup_client_security"):
+            self.td.setup_client_security(
+                server_namespace=incorrect_namespace,
+                server_name=self.server_name,
+                tls=True,
+                mtls=False,
+            )
+
+        # Start server and attach its NEGs to the backend service.
+        with self.subTest("06_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
+            self.setupServerBackends()
 
         # Start the client, but don't wait for it to report a healthy channel.
-        test_client: _XdsTestClient = self.startSecureTestClient(
-            test_server, wait_for_server_channel_ready=False
-        )
+        with self.subTest("07_start_secure_test_client"):
+            test_client: _XdsTestClient = self.startSecureTestClient(
+                test_server, wait_for_server_channel_ready=False
+            )
 
-        self.assertClientCannotReachServerRepeatedly(test_client)
+        with self.subTest("08_assert_client_cannot_reach_server"):
+            self.assertClientCannotReachServerRepeatedly(test_client)
+
         logger.info(
             "[SUCCESS] Client's connectivity state is consistent with "
             "AuthZ error caused by server presenting incorrect SAN."

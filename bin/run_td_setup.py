@@ -133,13 +133,14 @@ def _setup_td_secure(
     server_xds_host,
     server_xds_port,
 ):
+    td.setup_backend_for_grpc(
+        health_check_port=server_maintenance_port,
+    )
+    td.create_mesh()
+    td.create_grpc_route(server_xds_host, server_xds_port)
+
     if security_mode == "mtls":
         logger.info("Setting up mtls")
-        td.setup_for_grpc(
-            server_xds_host,
-            server_xds_port,
-            health_check_port=server_maintenance_port,
-        )
         td.setup_server_security(
             server_namespace=server_namespace,
             server_name=server_name,
@@ -155,11 +156,6 @@ def _setup_td_secure(
         )
     elif security_mode == "tls":
         logger.info("Setting up tls")
-        td.setup_for_grpc(
-            server_xds_host,
-            server_xds_port,
-            health_check_port=server_maintenance_port,
-        )
         td.setup_server_security(
             server_namespace=server_namespace,
             server_name=server_name,
@@ -175,11 +171,6 @@ def _setup_td_secure(
         )
     elif security_mode == "plaintext":
         logger.info("Setting up plaintext")
-        td.setup_for_grpc(
-            server_xds_host,
-            server_xds_port,
-            health_check_port=server_maintenance_port,
-        )
         td.setup_server_security(
             server_namespace=server_namespace,
             server_name=server_name,
@@ -197,11 +188,6 @@ def _setup_td_secure(
         # Error case: server expects client mTLS cert,
         # but client configured only for TLS
         logger.info("Setting up mtls_error")
-        td.setup_for_grpc(
-            server_xds_host,
-            server_xds_port,
-            health_check_port=server_maintenance_port,
-        )
         td.setup_server_security(
             server_namespace=server_namespace,
             server_name=server_name,
@@ -218,14 +204,7 @@ def _setup_td_secure(
     elif security_mode == "server_authz_error":
         # Error case: client does not authorize server
         # because of mismatched SAN name.
-        logger.info("Setting up mtls_error")
-        td.setup_for_grpc(
-            server_xds_host,
-            server_xds_port,
-            health_check_port=server_maintenance_port,
-        )
-        # Regular TLS setup, but with client policy configured using
-        # intentionality incorrect server_namespace.
+        logger.info("Setting up server_authz_error")
         td.setup_server_security(
             server_namespace=server_namespace,
             server_name=server_name,
@@ -293,7 +272,7 @@ def main(
     # Flags.
     command = _CMD.value
     security_mode = _SECURITY.value
-    if security_mode:
+    if security_mode and _MODE.value == "default":
         flags.set_default(_MODE, "secure")
 
     mode = _MODE.value
