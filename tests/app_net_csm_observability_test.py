@@ -547,6 +547,7 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             ),
             deadline=90.0,
         )
+
         def _list_time_series(
             metric: str,
         ) -> list[monitoring_v3.types.TimeSeries]:
