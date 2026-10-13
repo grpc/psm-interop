@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import dataclasses
+import datetime
 import logging
 import time
 from typing import Any, Callable, Iterable, TextIO
@@ -27,6 +28,7 @@ from requests.exceptions import RequestException
 import yaml
 
 from framework import xds_k8s_testcase
+from framework.helpers import retryers
 from framework.helpers import skips
 from framework.test_app.runners.k8s import k8s_base_runner
 from framework.test_app.runners.k8s import k8s_xds_client_runner
@@ -545,8 +547,10 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
             ),
             deadline=90.0,
         )
-        results = {}
-        for metric in metric_names:
+        def _list_time_series(
+            metric: str,
+        ) -> list[monitoring_v3.types.TimeSeries]:
+            interval.end_time = {"seconds": int(time.time())}
             logger.info("Requesting list_time_series for metric %s", metric)
             response = self.metric_client.list_time_series(
                 name=f"projects/{self.project}",
@@ -555,7 +559,22 @@ class AppNetCsmObservabilityTest(xds_k8s_testcase.AppNetXdsKubernetesTestCase):
                 view=monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                 retry=retry_settings,
             )
-            time_series = list(response)
+            return list(response)
+
+        metric_retryer = retryers.constant_retryer(
+            wait_fixed=datetime.timedelta(seconds=10),
+            timeout=datetime.timedelta(seconds=90),
+            retry_on_exceptions=(),
+            check_result=bool,
+            logger=logger,
+            log_level=logging.INFO,
+        )
+        results = {}
+        for metric in metric_names:
+            try:
+                time_series = metric_retryer(_list_time_series, metric)
+            except retryers.RetryError as e:
+                time_series = e.result(default=[])
 
             self.assertLen(
                 time_series,
