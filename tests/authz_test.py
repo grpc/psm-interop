@@ -225,9 +225,8 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
     def test_plaintext_allow(self) -> None:
-        self.setupTrafficDirectorGrpc()
         self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=False,
             server_mtls=False,
             client_tls=False,
@@ -303,9 +302,8 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_tls_allow(self) -> None:
-        self.setupTrafficDirectorGrpc()
         self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=True,
             server_mtls=False,
             client_tls=True,
@@ -335,9 +333,8 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_mtls_allow(self) -> None:
-        self.setupTrafficDirectorGrpc()
         self.td.create_authz_policy(action="ALLOW", rules=self.authz_rules())
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=True, server_mtls=True, client_tls=True, client_mtls=True
         )
 
@@ -374,9 +371,8 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_plaintext_deny(self) -> None:
-        self.setupTrafficDirectorGrpc()
         self.td.create_authz_policy(action="DENY", rules=self.authz_rules())
-        self.setupSecurityPolicies(
+        self.setupTrafficDirectorGrpcWithSecurity(
             server_tls=False,
             server_mtls=False,
             client_tls=False,
