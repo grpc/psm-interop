@@ -53,7 +53,7 @@ if [[ "$1" == "--nosecure" ]]; then
   ./run.sh bin/run_test_client.py --cmd=cleanup --cleanup_namespace "$@" && \
   ./run.sh bin/run_test_server.py --cmd=cleanup --cleanup_namespace "$@"
 else
-  ./run.sh bin/run_td_setup.py --cmd=cleanup --security=mtls "$@" && \
+  ./run.sh bin/run_td_setup.py --cmd=cleanup --mode=secure --security=mtls "$@" && \
   ./run.sh bin/run_test_client.py --cmd=cleanup --cleanup_namespace --mode=secure "$@" && \
   ./run.sh bin/run_test_server.py --cmd=cleanup --cleanup_namespace --mode=secure "$@"
 fi

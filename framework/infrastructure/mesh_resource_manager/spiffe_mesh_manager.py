@@ -24,6 +24,9 @@ Mesh = gcp.network_services.Mesh
 logger = logging.getLogger(__name__)
 
 
+# TODO(b/574437494): Verify and delete this class if
+# TrafficDirectorSecureManager can be directly used instead, as it now supports
+# required mesh and route creation.
 class SpiffeMeshManager(td_base.TrafficDirectorSecureManager):
     GRPC_ROUTE_NAME = "grpc-route"
     MESH_NAME = "mesh"

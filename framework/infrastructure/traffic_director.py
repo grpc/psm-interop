@@ -1075,7 +1075,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         super().cleanup(force=force)
 
 
-class TrafficDirectorSecureManager(TrafficDirectorManager):
+class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
     SERVER_TLS_POLICY_NAME = "server-tls-policy"
     CLIENT_TLS_POLICY_NAME = "client-tls-policy"
     AUTHZ_POLICY_NAME = "authz-policy"
