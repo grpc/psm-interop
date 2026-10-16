@@ -1095,7 +1095,6 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
         network: str = "default",
         compute_api_version: str = "v1",
         enable_dualstack: bool = False,
-        xds_server_region: Optional[str] = None,
     ):
         super().__init__(
             gcp_api_manager,
@@ -1105,7 +1104,6 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
             network=network,
             compute_api_version=compute_api_version,
             enable_dualstack=enable_dualstack,
-            xds_server_region=xds_server_region,
         )
 
         # API

@@ -1381,7 +1381,6 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             network=self.network,
             compute_api_version=self.compute_api_version,
             enable_dualstack=self.enable_dualstack,
-            xds_server_region=self.xds_server_region,
         )
 
     def initKubernetesServerRunner(self, **kwargs) -> KubernetesServerRunner:
