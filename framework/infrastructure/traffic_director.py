@@ -1083,7 +1083,7 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
     CERTIFICATE_PROVIDER_INSTANCE = "google_cloud_private_spiffe"
 
     netsec: _NetworkSecurityV1Beta1
-    netsvc_beta: _NetworkServicesV1Beta1
+    netsvc: _NetworkServicesV1Beta1
 
     def __init__(
         self,
@@ -1110,7 +1110,7 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
 
         # API
         self.netsec = _NetworkSecurityV1Beta1(gcp_api_manager, project)
-        self.netsvc_beta = _NetworkServicesV1Beta1(gcp_api_manager, project)
+        self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
 
         # Managed resources
         self.server_tls_policy: Optional[ServerTlsPolicy] = None
@@ -1240,8 +1240,8 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
         if self.authz_policy:
             config["authorizationPolicy"] = self.authz_policy.name
 
-        self.netsvc_beta.create_endpoint_policy(name, config)
-        self.endpoint_policy = self.netsvc_beta.get_endpoint_policy(name)
+        self.netsvc.create_endpoint_policy(name, config)
+        self.endpoint_policy = self.netsvc.get_endpoint_policy(name)
         logger.debug("Loaded Endpoint Policy: %r", self.endpoint_policy)
 
     def delete_endpoint_policy(self, force: bool = False) -> None:
@@ -1252,7 +1252,7 @@ class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
         else:
             return
         logger.info("Deleting Endpoint Policy %s", name)
-        self.netsvc_beta.delete_endpoint_policy(name)
+        self.netsvc.delete_endpoint_policy(name)
         self.endpoint_policy = None
 
     def create_client_tls_policy(self, *, tls, mtls):

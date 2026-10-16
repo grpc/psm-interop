@@ -1460,7 +1460,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             mtls=server_mtls,
         )
 
-    def setupTlsPolicies(
+    def setupGrpcWithSecurity(
         self,
         *,
         server_tls: bool,

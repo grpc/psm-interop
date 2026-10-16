@@ -49,7 +49,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Both client and server configured to use TLS and mTLS.
         """
         with self.subTest("00_setup_tls_policies"):
-            security_settings = self.setupTlsPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=True,
                 client_tls=True,
@@ -95,7 +95,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Both client and server configured to use TLS and not use mTLS.
         """
         with self.subTest("00_setup_tls_policies"):
-            security_settings = self.setupTlsPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=False,
                 client_tls=True,
@@ -142,7 +142,7 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         fallback to plaintext based on fallback-credentials.
         """
         with self.subTest("00_setup_tls_policies"):
-            security_settings = self.setupTlsPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=False,
                 server_mtls=False,
                 client_tls=False,
