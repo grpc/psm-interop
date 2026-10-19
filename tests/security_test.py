@@ -117,32 +117,27 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         client. To ensure that we will perform the following steps in that
         sequence:
 
-        - Creation of a backendService, and attaching the backend (NEG)
         - Creation of the Server mTLS Policy, and attaching to the ECS
         - Creation of the Client TLS Policy, and attaching to the backendService
+        - Creation of a backendService, and attaching the backend (NEG)
         - Creation of the urlMap, targetProxy, and forwardingRule
 
         With this sequence we are sure that when the client receives the
         endpoints of the backendService the security-config would also have
         been received as confirmed by the TD team.
         """
-        # Create backend service
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
+        # Setup policies and backend service.
+        self.setupBackendForGrpcWithSecurity(
+            server_tls=True,
+            server_mtls=True,
+            client_tls=True,
+            client_mtls=False,
         )
 
         # Start server and attach its NEGs to the backend service, but
         # until they become healthy.
         test_server: _XdsTestServer = self.startSecureTestServer()
         self.setupServerBackends(wait_for_healthy_status=False)
-
-        # Setup policies and attach them.
-        self.setupSecurityPolicies(
-            server_tls=True,
-            server_mtls=True,
-            client_tls=True,
-            client_mtls=False,
-        )
 
         # Create the routing rule map.
         self.td.setup_routing_rule_map_for_grpc(
@@ -169,32 +164,21 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Client does not authorize server because of mismatched SAN name.
         The order of operations is the same as in `test_mtls_error`.
         """
-        # Create backend service
-        self.td.setup_backend_for_grpc(
-            health_check_port=self.server_maintenance_port
+        # Regular TLS setup, but with client policy configured using
+        # intentionality incorrect server_namespace.
+        incorrect_namespace = f"incorrect-namespace-{rand.rand_string()}"
+        self.setupBackendForGrpcWithSecurity(
+            server_tls=True,
+            server_mtls=False,
+            client_tls=True,
+            client_mtls=False,
+            server_namespace_for_client_policy=incorrect_namespace,
         )
 
         # Start server and attach its NEGs to the backend service, but
         # until they become healthy.
         test_server: _XdsTestServer = self.startSecureTestServer()
         self.setupServerBackends(wait_for_healthy_status=False)
-
-        # Regular TLS setup, but with client policy configured using
-        # intentionality incorrect server_namespace.
-        self.td.setup_server_security(
-            server_namespace=self.server_namespace,
-            server_name=self.server_name,
-            server_port=self.server_port,
-            tls=True,
-            mtls=False,
-        )
-        incorrect_namespace = f"incorrect-namespace-{rand.rand_string()}"
-        self.td.setup_client_security(
-            server_namespace=incorrect_namespace,
-            server_name=self.server_name,
-            tls=True,
-            mtls=False,
-        )
 
         # Create the routing rule map.
         self.td.setup_routing_rule_map_for_grpc(

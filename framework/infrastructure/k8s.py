@@ -433,7 +433,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         try:
             return self._execute(method, *args, **kwargs)
         except NotFound:
-            # Instead of trowing an error when a resource doesn't exist,
+            # Instead of throwing an error when a resource doesn't exist,
             # just return None.
             return None
 
@@ -443,7 +443,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         try:
             return api.get(name=name, namespace=self.name, *args, **kwargs)
         except dynamic_exc.NotFoundError:
-            # Instead of trowing an error when a resource doesn't exist,
+            # Instead of throwing an error when a resource doesn't exist,
             # just return None.
             return None
 
@@ -572,6 +572,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             if (
                 "too many requests" in body
                 or "currently unable to handle the request" in body
+                or "enhance_your_calm" in body
             ):
                 return _too_many_requests_retryer()
 
@@ -1015,7 +1016,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
         count: int = 1,
         timeout_sec: int = WAIT_MEDIUM_TIMEOUT_SEC,
         wait_sec: int = WAIT_SHORT_SLEEP_SEC,
-    ) -> None:
+    ) -> V1Deployment:
         timeout = _timedelta(seconds=timeout_sec)
         retryer = retryers.constant_retryer(
             wait_fixed=_timedelta(seconds=wait_sec),
@@ -1023,7 +1024,7 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             check_result=lambda depl: self._replicas_available(depl, count),
         )
         try:
-            retryer(self.get_deployment, name)
+            return retryer(self.get_deployment, name)
         except retryers.RetryError as retry_err:
             result = retry_err.result()
             note = framework.errors.FrameworkError.note_blanket_error_info_below(
