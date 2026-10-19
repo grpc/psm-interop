@@ -1459,8 +1459,14 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             mtls=server_mtls,
         )
 
-    def setupTrafficDirectorGrpcWithSecurity(
-        self, server_tls, server_mtls, client_tls, client_mtls
+    def setupBackendForGrpcWithSecurity(
+        self,
+        *,
+        server_tls: bool,
+        server_mtls: bool,
+        client_tls: bool,
+        client_mtls: bool,
+        server_namespace_for_client_policy: Optional[str] = None,
     ):
         # Create policies first
         self.td.create_client_tls_policy(tls=client_tls, mtls=client_mtls)
@@ -1474,20 +1480,34 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 
         security_settings = None
         if self.td.client_tls_policy:
+            target_namespace = (
+                server_namespace_for_client_policy or self.server_namespace
+            )
             server_spiffe = (
                 f"spiffe://{self.project}.svc.id.goog/"
-                f"ns/{self.server_namespace}/sa/{self.server_name}"
+                f"ns/{target_namespace}/sa/{self.server_name}"
             )
             security_settings = {
                 "clientTlsPolicy": self.td.client_tls_policy.url,
                 "subjectAltNames": [server_spiffe],
             }
 
-        self.td.setup_for_grpc(
-            self.server_xds_host,
-            self.server_xds_port,
+        self.td.setup_backend_for_grpc(
             health_check_port=self.server_maintenance_port,
             security_settings=security_settings,
+        )
+
+    def setupTrafficDirectorGrpcWithSecurity(
+        self, server_tls, server_mtls, client_tls, client_mtls
+    ):
+        self.setupBackendForGrpcWithSecurity(
+            server_tls=server_tls,
+            server_mtls=server_mtls,
+            client_tls=client_tls,
+            client_mtls=client_mtls,
+        )
+        self.td.setup_routing_rule_map_for_grpc(
+            self.server_xds_host, self.server_xds_port
         )
 
     def startSecureTestClient(
