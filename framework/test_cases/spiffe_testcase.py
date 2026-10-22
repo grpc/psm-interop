@@ -79,6 +79,7 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
         *,
         enable_spiffe: bool = False,
         wait_for_server_channel_ready: bool = True,
+        **kwargs,
     ) -> XdsTestClient:
         self.client_runner = CloudRunClientRunner(
             project=self.project,
@@ -93,6 +94,7 @@ class SpiffeMtlsXdsKubernetesCloudRunTestCase(
             namespace=self.mwid_namespace_name,
             managed_identity=self.managed_identity_id,
             enable_spiffe=enable_spiffe,
+            **kwargs,
         )
         test_client = self.client_runner.run(
             server_target=test_server.xds_uri,
