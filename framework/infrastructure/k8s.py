@@ -132,7 +132,7 @@ class NotFound(Exception):
 
 class KubernetesApiManager:
     _client: client.ApiClient
-    _dynamic_client: dynamic.DynamicClient
+    _dynamic_client: Optional[dynamic.DynamicClient] = None
     context: str
     apps: client.AppsV1Api
     core: client.CoreV1Api
@@ -142,11 +142,11 @@ class KubernetesApiManager:
     def __init__(self, context: str):
         self.context = context
         self._client = self._new_client_from_context(context)
-        self._dynamic_client = dynamic.DynamicClient(self._client)
         self.apps = client.AppsV1Api(self.client)
         self.core = client.CoreV1Api(self.client)
         self._apis = {self.apps, self.core}
         self._dynamic_apis = set()
+        self._dynamic_client = self._execute(self._new_dynamic_client)
         # TODO(https://github.com/kubernetes-client/python/issues/2101): remove
         #  when the issue is solved, and the kubernetes dependency is bumped.
         warnings.filterwarnings(
@@ -253,8 +253,16 @@ class KubernetesApiManager:
         client.Configuration.set_default(self._client.configuration)
         for api in self._apis:
             api.api_client = self._client
+        if self._dynamic_client is not None:
+            self._dynamic_client.client = self._client
+            self._dynamic_client.configuration = self._client.configuration
 
-        # TODO(sergiitk): [GAMMA] what to do with dynamic apis?
+    def _refresh_auth(self):
+        logger.info("Reloading k8s api client to refresh the auth.")
+        self.reload()
+
+    def _new_dynamic_client(self) -> dynamic.DynamicClient:
+        return dynamic.DynamicClient(self._client)
 
     @classmethod
     def _new_client_from_context(cls, context: str) -> "client.ApiClient":
@@ -275,177 +283,17 @@ class KubernetesApiManager:
     ) -> dynamic_res.Resource:
         api_version = f"{api_name}/{version}"
         try:
-            k8s_api: dynamic_res.Resource = self.dynamic_client.resources.get(
-                api_version=api_version, kind=kind
+            k8s_api: dynamic_res.Resource = self._execute(
+                self.dynamic_client.resources.get,
+                api_version=api_version,
+                kind=kind,
             )
             self._dynamic_apis.add(k8s_api.group_version)
             return k8s_api
         except dynamic_exc.ResourceNotFoundError as err:
-            # TODO(sergiitk): [GAMMA] add retries if static client
-            #   retries not apply.
             raise RuntimeError(
                 f"Couldn't discover k8s API {api_version}, resource {kind}",
             ) from err
-
-
-class KubernetesNamespace:  # pylint: disable=too-many-public-methods
-    _highlighter: framework.helpers.highlighter.Highlighter
-    _api: KubernetesApiManager
-    _name: str
-
-    NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
-    MESH_ANNOTATION = "networking.gke.io/meshes"
-    # TODO(sergiitk): get rid of _SEC variables, only use timedelta
-    # timedelta.seconds: assumes none of the timeouts more than a day.
-    DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
-    DELETE_GRACE_PERIOD_SEC: Final[int] = DELETE_GRACE_PERIOD.seconds
-    WAIT_SHORT_TIMEOUT: Final[_timedelta] = _timedelta(minutes=1)
-    WAIT_SHORT_TIMEOUT_SEC: Final[int] = WAIT_SHORT_TIMEOUT.seconds
-    WAIT_SHORT_SLEEP: Final[_timedelta] = _timedelta(seconds=1)
-    WAIT_SHORT_SLEEP_SEC: Final[int] = WAIT_SHORT_SLEEP.seconds
-    # TODO(sergiitk): timedelta form for the rest
-    WAIT_MEDIUM_TIMEOUT_SEC: int = 5 * 60
-    WAIT_MEDIUM_SLEEP_SEC: int = 10
-    WAIT_LONG_TIMEOUT_SEC: int = 10 * 60
-    WAIT_LONG_SLEEP_SEC: int = 30
-    WAIT_POD_START_TIMEOUT_SEC: int = 3 * 60
-
-    # TODO(sergiitk): Find a better way. Maybe like in framework.rpc.grpc?
-    wait_for_namespace_deleted_timeout_sec = None
-    wait_for_namespace_deleted_sleep_sec = None
-
-    def __init__(self, api: KubernetesApiManager, name: str):
-        self._api = api
-        self._name = name
-        self._highlighter = _HighlighterYaml()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    @functools.cache
-    def api_gke_mesh(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api("net.gke.io/v1alpha1", "TDMesh")
-
-    @property
-    @functools.cache
-    def api_grpc_route(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "gateway.networking.k8s.io/v1",
-            "GRPCRoute",
-        )
-
-    @property
-    @functools.cache
-    def api_http_route(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "gateway.networking.k8s.io/v1beta1",
-            "HTTPRoute",
-        )
-
-    @property
-    def gamma_route_apis(self):
-        return {
-            RouteKind.HTTP: self.api_http_route,
-            RouteKind.GRPC: self.api_grpc_route,
-        }
-
-    @property
-    @functools.cache
-    def api_session_affinity_filter(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "networking.gke.io/v1",
-            "GCPSessionAffinityFilter",
-        )
-
-    @property
-    @functools.cache
-    def api_session_affinity_policy(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "networking.gke.io/v1",
-            "GCPSessionAffinityPolicy",
-        )
-
-    @property
-    @functools.cache
-    def pod_monitoring(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "monitoring.googleapis.com/v1",
-            "PodMonitoring",
-        )
-
-    @property
-    @functools.cache
-    def api_backend_policy(self) -> dynamic_res.Resource:
-        return self._get_dynamic_api(
-            "networking.gke.io/v1",
-            "GCPBackendPolicy",
-        )
-
-    def _refresh_auth(self):
-        logger.info("Reloading k8s api client to refresh the auth.")
-        self._api.reload()
-
-    def _apply_manifest_single(self, manifest) -> object:
-        k8s_objects = utils.create_from_dict(
-            self._api.client, manifest, namespace=self.name
-        )
-        if len(k8s_objects) != 1:
-            raise ValueError(
-                f"Expected exactly one k8s object created from"
-                f" manifest {manifest}"
-            )
-        return k8s_objects[0]
-
-    def _apply_manifest_custom_object(self, manifest) -> DynResourceInstance:
-        api = self._get_dynamic_api(manifest["apiVersion"], manifest["kind"])
-        return api.create(manifest)
-
-    @functools.cache
-    def _get_dynamic_api(self, api_version, kind) -> dynamic_res.Resource:
-        group, _, version = api_version.partition("/")
-
-        # TODO(sergiitk): [GAMMA] Needs to be improved. This all is very clunky
-        #  when considered together with _get_dynamic_api and api_gke_mesh,
-        #  api_grpc_route.
-        if group == "networking.gke.io":
-            if kind == "GCPSessionAffinityFilter":
-                return self._api.gcp_session_affinity_filter(version)
-            elif kind == "GCPSessionAffinityPolicy":
-                return self._api.gcp_session_affinity_policy(version)
-            elif kind == "GCPBackendPolicy":
-                return self._api.gcp_backend_policy(version)
-        elif group == "gateway.networking.k8s.io":
-            if kind == "GRPCRoute":
-                return self._api.grpc_route(version)
-            elif kind == "HTTPRoute":
-                return self._api.http_route(version)
-        elif group == "monitoring.googleapis.com":
-            if kind == "PodMonitoring":
-                return self._api.pod_monitoring(version)
-
-        raise NotImplementedError(
-            f"{kind} ({group}) {api_version} not implemented."
-        )
-
-    def _get_resource(self, method: Callable[[Any], object], *args, **kwargs):
-        try:
-            return self._execute(method, *args, **kwargs)
-        except NotFound:
-            # Instead of throwing an error when a resource doesn't exist,
-            # just return None.
-            return None
-
-    def _get_dyn_resource(
-        self, api: dynamic_res.Resource, name, *args, **kwargs
-    ) -> Optional[DynResourceInstance]:
-        try:
-            return api.get(name=name, namespace=self.name, *args, **kwargs)
-        except dynamic_exc.NotFoundError:
-            # Instead of throwing an error when a resource doesn't exist,
-            # just return None.
-            return None
 
     def _execute(self, method: Callable[[Any], object], *args, **kwargs):
         # Note: Intentionally leaving return type as unspecified to not confuse
@@ -593,6 +441,170 @@ class KubernetesNamespace:  # pylint: disable=too-many-public-methods
             return str(json.loads(body)["message"])
         except (KeyError, ValueError):
             return body
+
+
+class KubernetesNamespace:  # pylint: disable=too-many-public-methods
+    _highlighter: framework.helpers.highlighter.Highlighter
+    _api: KubernetesApiManager
+    _name: str
+
+    NEG_STATUS_ANNOTATION = "cloud.google.com/neg-status"
+    MESH_ANNOTATION = "networking.gke.io/meshes"
+    # TODO(sergiitk): get rid of _SEC variables, only use timedelta
+    # timedelta.seconds: assumes none of the timeouts more than a day.
+    DELETE_GRACE_PERIOD: Final[_timedelta] = _timedelta(seconds=5)
+    DELETE_GRACE_PERIOD_SEC: Final[int] = DELETE_GRACE_PERIOD.seconds
+    WAIT_SHORT_TIMEOUT: Final[_timedelta] = _timedelta(minutes=1)
+    WAIT_SHORT_TIMEOUT_SEC: Final[int] = WAIT_SHORT_TIMEOUT.seconds
+    WAIT_SHORT_SLEEP: Final[_timedelta] = _timedelta(seconds=1)
+    WAIT_SHORT_SLEEP_SEC: Final[int] = WAIT_SHORT_SLEEP.seconds
+    # TODO(sergiitk): timedelta form for the rest
+    WAIT_MEDIUM_TIMEOUT_SEC: int = 5 * 60
+    WAIT_MEDIUM_SLEEP_SEC: int = 10
+    WAIT_LONG_TIMEOUT_SEC: int = 10 * 60
+    WAIT_LONG_SLEEP_SEC: int = 30
+    WAIT_POD_START_TIMEOUT_SEC: int = 3 * 60
+
+    # TODO(sergiitk): Find a better way. Maybe like in framework.rpc.grpc?
+    wait_for_namespace_deleted_timeout_sec = None
+    wait_for_namespace_deleted_sleep_sec = None
+
+    def __init__(self, api: KubernetesApiManager, name: str):
+        self._api = api
+        self._name = name
+        self._highlighter = _HighlighterYaml()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    @functools.cache
+    def api_gke_mesh(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api("net.gke.io/v1alpha1", "TDMesh")
+
+    @property
+    @functools.cache
+    def api_grpc_route(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "gateway.networking.k8s.io/v1",
+            "GRPCRoute",
+        )
+
+    @property
+    @functools.cache
+    def api_http_route(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "gateway.networking.k8s.io/v1beta1",
+            "HTTPRoute",
+        )
+
+    @property
+    def gamma_route_apis(self):
+        return {
+            RouteKind.HTTP: self.api_http_route,
+            RouteKind.GRPC: self.api_grpc_route,
+        }
+
+    @property
+    @functools.cache
+    def api_session_affinity_filter(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "networking.gke.io/v1",
+            "GCPSessionAffinityFilter",
+        )
+
+    @property
+    @functools.cache
+    def api_session_affinity_policy(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "networking.gke.io/v1",
+            "GCPSessionAffinityPolicy",
+        )
+
+    @property
+    @functools.cache
+    def pod_monitoring(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "monitoring.googleapis.com/v1",
+            "PodMonitoring",
+        )
+
+    @property
+    @functools.cache
+    def api_backend_policy(self) -> dynamic_res.Resource:
+        return self._get_dynamic_api(
+            "networking.gke.io/v1",
+            "GCPBackendPolicy",
+        )
+
+    def _refresh_auth(self):
+        self._api._refresh_auth()
+
+    def _apply_manifest_single(self, manifest) -> object:
+        k8s_objects = utils.create_from_dict(
+            self._api.client, manifest, namespace=self.name
+        )
+        if len(k8s_objects) != 1:
+            raise ValueError(
+                f"Expected exactly one k8s object created from"
+                f" manifest {manifest}"
+            )
+        return k8s_objects[0]
+
+    def _apply_manifest_custom_object(self, manifest) -> DynResourceInstance:
+        api = self._get_dynamic_api(manifest["apiVersion"], manifest["kind"])
+        return api.create(manifest)
+
+    @functools.cache
+    def _get_dynamic_api(self, api_version, kind) -> dynamic_res.Resource:
+        group, _, version = api_version.partition("/")
+
+        # TODO(sergiitk): [GAMMA] Needs to be improved. This all is very clunky
+        #  when considered together with _get_dynamic_api and api_gke_mesh,
+        #  api_grpc_route.
+        if group == "networking.gke.io":
+            if kind == "GCPSessionAffinityFilter":
+                return self._api.gcp_session_affinity_filter(version)
+            elif kind == "GCPSessionAffinityPolicy":
+                return self._api.gcp_session_affinity_policy(version)
+            elif kind == "GCPBackendPolicy":
+                return self._api.gcp_backend_policy(version)
+        elif group == "gateway.networking.k8s.io":
+            if kind == "GRPCRoute":
+                return self._api.grpc_route(version)
+            elif kind == "HTTPRoute":
+                return self._api.http_route(version)
+        elif group == "monitoring.googleapis.com":
+            if kind == "PodMonitoring":
+                return self._api.pod_monitoring(version)
+
+        raise NotImplementedError(
+            f"{kind} ({group}) {api_version} not implemented."
+        )
+
+    def _get_resource(self, method: Callable[[Any], object], *args, **kwargs):
+        try:
+            return self._execute(method, *args, **kwargs)
+        except NotFound:
+            # Instead of throwing an error when a resource doesn't exist,
+            # just return None.
+            return None
+
+    def _get_dyn_resource(
+        self, api: dynamic_res.Resource, name, *args, **kwargs
+    ) -> Optional[DynResourceInstance]:
+        try:
+            return self._execute(
+                api.get, name=name, namespace=self.name, *args, **kwargs
+            )
+        except (NotFound, dynamic_exc.NotFoundError):
+            # Instead of throwing an error when a resource doesn't exist,
+            # just return None.
+            return None
+
+    def _execute(self, method: Callable[[Any], object], *args, **kwargs):
+        return self._api._execute(method, *args, **kwargs)
 
     def create_single_resource(self, manifest, custom_object: bool = False):
         if custom_object:
