@@ -84,33 +84,39 @@ class SpiffeCloudRunCsmInboundTest(
             self.td.create_authz_policy(
                 action="ALLOW", rules=self.authz_rules()
             )
-            self.setupBackendForGrpcWithSecurity(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=True,
                 client_tls=True,
                 client_mtls=True,
             )
 
-        with self.subTest("2_start_secure_test_server"):
+        with self.subTest("2_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("3_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("4_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
 
-        with self.subTest("3_add_server_backends_to_backend_services"):
+        with self.subTest("5_add_server_backends_to_backend_services"):
             self.setupServerBackends()
 
-        with self.subTest("4_create_mesh"):
+        with self.subTest("6_create_mesh"):
             self.td.create_mesh()
 
-        with self.subTest("5_create_grpc_route"):
+        with self.subTest("7_create_grpc_route"):
             self.td.create_grpc_route(
                 self.server_xds_host, self.server_xds_port
             )
 
-        with self.subTest("6_start_secure_test_client"):
+        with self.subTest("8_start_secure_test_client"):
             test_client: _XdsTestClient = self.startCloudRunTestClient(
                 test_server, enable_spiffe=True
             )
 
-        with self.subTest("7_assert_successful_rpcs"):
+        with self.subTest("9_assert_successful_rpcs"):
             self.assertTestAppSecurityWithRetry(
                 self.SecurityMode.MTLS,
                 test_client,
