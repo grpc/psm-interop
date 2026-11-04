@@ -17,6 +17,7 @@ import datetime
 import functools
 import json
 import logging
+import ssl
 from typing import Any, Dict, List, Optional
 
 from absl import flags
@@ -84,6 +85,7 @@ VERBOSE_GCP_API = flags.DEFINE_boolean(
 # Type aliases
 _HttpError = googleapiclient.errors.HttpError
 _HttpLib2Error = googleapiclient.http.httplib2.HttpLib2Error
+_TRANSPORT_ERRORS = (_HttpLib2Error, ConnectionError, ssl.SSLError)
 _HighlighterYaml = framework.helpers.highlighter.HighlighterYaml
 Operation = operations_pb2.Operation
 HttpRequest = googleapiclient.http.HttpRequest
@@ -455,7 +457,7 @@ class GcpProjectApiResource:
 
     @staticmethod
     def _is_retryable_api_error(error: Exception) -> bool:
-        if isinstance(error, (_HttpLib2Error, ConnectionError)):
+        if isinstance(error, _TRANSPORT_ERRORS):
             return True
         return isinstance(error, _HttpError) and error.resp.status in (
             429,
@@ -500,10 +502,10 @@ class GcpProjectApiResource:
             return retryer(request.execute, num_retries=0)
         except retryers.RetryError as e:
             error = e.exception()
-        except (_HttpLib2Error, ConnectionError, _HttpError) as e:
+        except (*_TRANSPORT_ERRORS, _HttpError) as e:
             error = e
 
-        if isinstance(error, (_HttpLib2Error, ConnectionError)):
+        if isinstance(error, _TRANSPORT_ERRORS):
             raise TransportError(error) from error
         raise ResponseError(error) from error
 

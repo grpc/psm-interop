@@ -192,9 +192,9 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         client. To ensure that we will perform the following steps in that
         sequence:
 
-        - Creation of a backendService, mesh, and grpcRoute
         - Creation of the Server mTLS Policy, and attaching to the EndpointPolicy
         - Creation of the Client TLS Policy, and attaching to the backendService
+        - Creation of a backendService, mesh, and grpcRoute
         - Creation of the server and attaching healthy backends (NEGs)
         - Start the client and confirm connection failure
 
@@ -208,30 +208,30 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         transient "Traffic Director configuration was not found for mesh" errors
         (b/465910984).
         """
-        with self.subTest("00_create_health_check"):
-            self.td.create_health_check(port=self.server_maintenance_port)
 
-        # Create backend service
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
-
-        # Create the mesh and grpc route upfront to allow maximum TD
-        # propagation time (b/465910984).
-        with self.subTest("02_create_mesh"):
-            self.td.create_mesh()
-
-        with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(
-                self.server_xds_host, self.server_xds_port
-            )
-
-        # Setup policies and attach them.
-        with self.subTest("04_setup_security_policies"):
-            self.setupSecurityPolicies(
+        # Setup security policies.
+        with self.subTest("00_setup_security_policies"):
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=True,
                 client_tls=True,
                 client_mtls=False,
+            )
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        # Create backend service
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        # Create the mesh and grpc route upfront to allow maximum TD
+        # propagation time (b/465910984).
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
             )
 
         # Start server and attach its NEGs to the backend service.
@@ -259,55 +259,48 @@ class SecurityTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         Client does not authorize server because of mismatched SAN name.
         The order of operations is the same as in `test_mtls_error`.
         """
-        with self.subTest("00_create_health_check"):
+        # Regular TLS setup, but with client policy configured using
+        # intentionality incorrect server_namespace.
+        incorrect_namespace = f"incorrect-namespace-{rand.rand_string()}"
+
+        with self.subTest("00_setup_security_policies"):
+            security_settings = self.setupGrpcWithSecurity(
+                server_tls=True,
+                server_mtls=False,
+                client_tls=True,
+                client_mtls=False,
+                server_namespace_for_client_policy=incorrect_namespace,
+            )
+
+        with self.subTest("01_create_health_check"):
             self.td.create_health_check(port=self.server_maintenance_port)
 
         # Create backend service
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
 
         # Create the mesh and grpc route upfront to allow maximum TD
         # propagation time (b/465910984).
-        with self.subTest("02_create_mesh"):
+        with self.subTest("03_create_mesh"):
             self.td.create_mesh()
 
-        with self.subTest("03_create_grpc_route"):
+        with self.subTest("04_create_grpc_route"):
             self.td.create_grpc_route(
                 self.server_xds_host, self.server_xds_port
             )
 
-        # Regular TLS setup, but with client policy configured using
-        # intentionally incorrect server_namespace.
-        with self.subTest("04_setup_server_security"):
-            self.td.setup_server_security(
-                server_namespace=self.server_namespace,
-                server_name=self.server_name,
-                server_port=self.server_port,
-                tls=True,
-                mtls=False,
-            )
-        incorrect_namespace = f"incorrect-namespace-{rand.rand_string()}"
-
-        with self.subTest("05_setup_client_security"):
-            self.td.setup_client_security(
-                server_namespace=incorrect_namespace,
-                server_name=self.server_name,
-                tls=True,
-                mtls=False,
-            )
-
         # Start server and attach its NEGs to the backend service.
-        with self.subTest("06_start_secure_test_server"):
+        with self.subTest("05_start_secure_test_server"):
             test_server: _XdsTestServer = self.startSecureTestServer()
             self.setupServerBackends()
 
         # Start the client, but don't wait for it to report a healthy channel.
-        with self.subTest("07_start_secure_test_client"):
+        with self.subTest("06_start_secure_test_client"):
             test_client: _XdsTestClient = self.startSecureTestClient(
                 test_server, wait_for_server_channel_ready=False
             )
 
-        with self.subTest("08_assert_client_cannot_reach_server"):
+        with self.subTest("07_assert_client_cannot_reach_server"):
             self.assertClientCannotReachServerRepeatedly(test_client)
 
         logger.info(

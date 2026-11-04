@@ -80,13 +80,19 @@ class SpiffeCloudRunCsmInboundTest(
         ]
 
     def test_spiffe_mtls_cloud_run_to_gke(self):
-        with self.subTest("1_start_secure_test_server"):
-            test_server: _XdsTestServer = self.startSecureTestServer()
-
-        with self.subTest("2_setup_backend_for_grpc"):
-            self.td.setup_backend_for_grpc(
-                health_check_port=self.server_maintenance_port
+        with self.subTest("1_setup_security_and_backend"):
+            self.td.create_authz_policy(
+                action="ALLOW", rules=self.authz_rules()
             )
+            self.setupBackendForGrpcWithSecurity(
+                server_tls=True,
+                server_mtls=True,
+                client_tls=True,
+                client_mtls=True,
+            )
+
+        with self.subTest("2_start_secure_test_server"):
+            test_server: _XdsTestServer = self.startSecureTestServer()
 
         with self.subTest("3_add_server_backends_to_backend_services"):
             self.setupServerBackends()
@@ -99,22 +105,12 @@ class SpiffeCloudRunCsmInboundTest(
                 self.server_xds_host, self.server_xds_port
             )
 
-        with self.subTest("6_create_authz_policy_and_setup_security_policies"):
-            self.td.create_authz_policy(
-                action="ALLOW", rules=self.authz_rules()
-            )
-            self.setupSecurityPolicies(
-                server_tls=True,
-                server_mtls=True,
-                client_tls=True,
-                client_mtls=True,
-            )
-        with self.subTest("8_start_secure_test_client"):
+        with self.subTest("6_start_secure_test_client"):
             test_client: _XdsTestClient = self.startCloudRunTestClient(
                 test_server, enable_spiffe=True
             )
 
-        with self.subTest("9_assert_successful_rpcs"):
+        with self.subTest("7_assert_successful_rpcs"):
             self.assertTestAppSecurityWithRetry(
                 self.SecurityMode.MTLS,
                 test_client,

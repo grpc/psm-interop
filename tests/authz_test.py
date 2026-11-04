@@ -225,29 +225,28 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
         )
 
     def test_plaintext_allow(self) -> None:
-        with self.subTest("00_create_health_check"):
-            self.td.create_health_check(port=self.server_maintenance_port)
-
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
-
-        with self.subTest("02_create_mesh"):
-            self.td.create_mesh()
-
-        with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(
-                self.server_xds_host, self.server_xds_port
-            )
-
-        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+        with self.subTest("00_create_authz_policy_and_setup_security_policies"):
             self.td.create_authz_policy(
                 action="ALLOW", rules=self.authz_rules()
             )
-            self.setupSecurityPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=False,
                 server_mtls=False,
                 client_tls=False,
                 client_mtls=False,
+            )
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
             )
 
         with self.subTest("05_start_secure_test_server"):
@@ -325,29 +324,29 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_tls_allow(self) -> None:
-        with self.subTest("00_create_health_check"):
-            self.td.create_health_check(port=self.server_maintenance_port)
-
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
-
-        with self.subTest("02_create_mesh"):
-            self.td.create_mesh()
-
-        with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(
-                self.server_xds_host, self.server_xds_port
-            )
-
-        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+        with self.subTest("00_create_authz_policy_and_setup_security_policies"):
             self.td.create_authz_policy(
                 action="ALLOW", rules=self.authz_rules()
             )
-            self.setupSecurityPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=False,
                 client_tls=True,
                 client_mtls=False,
+            )
+
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
             )
 
         with self.subTest("05_start_secure_test_server"):
@@ -379,29 +378,29 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_mtls_allow(self) -> None:
-        with self.subTest("00_create_health_check"):
-            self.td.create_health_check(port=self.server_maintenance_port)
-
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
-
-        with self.subTest("02_create_mesh"):
-            self.td.create_mesh()
-
-        with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(
-                self.server_xds_host, self.server_xds_port
-            )
-
-        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+        with self.subTest("00_create_authz_policy_and_setup_security_policies"):
             self.td.create_authz_policy(
                 action="ALLOW", rules=self.authz_rules()
             )
-            self.setupSecurityPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=True,
                 server_mtls=True,
                 client_tls=True,
                 client_mtls=True,
+            )
+
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
             )
 
         with self.subTest("05_start_secure_test_server"):
@@ -443,27 +442,27 @@ class AuthzTest(xds_k8s_testcase.SecurityXdsKubernetesTestCase):
             )
 
     def test_plaintext_deny(self) -> None:
-        with self.subTest("00_create_health_check"):
-            self.td.create_health_check(port=self.server_maintenance_port)
-
-        with self.subTest("01_create_backend_service"):
-            self.td.create_backend_service()
-
-        with self.subTest("02_create_mesh"):
-            self.td.create_mesh()
-
-        with self.subTest("03_create_grpc_route"):
-            self.td.create_grpc_route(
-                self.server_xds_host, self.server_xds_port
-            )
-
-        with self.subTest("04_create_authz_policy_and_setup_security_policies"):
+        with self.subTest("00_create_authz_policy_and_setup_security_policies"):
             self.td.create_authz_policy(action="DENY", rules=self.authz_rules())
-            self.setupSecurityPolicies(
+            security_settings = self.setupGrpcWithSecurity(
                 server_tls=False,
                 server_mtls=False,
                 client_tls=False,
                 client_mtls=False,
+            )
+
+        with self.subTest("01_create_health_check"):
+            self.td.create_health_check(port=self.server_maintenance_port)
+
+        with self.subTest("02_create_backend_service"):
+            self.td.create_backend_service(security_settings=security_settings)
+
+        with self.subTest("03_create_mesh"):
+            self.td.create_mesh()
+
+        with self.subTest("04_create_grpc_route"):
+            self.td.create_grpc_route(
+                self.server_xds_host, self.server_xds_port
             )
 
         with self.subTest("05_start_secure_test_server"):

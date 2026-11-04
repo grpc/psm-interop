@@ -965,10 +965,9 @@ class KubernetesBaseRunner(base_runner.BaseRunner, metaclass=ABCMeta):
             name,
             count,
         )
-        self.k8s_namespace.wait_for_deployment_available_replicas(
+        deployment = self.k8s_namespace.wait_for_deployment_available_replicas(
             name, count, **kwargs
         )
-        deployment = self.k8s_namespace.get_deployment(name)
         logger.info(
             "Deployment %s has %i replicas available",
             deployment.metadata.name,

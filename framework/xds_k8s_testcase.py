@@ -1466,6 +1466,7 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
         server_mtls: bool,
         client_tls: bool,
         client_mtls: bool,
+        server_namespace_for_client_policy: Optional[str] = None,
     ) -> Optional[dict]:
         """Creates client TLS, server TLS, and endpoint policies.
 
@@ -1485,9 +1486,12 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
 
         security_settings = None
         if self.td.client_tls_policy:
+            target_namespace = (
+                server_namespace_for_client_policy or self.server_namespace
+            )
             server_spiffe = (
                 f"spiffe://{self.project}.svc.id.goog/"
-                f"ns/{self.server_namespace}/sa/{self.server_name}"
+                f"ns/{target_namespace}/sa/{self.server_name}"
             )
             security_settings = {
                 "clientTlsPolicy": self.td.client_tls_policy.url,
@@ -1495,6 +1499,19 @@ class SecurityXdsKubernetesTestCase(IsolatedXdsKubernetesTestCase):
             }
 
         return security_settings
+
+    def setupTrafficDirectorGrpcWithSecurity(
+        self, server_tls, server_mtls, client_tls, client_mtls
+    ):
+        self.setupGrpcWithSecurity(
+            server_tls=server_tls,
+            server_mtls=server_mtls,
+            client_tls=client_tls,
+            client_mtls=client_mtls,
+        )
+        self.td.setup_routing_rule_map_for_grpc(
+            self.server_xds_host, self.server_xds_port
+        )
 
     def startSecureTestClient(
         self,
