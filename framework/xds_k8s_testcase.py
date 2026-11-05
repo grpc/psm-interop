@@ -790,7 +790,7 @@ class XdsKubernetesBaseTestCase(
         backend_service_name: str,
         expected_max_requests: int,
         *,
-        retry_timeout: datetime.timedelta = datetime.timedelta(minutes=5),
+        retry_timeout: datetime.timedelta = TD_CONFIG_MAX_WAIT,
         retry_wait: datetime.timedelta = datetime.timedelta(seconds=5),
     ) -> None:
         logger.info(
@@ -822,6 +822,7 @@ class XdsKubernetesBaseTestCase(
         retryer = retryers.constant_retryer(
             wait_fixed=retry_wait,
             timeout=retry_timeout,
+            check_result=bool,
         )
 
         try:
