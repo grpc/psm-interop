@@ -14,15 +14,33 @@
 """Base test case used for xds test suites."""
 import inspect
 import traceback
-from typing import Optional, Union
-import unittest
+from typing import Optional, TypeVar, Union
+import unittest.case
 
 from absl import logging
 from absl.testing import absltest
+from typing_extensions import override
+
+# Aliases
+_OutcomeType: TypeVar = unittest.case._Outcome  # noqa
 
 
 class BaseTestCase(absltest.TestCase):
-    # @override
+    @override
+    def tearDown(self) -> None:
+        if not (outcome := self._get_outcome()):
+            return
+        if outcome.success:
+            logging.info(
+                "----- PSM Test Case PASSED: %s -----\n", self.test_name
+            )
+            return
+
+        test_errors = [error for test, error in outcome.errors if test is self]
+        logging.error("----- PSM Test Case FAILED: %s -----", self.test_name)
+        self._log_test_errors(test_errors)
+
+    @override
     def run(self, result: Optional[unittest.TestResult] = None) -> None:
         super().run(result)
         # TODO(sergiitk): should this method be returning result? See
@@ -40,17 +58,18 @@ class BaseTestCase(absltest.TestCase):
         )
         # Assume one test case will only have one status.
         if test_errors or test_failures:
-            total_errors = len(test_errors) + len(test_failures)
-            logging.error(
-                "----- PSM Test Case FAILED: %s -----", self.test_name
-            )
-            self._log_test_errors(test_errors, is_unexpected=True)
-            self._log_test_errors(test_failures)
-            logging.info(
-                "----- PSM Test Case %s Error Count: %s -----",
-                self.test_name,
-                total_errors,
-            )
+            pass
+            # total_errors = len(test_errors) + len(test_failures)
+            # logging.error(
+            #     "----- PSM Test Case FAILED: %s -----", self.test_name
+            # )
+            # self._log_test_errors(test_errors, is_unexpected=True)
+            # self._log_test_errors(test_failures)
+            # logging.info(
+            #     "----- PSM Test Case %s Error Count: %s -----",
+            #     self.test_name,
+            #     total_errors,
+            # )
         elif test_unexpected_successes:
             logging.error(
                 "----- PSM Test Case UNEXPECTEDLY SUCCEEDED: %s -----\n",
@@ -68,6 +87,9 @@ class BaseTestCase(absltest.TestCase):
                 "----- PSM Test Case PASSED: %s -----\n",
                 self.test_name,
             )
+
+    def _get_outcome(self) -> Optional[_OutcomeType]:
+        return getattr(self, "_outcome", None)
 
     @property
     def test_name(self) -> str:
