@@ -15,7 +15,7 @@ from unittest import mock
 
 from absl.testing import absltest
 
-# Since we want to test formatting logic residing in the test case base class:
+from framework.test_app import server_app
 from framework.xds_k8s_testcase import RegularXdsKubernetesTestCase
 
 
@@ -23,34 +23,38 @@ class RegionalUriTest(absltest.TestCase):
     """Unit tests for regional target and expected URI construction logic."""
 
     def test_regional_server_target_uri_construction(self):
-        """Verifies server target construction with a region vs global."""
-        # Create a mock test case instance with a mock client runner
+        """Verifies server target construction with xDS authority vs global."""
         test_case = mock.create_autospec(
             RegularXdsKubernetesTestCase, instance=True
         )
-        test_case.client_runner = mock.Mock()
+        test_server = server_app.XdsTestServer(
+            ip="10.0.0.1", rpc_port=8080, hostname="test-server"
+        )
+        test_case.server_runner = mock.Mock()
+        test_case.server_runner.run.return_value = [test_server]
+        test_case.server_port = 8080
+        test_case.server_maintenance_port = 8080
+        test_case.server_xds_host = "my-test-service"
+        test_case.server_xds_port = 8070
         test_case._start_test_client = mock.Mock()
 
-        # Mock the server app and its addresses
-        mock_server = mock.Mock()
-        mock_server.xds_address = "my-test-service:8070"
-        mock_server.xds_uri = "xds:///my-test-service:8070"
+        # Scenario 1: Regional xDS authority is configured
+        test_case.server_xds_authority = (
+            "traffic-director.us-west1.xds.googleapis.com"
+        )
+        RegularXdsKubernetesTestCase.startTestServers(test_case)
+        RegularXdsKubernetesTestCase.startTestClient(test_case, test_server)
 
-        # Scenario 1: Region is configured
-        test_case.xds_server_region = "us-west1"
-        RegularXdsKubernetesTestCase.startTestClient(test_case, mock_server)
-
-        # Verify it built the regional xDS authority target
         test_case._start_test_client.assert_called_with(
             "xds://traffic-director.us-west1.xds.googleapis.com/my-test-service:8070"
         )
 
-        # Scenario 2: Region is NOT configured (global fallback)
+        # Scenario 2: Authority is NOT configured (global fallback)
         test_case._start_test_client.reset_mock()
-        test_case.xds_server_region = None
-        RegularXdsKubernetesTestCase.startTestClient(test_case, mock_server)
+        test_case.server_xds_authority = None
+        RegularXdsKubernetesTestCase.startTestServers(test_case)
+        RegularXdsKubernetesTestCase.startTestClient(test_case, test_server)
 
-        # Verify it falls back to the standard global target
         test_case._start_test_client.assert_called_with(
             "xds:///my-test-service:8070"
         )
