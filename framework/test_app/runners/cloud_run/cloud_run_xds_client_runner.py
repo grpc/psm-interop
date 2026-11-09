@@ -26,6 +26,7 @@ from framework.test_app.runners.cloud_run import cloud_run_base_runner
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT: Final[int] = 443
+DEFAULT_QPS: Final[int] = 25
 
 
 class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
@@ -36,6 +37,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
     stats_port: int
     network: str
     enable_spiffe: bool
+    qps: int
 
     gcp_iam: Optional[gcp.iam.IamV1] = None
     service: Optional[gcp.cloud_run.CloudRunService] = None
@@ -55,6 +57,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         namespace: Optional[str] = None,
         managed_identity: Optional[str] = None,
         enable_spiffe: bool = False,
+        qps: int = DEFAULT_QPS,
     ):
         super().__init__(
             project,
@@ -70,6 +73,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         self.workload_identity_pool = workload_identity_pool
         self.namespace = namespace
         self.managed_identity = managed_identity
+        self.qps = qps
 
         self.project_number = project_number
         self.gcp_iam = gcp.iam.IamV1(gcp_api_manager, project)
@@ -95,10 +99,11 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         super().run()
 
         logger.info(
-            "Starting cloud run client with service %s and image %s and server target %s",
+            "Starting cloud run client with service %s, image %s, server target %s, and qps %s",
             self.service_name,
             self.image_name,
             server_target,
+            self.qps,
         )
         if self.enable_spiffe:
             self.add_attestation_policy(self.service_name)
@@ -109,6 +114,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
             server_target=server_target,
             stats_port=self.stats_port,
             network=self.network,
+            qps=self.qps,
         )
         self.current_revision = self.service.revision
         client = self._make_client_from_service(server_target, self.service)
@@ -180,6 +186,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
         server_target: str,
         stats_port: int,
         network: str,
+        qps: int,
     ) -> gcp.cloud_run.CloudRunService:
         if not service_name:
             raise ValueError("service_name cannot be empty or None")
@@ -203,6 +210,7 @@ class CloudRunClientRunner(cloud_run_base_runner.CloudRunBaseRunner):
                             f"--server={server_target}",
                             "--secure_mode=true",
                             f"--stats_port={stats_port}",
+                            f"--qps={qps}",
                         ],
                         "env": [
                             {
