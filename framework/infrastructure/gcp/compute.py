@@ -156,6 +156,7 @@ class ComputeV1(
         security_settings: Optional[dict] = None,
         *,
         region: Optional[str] = None,
+        allow_multinetwork: bool = False,
     ) -> "GcpResource":
         if not isinstance(protocol, self.BackendServiceProtocol):
             raise TypeError(f"Unexpected Backend Service protocol: {protocol}")
@@ -192,6 +193,10 @@ class ComputeV1(
             body["localityLbPolicies"] = locality_lb_policies
         if outlier_detection:
             body["outlierDetection"] = outlier_detection
+
+        if allow_multinetwork:
+            body["allowMultinetwork"] = True
+
         collection = (
             self.api.regionBackendServices()
             if region
@@ -494,6 +499,44 @@ class ComputeV1(
             name,
             region=region,
         )
+
+    def get_forwarding_rule(
+        self, name: str, *, region: Optional[str] = None
+    ) -> dict[str, Any]:
+        collection = (
+            self.api.forwardingRules()
+            if region
+            else self.api.globalForwardingRules()
+        )
+        kwargs: dict[str, Any] = {
+            "project": self.project,
+            "forwardingRule": name,
+        }
+        if region:
+            kwargs["region"] = region
+        retryer = self._get_api_retryer()
+        resp = retryer(collection.get(**kwargs).execute, num_retries=0)
+        logger.info(
+            "Loaded forwarding rule:\n%s", self.resource_pretty_format(resp)
+        )
+        return resp
+
+    def get_service_attachment(self, name: str, region: str) -> dict[str, Any]:
+        retryer = self._get_api_retryer()
+        resp = retryer(
+            self.api.serviceAttachments()
+            .get(
+                project=self.project,
+                region=region,
+                serviceAttachment=name,
+            )
+            .execute,
+            num_retries=0,
+        )
+        logger.info(
+            "Loaded service attachment:\n%s", self.resource_pretty_format(resp)
+        )
+        return resp
 
     def wait_for_network_endpoint_group(
         self,

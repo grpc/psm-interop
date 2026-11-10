@@ -254,6 +254,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
         locality_lb_policies: Optional[List[dict]] = None,
         outlier_detection: Optional[dict] = None,
         security_settings: Optional[dict] = None,
+        allow_multinetwork: bool = False,
     ):
         if protocol is None:
             protocol = _BackendGRPC
@@ -276,6 +277,7 @@ class TrafficDirectorManager:  # pylint: disable=too-many-public-methods
             enable_dualstack=self.enable_dualstack,
             security_settings=security_settings,
             region=self.region,
+            allow_multinetwork=allow_multinetwork,
         )
         self.backend_service = resource
         self.backend_service_protocol = protocol
@@ -985,12 +987,13 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         self.http_route: Optional[HttpRoute] = None
         self.mesh: Optional[Mesh] = None
 
-    def create_mesh(self) -> Mesh:
+    def create_mesh(self, body=None) -> Mesh:
         name = self.make_resource_name(self.MESH_NAME)
         logger.info(
             "Creating Mesh %s in location %s", name, self.region or "global"
         )
-        body = {}
+        if body is None:
+            body = {}
         self.netsvc.create_mesh(name, body, location=self.region)
         self.mesh = self.netsvc.get_mesh(name, location=self.region)
         logger.debug("Loaded Mesh: %s", self.mesh)

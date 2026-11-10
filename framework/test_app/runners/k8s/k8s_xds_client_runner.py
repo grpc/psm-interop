@@ -35,6 +35,7 @@ class ClientDeploymentArgs:
     is_trusted_xds_server_experimental: bool = False
     memory_limit: str = "512Mi"
     memory_request: str = "512Mi"
+    enable_http_connect: bool = False
 
     def as_dict(self):
         return dataclasses.asdict(self)

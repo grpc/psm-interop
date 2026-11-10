@@ -388,10 +388,19 @@ class NetworkServicesV1(_NetworkServicesBase):
     GRPC_ROUTES = "grpcRoutes"
     MESHES = "meshes"
     ENDPOINT_POLICIES = "endpointPolicies"
+    GATEWAYS = "gateways"
 
     @property
     def api_version(self) -> str:
         return "v1"
+
+    def get_gateway(self, name: str, location: str) -> dict[str, Any]:
+        full_name = self.resource_full_name(
+            name, self.GATEWAYS, location=location
+        )
+        return self._get_resource(
+            collection=self._api_locations.gateways(), full_name=full_name
+        )
 
     def create_endpoint_policy(self, name, body: dict) -> None:
         self._create_resource(
@@ -501,3 +510,13 @@ class NetworkServicesV1(_NetworkServicesBase):
                 name, self.HTTP_ROUTES, location=location
             ),
         )
+
+
+class NetworkServicesAlpha1(NetworkServicesV1):
+    """NetworkServices API v1alpha1."""
+
+    MESHES = "meshes"
+
+    @property
+    def api_version(self) -> str:
+        return "v1alpha1"

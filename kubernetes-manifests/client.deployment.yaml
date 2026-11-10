@@ -83,6 +83,10 @@ spec:
             - name: GRPC_EXPERIMENTAL_XDS_DUALSTACK_ENDPOINTS
               value: "true"
             % endif
+            % if enable_http_connect:
+            - name: GRPC_EXPERIMENTAL_XDS_HTTP_CONNECT
+              value: "true"
+            % endif
             % if csm_workload_name:
             - name: CSM_WORKLOAD_NAME
               value: ${csm_workload_name}
