@@ -43,7 +43,6 @@ ClientTlsPolicy = gcp.network_security.ClientTlsPolicy
 AuthorizationPolicy = gcp.network_security.AuthorizationPolicy
 
 # Network Services
-_NetworkServicesV1Beta1 = gcp.network_services.NetworkServicesV1Beta1
 EndpointPolicy = gcp.network_services.EndpointPolicy
 GrpcRoute = gcp.network_services.GrpcRoute
 HttpRoute = gcp.network_services.HttpRoute
@@ -1075,7 +1074,7 @@ class TrafficDirectorAppNetManager(TrafficDirectorManager):
         super().cleanup(force=force)
 
 
-class TrafficDirectorSecureManager(TrafficDirectorManager):
+class TrafficDirectorSecureManager(TrafficDirectorAppNetManager):
     SERVER_TLS_POLICY_NAME = "server-tls-policy"
     CLIENT_TLS_POLICY_NAME = "client-tls-policy"
     AUTHZ_POLICY_NAME = "authz-policy"
@@ -1083,7 +1082,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
     CERTIFICATE_PROVIDER_INSTANCE = "google_cloud_private_spiffe"
 
     netsec: _NetworkSecurityV1Beta1
-    netsvc: _NetworkServicesV1Beta1
 
     def __init__(
         self,
@@ -1108,7 +1106,6 @@ class TrafficDirectorSecureManager(TrafficDirectorManager):
 
         # API
         self.netsec = _NetworkSecurityV1Beta1(gcp_api_manager, project)
-        self.netsvc = _NetworkServicesV1Beta1(gcp_api_manager, project)
 
         # Managed resources
         self.server_tls_policy: Optional[ServerTlsPolicy] = None
