@@ -38,7 +38,7 @@ class ComputeV1(
     # TODO(sergiitk): move someplace better
     _WAIT_FOR_BACKEND_SEC = 60 * 10
     _WAIT_FOR_BACKEND_SLEEP_SEC = 4
-    _WAIT_FOR_OPERATION_SEC = 60 * 10
+    _WAIT_FOR_OPERATION_SEC = 60 * 20
     gfe_debug_header: Optional[str]
 
     @dataclasses.dataclass(frozen=True)
@@ -939,6 +939,7 @@ class ComputeV1(
             operation_request=op_request,
             test_success_fn=self._operation_status_done,
             timeout_sec=timeout_sec,
+            api_name="compute",
         )
 
         logger.debug("Completed operation: %s", operation)

@@ -444,9 +444,48 @@ class OperationError(Error):
         return result
 
 
+class OperationTimeoutError(Error):
+    """Operation timed out waiting to complete."""
+
+    api_name: str
+    name: str
+    timeout_sec: int
+    operation: Optional[dict]
+
+    def __init__(
+        self,
+        timeout_sec: int,
+        operation: Optional[dict] = None,
+        *,
+        api_name: str = "GCP",
+        message: Optional[str] = None,
+    ):
+        self.api_name = api_name
+        self.timeout_sec = timeout_sec
+        self.operation = operation
+        self.name = (
+            operation.get("name", "unknown")
+            if isinstance(operation, dict)
+            else "unknown"
+        )
+        if message is None:
+            if operation:
+                message = (
+                    f'{api_name} operation "{self.name}" timed out waiting to'
+                    f" complete after {timeout_sec} seconds. Last operation"
+                    f" state: {operation}"
+                )
+            else:
+                message = (
+                    f"{api_name} operation timed out waiting to complete after"
+                    f" {timeout_sec} seconds."
+                )
+        super().__init__(message)
+
+
 class GcpProjectApiResource:
     # TODO(sergiitk): move someplace better
-    _WAIT_FOR_OPERATION_SEC = 60 * 10
+    _WAIT_FOR_OPERATION_SEC = 60 * 20
     _WAIT_FIXED_SEC = 2
     _GCP_API_RETRIES = 10
 
@@ -546,7 +585,19 @@ class GcpProjectApiResource:
         test_success_fn,
         timeout_sec=_WAIT_FOR_OPERATION_SEC,
         wait_sec=_WAIT_FIXED_SEC,
+        *,
+        api_name: str = "GCP",
     ):
+        def retry_error_callback(retry_state: tenacity.RetryCallState):
+            if not retry_state.outcome.failed:
+                operation = retry_state.outcome.result()
+                raise OperationTimeoutError(
+                    timeout_sec=timeout_sec,
+                    operation=operation,
+                    api_name=api_name,
+                )
+            raise retry_state.outcome.exception()
+
         retryer = tenacity.Retrying(
             retry=(
                 tenacity.retry_if_not_result(test_success_fn)
@@ -555,9 +606,20 @@ class GcpProjectApiResource:
             wait=tenacity.wait_fixed(wait_sec),
             stop=tenacity.stop_after_delay(timeout_sec),
             after=tenacity.after_log(logger, logging.DEBUG),
+            retry_error_callback=retry_error_callback,
             reraise=True,
         )
-        return retryer(operation_request.execute)
+        try:
+            return retryer(operation_request.execute)
+        except tenacity.RetryError as retry_err:
+            last_attempt = retry_err.last_attempt
+            if last_attempt and not last_attempt.failed:
+                raise OperationTimeoutError(
+                    timeout_sec=timeout_sec,
+                    operation=last_attempt.result(),
+                    api_name=api_name,
+                ) from retry_err
+            raise
 
 
 class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
@@ -655,6 +717,7 @@ class GcpStandardCloudApiResource(GcpProjectApiResource, metaclass=abc.ABCMeta):
             operation_request=op_request,
             test_success_fn=self._operation_status_done,
             timeout_sec=timeout_sec,
+            api_name=self.api_name,
         )
 
         logger.debug("Completed operation: %s", operation)
